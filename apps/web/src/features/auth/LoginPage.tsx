@@ -12,18 +12,32 @@ import {
   Divider,
   Chip,
   Stack,
+  alpha,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import DevicesIcon from '@mui/icons-material/Devices';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
+import SecurityIcon from '@mui/icons-material/Security';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { login, clearError } from '../../store/authSlice';
+import { APP_NAME, APP_TAGLINE } from '../../constants/brand';
+import { ThemeModeToggle } from '../../components/ThemeModeToggle';
 
 const demoAccounts = [
   { email: 'admin@acme.com', role: 'Tenant Admin', desc: 'Full access' },
   { email: 'itadmin@acme.com', role: 'IT Admin', desc: 'No user/settings delete' },
   { email: 'viewer@acme.com', role: 'Viewer', desc: 'Read-only' },
+];
+
+const features = [
+  { icon: <Inventory2Icon fontSize="small" />, text: 'Track assets, warranties & assignments' },
+  { icon: <SecurityIcon fontSize="small" />, text: 'Role-based access for your team' },
+  { icon: <AnalyticsIcon fontSize="small" />, text: 'Dashboard insights & audit trail' },
 ];
 
 export function LoginPage() {
@@ -32,6 +46,8 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isWide = useMediaQuery(theme.breakpoints.up('md'));
   const error = useAppSelector((s) => s.auth.error);
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
 
@@ -56,109 +72,214 @@ export function LoginPage() {
       sx={{
         minHeight: '100vh',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0D47A1 0%, #1565C0 40%, #00897B 100%)',
-        p: 2,
+        alignItems: 'stretch',
+        bgcolor: 'background.default',
+        position: 'relative',
       }}
     >
-      <Card sx={{ maxWidth: 440, width: '100%', borderRadius: 3 }}>
-        <CardContent sx={{ p: 4 }}>
-          <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <Box
-              sx={{
-                width: 56,
-                height: 56,
-                borderRadius: 2,
-                bgcolor: 'primary.main',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mb: 2,
-              }}
-            >
-              <DevicesIcon sx={{ color: 'white', fontSize: 32 }} />
-            </Box>
-            <Typography variant="h5" fontWeight={700}>
-              IT Asset Platform
-            </Typography>
-            <Typography variant="body2" color="text.secondary" mt={0.5}>
-              Sign in to Acme Corp demo tenant
-            </Typography>
+      <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}>
+        <ThemeModeToggle />
+      </Box>
+      {isWide && (
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            px: 6,
+            py: 4,
+            background: 'linear-gradient(145deg, #0D47A1 0%, #1565C0 45%, #00897B 100%)',
+            color: 'white',
+          }}
+        >
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: 2.5,
+              bgcolor: alpha('#fff', 0.15),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mb: 3,
+            }}
+          >
+            <DevicesIcon sx={{ fontSize: 32 }} />
           </Box>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-              required
-            />
-            <TextField
-              fullWidth
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
-              required
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <Button type="submit" fullWidth variant="contained" size="large" sx={{ mt: 3, py: 1.5 }}>
-              Sign In
-            </Button>
-          </Box>
-
-          <Divider sx={{ my: 3 }}>
-            <Chip label="Demo accounts" size="small" />
-          </Divider>
-
-          <Stack spacing={1}>
-            {demoAccounts.map((acc) => (
-              <Button
-                key={acc.email}
-                variant="outlined"
-                fullWidth
-                onClick={() => fillDemo(acc.email)}
-                sx={{ justifyContent: 'space-between', textTransform: 'none', py: 1 }}
-              >
-                <Box sx={{ textAlign: 'left' }}>
-                  <Typography variant="body2" fontWeight={600}>
-                    {acc.role}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {acc.email}
-                  </Typography>
+          <Typography variant="h3" fontWeight={700} gutterBottom sx={{ letterSpacing: '-0.02em' }}>
+            {APP_NAME}
+          </Typography>
+          <Typography variant="h6" sx={{ opacity: 0.9, fontWeight: 400, mb: 4, maxWidth: 420 }}>
+            {APP_TAGLINE} for modern IT teams
+          </Typography>
+          <Stack spacing={2}>
+            {features.map((f) => (
+              <Box key={f.text} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 2,
+                    bgcolor: alpha('#fff', 0.12),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {f.icon}
                 </Box>
-                <Typography variant="caption" color="text.secondary">
-                  {acc.desc}
+                <Typography variant="body1" sx={{ opacity: 0.95 }}>
+                  {f.text}
                 </Typography>
-              </Button>
+              </Box>
             ))}
           </Stack>
+        </Box>
+      )}
 
-          <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={2}>
-            Password for all demo accounts: Demo@123456
-          </Typography>
-        </CardContent>
-      </Card>
+      <Box
+        sx={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: { xs: 2, sm: 4 },
+          maxWidth: isWide ? 520 : '100%',
+        }}
+      >
+        <Card
+          sx={{
+            width: '100%',
+            maxWidth: 440,
+            borderRadius: 3,
+            boxShadow: isWide
+              ? (theme.palette.mode === 'dark'
+                ? '0 8px 32px rgba(0, 0, 0, 0.4)'
+                : '0 8px 32px rgba(26, 35, 50, 0.08)')
+              : undefined,
+          }}
+          elevation={isWide ? 0 : 1}
+        >
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+            {!isWide && (
+              <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Box
+                  sx={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 2.5,
+                    bgcolor: 'primary.main',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: 1.5,
+                    boxShadow: '0 4px 12px rgba(21, 101, 192, 0.3)',
+                  }}
+                >
+                  <DevicesIcon sx={{ color: 'white', fontSize: 28 }} />
+                </Box>
+                <Typography variant="h5" fontWeight={700}>
+                  {APP_NAME}
+                </Typography>
+              </Box>
+            )}
+
+            <Typography variant={isWide ? 'h5' : 'h6'} fontWeight={700} gutterBottom>
+              Sign in
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={3}>
+              Acme Corp demo tenant
+            </Typography>
+
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            <Box component="form" onSubmit={handleSubmit}>
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                margin="normal"
+                required
+                autoComplete="email"
+              />
+              <TextField
+                fullWidth
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                margin="normal"
+                required
+                autoComplete="current-password"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <Button type="submit" fullWidth variant="contained" size="large" sx={{ mt: 3, py: 1.5 }}>
+                Sign In
+              </Button>
+            </Box>
+
+            <Divider sx={{ my: 3 }}>
+              <Chip label="Demo accounts" size="small" />
+            </Divider>
+
+            <Stack spacing={1}>
+              {demoAccounts.map((acc) => (
+                <Button
+                  key={acc.email}
+                  variant="outlined"
+                  fullWidth
+                  onClick={() => fillDemo(acc.email)}
+                  sx={{
+                    justifyContent: 'space-between',
+                    textTransform: 'none',
+                    py: 1.25,
+                    borderColor: 'divider',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    },
+                  }}
+                >
+                  <Box sx={{ textAlign: 'left' }}>
+                    <Typography variant="body2" fontWeight={600}>
+                      {acc.role}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {acc.email}
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    {acc.desc}
+                  </Typography>
+                </Button>
+              ))}
+            </Stack>
+
+            <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={2}>
+              Password for all demo accounts: Demo@123456
+            </Typography>
+          </CardContent>
+        </Card>
+      </Box>
     </Box>
   );
 }

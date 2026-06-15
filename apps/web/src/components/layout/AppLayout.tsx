@@ -1,23 +1,26 @@
 import { useState } from 'react';
 import {
   AppBar,
+  Avatar,
   Box,
   IconButton,
   Toolbar,
   Typography,
   Menu,
   MenuItem,
-  Badge,
+  ListItemIcon,
+  Divider,
   Tooltip,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar, DRAWER_WIDTH } from './Sidebar';
+import { ThemeModeToggle } from '../ThemeModeToggle';
 import { useAppDispatch, useAuthUser, useTenant } from '../../hooks/storeHooks';
 import { logout } from '../../store/authSlice';
+import { APP_TAGLINE } from '../../constants/brand';
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -27,7 +30,12 @@ export function AppLayout() {
   const user = useAuthUser();
   const tenant = useTenant();
 
+  const initials = user
+    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
+    : '?';
+
   const handleLogout = () => {
+    setAnchorEl(null);
     dispatch(logout());
     navigate('/login');
   };
@@ -44,44 +52,88 @@ export function AppLayout() {
           color: 'text.primary',
           borderBottom: '1px solid',
           borderColor: 'divider',
+          backdropFilter: 'blur(8px)',
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }}>
           <IconButton
             color="inherit"
             edge="start"
             onClick={() => setMobileOpen(true)}
-            sx={{ mr: 2, display: { md: 'none' } }}
+            sx={{ mr: 1.5, display: { md: 'none' } }}
+            aria-label="Open navigation menu"
           >
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h6" fontWeight={600}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="subtitle1" fontWeight={700} noWrap>
               {tenant?.name}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              IT Asset & Remote Management
+            <Typography variant="caption" color="text.secondary" noWrap display="block">
+              {APP_TAGLINE}
             </Typography>
           </Box>
 
-          <Tooltip title="Alerts (Phase 2)">
-            <IconButton color="inherit">
-              <Badge badgeContent={4} color="error">
-                <NotificationsOutlinedIcon />
-              </Badge>
+          <ThemeModeToggle />
+
+          <Tooltip title="Account">
+            <IconButton
+              onClick={(e) => setAnchorEl(e.currentTarget)}
+              sx={{ p: 0.5 }}
+              aria-label="Open account menu"
+            >
+              <Avatar
+                sx={{
+                  width: 36,
+                  height: 36,
+                  bgcolor: 'primary.main',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                }}
+              >
+                {initials}
+              </Avatar>
             </IconButton>
           </Tooltip>
 
-          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
-            <AccountCircleIcon />
-          </IconButton>
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-            <MenuItem disabled>
-              {user?.firstName} {user?.lastName} ({user?.role?.replace('_', ' ')})
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={() => setAnchorEl(null)}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            slotProps={{
+              paper: {
+                sx: { minWidth: 220, mt: 1, borderRadius: 2 },
+              },
+            }}
+          >
+            <Box sx={{ px: 2, py: 1.5 }}>
+              <Typography variant="body2" fontWeight={600}>
+                {user?.firstName} {user?.lastName}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {user?.role?.replace(/_/g, ' ')}
+              </Typography>
+            </Box>
+            <Divider />
+            <MenuItem
+              onClick={() => {
+                setAnchorEl(null);
+                navigate('/settings');
+              }}
+            >
+              <ListItemIcon>
+                <SettingsOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              Settings
             </MenuItem>
             <MenuItem onClick={handleLogout}>
-              <LogoutIcon fontSize="small" sx={{ mr: 1 }} /> Sign out
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
+              Sign out
             </MenuItem>
           </Menu>
         </Toolbar>
@@ -100,8 +152,15 @@ export function AppLayout() {
           overflowX: 'hidden',
         }}
       >
-        <Toolbar />
-        <Box sx={{ p: { xs: 2, md: 3 } }}>
+        <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }} />
+        <Box
+          sx={{
+            p: { xs: 2, sm: 2.5, md: 3 },
+            maxWidth: 1600,
+            mx: 'auto',
+            width: '100%',
+          }}
+        >
           <Outlet />
         </Box>
       </Box>

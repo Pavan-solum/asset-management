@@ -1,5 +1,7 @@
-import { Box, Card, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Box, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import BusinessIcon from '@mui/icons-material/Business';
 import { useAppSelector } from '../../hooks/storeHooks';
+import { PageHeader } from '../../components/PageHeader';
 
 export function DepartmentsPage() {
   const departments = useAppSelector((s) => s.departments.items);
@@ -12,19 +14,23 @@ export function DepartmentsPage() {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        Departments
-      </Typography>
-      <Typography variant="body2" color="text.secondary" mb={3}>
-        Organizational structure and cost centers
-      </Typography>
+      <PageHeader
+        title="Departments"
+        subtitle="Organizational structure and cost centers"
+        breadcrumbs={[{ label: 'Dashboard', to: '/' }, { label: 'Departments' }]}
+      />
 
       <Card>
         <TableContainer>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Department</TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <BusinessIcon fontSize="inherit" sx={{ opacity: 0.6 }} />
+                    Department
+                  </Box>
+                </TableCell>
                 <TableCell>Cost Center</TableCell>
                 <TableCell align="right">Employees</TableCell>
               </TableRow>
@@ -33,9 +39,9 @@ export function DepartmentsPage() {
               {departments.map((dept) => (
                 <TableRow key={dept.id} hover>
                   <TableCell>
-                    <Typography variant="body2" fontWeight={600}>
+                    <Box component="span" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
                       {dept.name}
-                    </Typography>
+                    </Box>
                   </TableCell>
                   <TableCell>{dept.costCenter}</TableCell>
                   <TableCell align="right">{countByDept[dept.id] ?? 0}</TableCell>

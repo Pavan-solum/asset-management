@@ -18,11 +18,11 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn';
 import QrCodeIcon from '@mui/icons-material/QrCode';
-import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/storeHooks';
 import { usePermissions } from '../../hooks/storeHooks';
 import { StatusChip } from '../../components/StatusChip';
+import { AssetQrPanel } from '../../components/AssetQrPanel';
 import { AssignAssetDialog, ReturnAssetDialog } from './AssignAssetDialog';
 import { formatCurrency, formatDate, formatDateTime, getEmployeeName } from '../../utils/format';
 import { CATEGORY_LABELS } from '../../data/demoData';
@@ -73,7 +73,6 @@ export function AssetDetailPage() {
     ? employees.find((e) => e.id === asset.assignedEmployeeId)
     : null;
   const vendor = vendors.find((v) => v.id === asset.vendorId);
-  const lookupUrl = `${window.location.origin}/lookup/${asset.id}`;
 
   return (
     <Box>
@@ -117,23 +116,37 @@ export function AssetDetailPage() {
       </Box>
 
       {showQr && (
-        <Card sx={{ mb: 3, textAlign: 'center', py: 3 }}>
+        <Card sx={{ mb: 3, py: 3 }}>
           <CardContent>
-            <QRCodeSVG value={lookupUrl} size={180} level="M" />
-            <Typography variant="body2" mt={2} fontWeight={600}>
-              {asset.assetTag}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Scan to open asset lookup page
-            </Typography>
-            <Typography variant="caption" color="primary" display="block" mt={1}>
-              {lookupUrl}
-            </Typography>
+            <AssetQrPanel
+              assetId={asset.id}
+              assetTag={asset.assetTag}
+              size={180}
+              showDownload
+              caption="Scan to open asset lookup page"
+            />
           </CardContent>
         </Card>
       )}
 
       <Grid container spacing={2}>
+        {asset.imageUrl && (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Device Image
+                </Typography>
+                <Box
+                  component="img"
+                  src={asset.imageUrl}
+                  alt={asset.name}
+                  sx={{ maxHeight: 280, maxWidth: '100%', borderRadius: 2, objectFit: 'contain' }}
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
         <Grid item xs={12} md={7}>
           <Card>
             <CardContent>
@@ -146,8 +159,10 @@ export function AssetDetailPage() {
               <DetailRow label="Model" value={asset.model} />
               <DetailRow label="Serial Number" value={asset.serialNumber} />
               <DetailRow label="Location" value={asset.location} />
+              {asset.department && <DetailRow label="Department" value={asset.department} />}
               <DetailRow label="Vendor" value={vendor?.name ?? '—'} />
               <DetailRow label="Lifecycle" value={asset.lifecycleStage} />
+              {asset.specs && <DetailRow label="Specs" value={asset.specs} />}
               <DetailRow
                 label="Assigned To"
                 value={

@@ -25,24 +25,48 @@ import DevicesOtherIcon from '@mui/icons-material/DevicesOther';
 import LanIcon from '@mui/icons-material/Lan';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTenant, useAuthUser } from '../../hooks/storeHooks';
+import { APP_NAME } from '../../constants/brand';
 
-const DRAWER_WIDTH = 260;
+const DRAWER_WIDTH = 268;
 
-const navItems = [
-  { to: '/', label: 'Dashboard', icon: <DashboardIcon /> },
-  { to: '/assets', label: 'Assets', icon: <InventoryIcon /> },
-  { to: '/devices', label: 'Devices', icon: <DevicesOtherIcon /> },
-  { to: '/network-devices', label: 'Network Devices', icon: <LanIcon /> },
-  { to: '/employees', label: 'Employees', icon: <PeopleIcon /> },
-  { to: '/departments', label: 'Departments', icon: <BusinessIcon /> },
-  { to: '/vendors', label: 'Vendors', icon: <StoreIcon /> },
-  { to: '/audit', label: 'Audit Logs', icon: <HistoryIcon /> },
-  { to: '/settings', label: 'Settings', icon: <SettingsIcon /> },
+const navGroups = [
+  {
+    label: 'Overview',
+    items: [{ to: '/', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> }],
+  },
+  {
+    label: 'Inventory',
+    items: [
+      { to: '/assets', label: 'Assets', icon: <InventoryIcon fontSize="small" /> },
+      { to: '/devices', label: 'Devices', icon: <DevicesOtherIcon fontSize="small" /> },
+      { to: '/network-devices', label: 'Network Devices', icon: <LanIcon fontSize="small" /> },
+    ],
+  },
+  {
+    label: 'Organization',
+    items: [
+      { to: '/employees', label: 'Employees', icon: <PeopleIcon fontSize="small" /> },
+      { to: '/departments', label: 'Departments', icon: <BusinessIcon fontSize="small" /> },
+      { to: '/vendors', label: 'Vendors', icon: <StoreIcon fontSize="small" /> },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { to: '/audit', label: 'Audit Logs', icon: <HistoryIcon fontSize="small" /> },
+      { to: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
+    ],
+  },
 ];
 
 interface SidebarProps {
   mobileOpen: boolean;
   onClose: () => void;
+}
+
+function isNavActive(pathname: string, to: string): boolean {
+  if (to === '/') return pathname === '/';
+  return pathname === to || pathname.startsWith(`${to}/`);
 }
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
@@ -52,68 +76,134 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  const initials = user
+    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
+    : '?';
+
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar sx={{ px: 2, gap: 1.5 }}>
-        <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
-          <DevicesIcon />
+      <Toolbar sx={{ px: 2.5, gap: 1.5, minHeight: { xs: 64, md: 72 } }}>
+        <Avatar
+          sx={{
+            bgcolor: 'primary.main',
+            width: 42,
+            height: 42,
+            boxShadow: '0 4px 12px rgba(21, 101, 192, 0.3)',
+          }}
+        >
+          <DevicesIcon fontSize="small" />
         </Avatar>
-        <Box>
-          <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2}>
-            IT Asset Platform
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2} noWrap>
+            {APP_NAME}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" noWrap display="block">
             {tenant?.name}
           </Typography>
         </Box>
       </Toolbar>
 
-      <Box sx={{ px: 2, pb: 1 }}>
-        <Chip label={tenant?.plan ?? 'Professional'} size="small" color="primary" variant="outlined" />
+      <Box sx={{ px: 2.5, pb: 1.5 }}>
+        <Chip
+          label={tenant?.plan ?? 'Professional'}
+          size="small"
+          color="primary"
+          variant="outlined"
+          sx={{ fontWeight: 600 }}
+        />
       </Box>
 
       <Divider />
 
-      <List sx={{ flex: 1, px: 1, py: 1 }}>
-        {navItems.map((item) => {
-          const active = location.pathname === item.to ||
-            (item.to !== '/' && location.pathname.startsWith(`${item.to}/`)) ||
-            (item.to !== '/' && location.pathname === item.to);
-          return (
-            <ListItemButton
-              key={item.to}
-              component={NavLink}
-              to={item.to}
-              onClick={isMobile ? onClose : undefined}
-              selected={active}
+      <Box sx={{ flex: 1, overflowY: 'auto', py: 1 }}>
+        {navGroups.map((group) => (
+          <Box key={group.label} sx={{ px: 1.5, mb: 1 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
               sx={{
-                borderRadius: 2,
-                mb: 0.5,
-                '&.Mui-selected': {
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
-                  '& .MuiListItemIcon-root': { color: 'primary.contrastText' },
-                  '&:hover': { bgcolor: 'primary.dark' },
-                },
+                px: 1.5,
+                py: 0.75,
+                display: 'block',
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                fontSize: '0.6875rem',
               }}
             >
-              <ListItemIcon sx={{ minWidth: 40, color: active ? 'inherit' : 'text.secondary' }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText primary={item.label} primaryTypographyProps={{ fontWeight: active ? 600 : 500 }} />
-            </ListItemButton>
-          );
-        })}
-      </List>
+              {group.label}
+            </Typography>
+            <List disablePadding>
+              {group.items.map((item) => {
+                const active = isNavActive(location.pathname, item.to);
+                return (
+                  <ListItemButton
+                    key={item.to}
+                    component={NavLink}
+                    to={item.to}
+                    onClick={isMobile ? onClose : undefined}
+                    selected={active}
+                    sx={{
+                      borderRadius: 2.5,
+                      mb: 0.25,
+                      py: 1,
+                      '&.Mui-selected': {
+                        bgcolor: 'primary.main',
+                        color: 'primary.contrastText',
+                        boxShadow: '0 2px 8px rgba(21, 101, 192, 0.35)',
+                        '& .MuiListItemIcon-root': { color: 'primary.contrastText' },
+                        '&:hover': { bgcolor: 'primary.dark' },
+                      },
+                      '&:not(.Mui-selected):hover': {
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 36,
+                        color: active ? 'inherit' : 'text.secondary',
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.label}
+                      primaryTypographyProps={{
+                        fontWeight: active ? 600 : 500,
+                        fontSize: '0.9375rem',
+                      }}
+                    />
+                  </ListItemButton>
+                );
+              })}
+            </List>
+          </Box>
+        ))}
+      </Box>
 
       <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="body2" fontWeight={600}>
-          {user?.firstName} {user?.lastName}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {user?.email}
-        </Typography>
+
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Avatar
+          sx={{
+            width: 36,
+            height: 36,
+            bgcolor: 'secondary.main',
+            fontSize: '0.875rem',
+            fontWeight: 700,
+          }}
+        >
+          {initials}
+        </Avatar>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="body2" fontWeight={600} noWrap>
+            {user?.firstName} {user?.lastName}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" noWrap display="block">
+            {user?.email}
+          </Typography>
+        </Box>
       </Box>
     </Box>
   );
@@ -139,8 +229,6 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           '& .MuiDrawer-paper': {
             width: DRAWER_WIDTH,
             boxSizing: 'border-box',
-            borderRight: '1px solid',
-            borderColor: 'divider',
           },
         }}
         open
