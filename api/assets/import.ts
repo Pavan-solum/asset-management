@@ -59,7 +59,7 @@ export default async function handler(req: Request) {
     const created: ReturnType<typeof mapAsset>[] = [];
 
     for (const item of items) {
-      const itemCopy = { ...item, qrOrigin: body.qrOrigin };
+      const itemCopy: Record<string, unknown> = { ...item, qrOrigin: body.qrOrigin };
       if (item.assignedEmployeeId) {
         const mapped = empIdMap.get(String(item.assignedEmployeeId));
         if (mapped) itemCopy.assignedEmployeeId = mapped;
