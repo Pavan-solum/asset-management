@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight } from '../_lib/db';
+import { getSql, json, error, corsPreflight } from './_lib/db';
 
 export const config = { runtime: 'edge' };
 
