@@ -15,13 +15,20 @@ const assetsSlice = createSlice({
     ownershipHistory: [],
   } as AssetsState,
   reducers: {
-    addAsset: (state, action: PayloadAction<Omit<Asset, 'id' | 'createdAt'>>) => {
-      const id = `asset-${Date.now()}`;
-      state.items.unshift({
-        ...action.payload,
-        id,
-        createdAt: new Date().toISOString(),
-      });
+    addAsset: {
+      reducer(state, action: PayloadAction<Asset>) {
+        state.items.unshift(action.payload);
+      },
+      prepare(asset: Omit<Asset, 'id' | 'createdAt'>) {
+        const id = `asset-${Date.now()}`;
+        return {
+          payload: {
+            ...asset,
+            id,
+            createdAt: new Date().toISOString(),
+          },
+        };
+      },
     },
     updateAsset: (state, action: PayloadAction<Asset>) => {
       const idx = state.items.findIndex((a) => a.id === action.payload.id);

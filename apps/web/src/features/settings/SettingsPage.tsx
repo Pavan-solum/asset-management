@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Box,
   Card,
@@ -11,12 +12,22 @@ import {
   ListItemText,
   Divider,
   Alert,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockIcon from '@mui/icons-material/Lock';
 import CloudIcon from '@mui/icons-material/Cloud';
 import GroupIcon from '@mui/icons-material/Group';
+import StorageIcon from '@mui/icons-material/Storage';
 import { useTenant, useAuthUser, usePermissions } from '../../hooks/storeHooks';
+import { PageHeader } from '../../components/PageHeader';
+import { useThemeMode } from '../../context/ThemeModeContext';
+import { APP_NAME } from '../../constants/brand';
+import { isApiEnabled } from '../../services/api/config';
+import { checkApiHealth } from '../../services/api/client';
+import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
+import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
 
 const demoUsers = [
   { name: 'Jane Admin', email: 'admin@acme.com', role: 'Tenant Admin' },
@@ -37,17 +48,96 @@ export function SettingsPage() {
   const tenant = useTenant();
   const user = useAuthUser();
   const { can } = usePermissions();
+  const { mode, toggleMode } = useThemeMode();
+  const isDark = mode === 'dark';
+  const [dbConnected, setDbConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!isApiEnabled()) {
+      setDbConnected(null);
+      return;
+    }
+    checkApiHealth().then(setDbConnected);
+  }, []);
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        Settings
-      </Typography>
-      <Typography variant="body2" color="text.secondary" mb={3}>
-        Tenant configuration and platform preferences
-      </Typography>
+      <PageHeader
+        title="Settings"
+        subtitle={`${APP_NAME} tenant configuration and preferences`}
+        breadcrumbs={[{ label: 'Dashboard', to: '/' }, { label: 'Settings' }]}
+      />
 
       <Grid container spacing={2}>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Appearance
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <FormControlLabel
+                control={<Switch checked={isDark} onChange={() => toggleMode()} color="primary" />}
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {isDark ? <DarkModeOutlinedIcon fontSize="small" /> : <LightModeOutlinedIcon fontSize="small" />}
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        Dark mode
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {isDark ? 'On — easier on the eyes at night' : 'Off — light theme active'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                }
+                sx={{ ml: 0, alignItems: 'flex-start' }}
+              />
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                <StorageIcon sx={{ verticalAlign: 'middle', mr: 1, fontSize: 20 }} />
+                Backend
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <SettingRow
+                label="API mode"
+                value={
+                  <Chip
+                    label={isApiEnabled() ? 'Postgres (enabled)' : 'Local demo (in-memory)'}
+                    color={isApiEnabled() ? 'success' : 'default'}
+                    size="small"
+                  />
+                }
+              />
+              {isApiEnabled() && (
+                <SettingRow
+                  label="Database"
+                  value={
+                    dbConnected === null ? (
+                      'Checking…'
+                    ) : (
+                      <Chip
+                        label={dbConnected ? 'Connected' : 'Disconnected'}
+                        color={dbConnected ? 'success' : 'error'}
+                        size="small"
+                      />
+                    )
+                  }
+                />
+              )}
+              <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+                See docs/12-backend-setup.md for Neon or Supabase setup.
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>

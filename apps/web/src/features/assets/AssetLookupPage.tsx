@@ -1,18 +1,59 @@
-import { Box, Card, CardContent, Typography, Alert, Chip } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Box, Card, CardContent, Typography, Alert, Chip, CircularProgress } from '@mui/material';
 import DevicesIcon from '@mui/icons-material/Devices';
 import { useParams } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/storeHooks';
 import { StatusChip } from '../../components/StatusChip';
 import { formatCurrency, formatDate, getEmployeeName } from '../../utils/format';
 import { CATEGORY_LABELS, DEMO_TENANT } from '../../data/demoData';
+import { APP_NAME } from '../../constants/brand';
+import { isApiEnabled } from '../../services/api/config';
+import { apiFetch } from '../../services/api/client';
+import type { Asset } from '../../types';
 
 export function AssetLookupPage() {
   const { id } = useParams<{ id: string }>();
-  const asset = useAppSelector((s) => s.assets.items.find((a) => a.id === id));
+  const reduxAsset = useAppSelector((s) => s.assets.items.find((a) => a.id === id));
   const employees = useAppSelector((s) => s.employees.items);
   const vendors = useAppSelector((s) => s.vendors.items);
+  const [remoteAsset, setRemoteAsset] = useState<Asset | null>(null);
+  const [loading, setLoading] = useState(isApiEnabled());
+  const [notFound, setNotFound] = useState(false);
 
-  if (!asset) {
+  useEffect(() => {
+    if (!id || !isApiEnabled()) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const asset = await apiFetch<Asset>(`/api/assets/${id}`);
+        if (!cancelled) setRemoteAsset(asset);
+      } catch {
+        if (!cancelled) setNotFound(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const asset = isApiEnabled() ? remoteAsset : reduxAsset;
+
+  if (loading) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!asset || notFound) {
     return (
       <Box
         sx={{
@@ -83,10 +124,27 @@ export function AssetLookupPage() {
 
             <Chip label={CATEGORY_LABELS[asset.category]} size="small" sx={{ mb: 2 }} />
 
+            {asset.imageUrl && (
+              <Box
+                component="img"
+                src={asset.imageUrl}
+                alt={asset.name}
+                sx={{
+                  width: '100%',
+                  maxHeight: 200,
+                  objectFit: 'cover',
+                  borderRadius: 2,
+                  mb: 2,
+                }}
+              />
+            )}
+
             <Box sx={{ display: 'grid', gap: 1.5 }}>
               <Row label="Serial" value={asset.serialNumber} />
-              <Row label="Manufacturer" value={`${asset.manufacturer} ${asset.model}`} />
+              <Row label="Manufacturer" value={`${asset.manufacturer} ${asset.model}`.trim()} />
+              {asset.specs && <Row label="Specs" value={asset.specs} />}
               <Row label="Location" value={asset.location} />
+              {asset.department && <Row label="Department" value={asset.department} />}
               <Row label="Vendor" value={vendor?.name ?? '—'} />
               <Row
                 label="Assigned To"
@@ -99,7 +157,7 @@ export function AssetLookupPage() {
         </Card>
 
         <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={2}>
-          IT Asset Platform · Mobile QR Lookup Demo
+          {APP_NAME} · Mobile QR Lookup
         </Typography>
       </Box>
     </Box>

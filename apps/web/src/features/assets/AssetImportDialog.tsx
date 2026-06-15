@@ -29,6 +29,9 @@ import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { importInventory } from '../../store/assetsSlice';
 import { replaceAllEmployees } from '../../store/employeesSlice';
 import { addAuditLog } from '../../store/auditSlice';
+import { reloadFromApi } from '../../components/DataBootstrap';
+import { isApiEnabled } from '../../services/api/config';
+import { importInventory as importInventoryApi } from '../../services/api/assets';
 import { CATEGORY_LABELS } from '../../data/demoData';
 import type { AssetCategory, AssetStatus } from '../../types';
 import {
@@ -215,7 +218,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
     );
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!user) return;
 
     const registry = new ImportEmployeeRegistry([]);
@@ -286,6 +289,33 @@ export function AssetImportDialog({ open, onClose }: Props) {
       performedBy: assignedBy,
       createdAt: now,
     }));
+
+    const auditDetails = `Replaced inventory with ${items.length} assets and ${importedEmployees.length} employees from ${fileName}`;
+
+    if (isApiEnabled()) {
+      try {
+        await importInventoryApi({
+          items,
+          employees: importedEmployees,
+          assignedBy,
+          qrOrigin: window.location.origin,
+          audit: {
+            userId: user.id,
+            userName: assignedBy,
+            action: 'CREATE',
+            entityType: 'asset',
+            entityId: 'bulk-import',
+            entityLabel: 'Bulk Import',
+            details: auditDetails,
+          },
+        });
+        await reloadFromApi(dispatch);
+        handleClose();
+      } catch {
+        setParseError('Import failed. Check backend connection and try again.');
+      }
+      return;
+    }
 
     dispatch(replaceAllEmployees(importedEmployees));
     dispatch(

@@ -1,0 +1,598 @@
+import { useMemo, useState } from 'react';
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Grid,
+  MenuItem,
+  TextField,
+  Typography,
+  alpha,
+} from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
+import { addAsset, assignAsset } from '../../store/assetsSlice';
+import { addAuditLog } from '../../store/auditSlice';
+import { PageHeader } from '../../components/PageHeader';
+import { AssetQrPanel } from '../../components/AssetQrPanel';
+import { reloadFromApi } from '../../components/DataBootstrap';
+import { isApiEnabled } from '../../services/api/config';
+import { createAsset as createAssetApi } from '../../services/api/assets';
+import { CATEGORY_LABELS } from '../../data/demoData';
+import {
+  ASSET_CATEGORIES,
+  ASSET_STATUSES,
+  LIFECYCLE_LABELS,
+  LIFECYCLE_STAGES,
+  createEmptyAssetForm,
+  findEmployeeByAssigneeName,
+  generateAssetTag,
+  readImageAsDataUrl,
+  type AssetFormState,
+} from '../../utils/assetUtils';
+import { STATUS_LABELS } from '../../data/demoData';
+import type { AssetStatus } from '../../types';
+
+interface CreatedAsset {
+  id: string;
+  assetTag: string;
+  name: string;
+}
+
+function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card sx={{ mb: 2.5 }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Typography
+          variant="subtitle2"
+          fontWeight={700}
+          color="text.secondary"
+          sx={{ mb: 2, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.75rem' }}
+        >
+          {title}
+        </Typography>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function NewAssetPage() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const user = useAppSelector((s) => s.auth.user);
+  const vendors = useAppSelector((s) => s.vendors.items);
+  const employees = useAppSelector((s) => s.employees.items);
+  const departments = useAppSelector((s) => s.departments.items);
+
+  const [form, setForm] = useState<AssetFormState>(createEmptyAssetForm);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [createdItem, setCreatedItem] = useState<CreatedAsset | null>(null);
+
+  const set = (field: keyof AssetFormState, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const departmentOptions = useMemo(
+    () => departments.map((d) => d.name),
+    [departments],
+  );
+
+  const handleImageChange = async (file: File | null) => {
+    setImageFile(file);
+    if (!file) {
+      setImagePreview(null);
+      setForm((prev) => ({ ...prev, imageUrl: undefined }));
+      return;
+    }
+    const dataUrl = await readImageAsDataUrl(file);
+    setImagePreview(dataUrl);
+    setForm((prev) => ({ ...prev, imageUrl: dataUrl }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !form.assetTag.trim() || !form.name.trim()) return;
+
+    setLoading(true);
+    try {
+      const purchaseCost = Number(form.purchaseCost) || 0;
+      const currentValue = Number(form.currentValue) || purchaseCost;
+      const assignedEmployeeId = findEmployeeByAssigneeName(form.assignedTo, employees);
+      const status: AssetStatus =
+        assignedEmployeeId && form.status === 'in_stock' ? 'deployed' : form.status;
+
+      const notes = [form.specs && `Specs: ${form.specs}`, form.notes].filter(Boolean).join('\n\n') || undefined;
+      const assignedBy = `${user.firstName} ${user.lastName}`;
+
+      if (isApiEnabled()) {
+        const created = await createAssetApi({
+          id: crypto.randomUUID(),
+          assetTag: form.assetTag.trim(),
+          name: form.name.trim(),
+          category: form.category,
+          manufacturer: form.manufacturer.trim(),
+          model: form.model.trim(),
+          serialNumber: form.serialNumber.trim(),
+          status,
+          lifecycleStage: form.lifecycleStage,
+          purchaseDate: form.purchaseDate || new Date().toISOString().split('T')[0],
+          purchaseCost,
+          currentValue,
+          location: form.location.trim() || 'HQ',
+          vendorId: form.vendorId,
+          warrantyExpiresAt: form.warrantyExpiresAt || createEmptyAssetForm().warrantyExpiresAt,
+          specs: form.specs.trim() || undefined,
+          department: form.department.trim() || undefined,
+          imageUrl: form.imageUrl,
+          notes,
+          assignedEmployeeId,
+          assignedBy: assignedEmployeeId ? assignedBy : undefined,
+          qrOrigin: window.location.origin,
+          audit: {
+            userId: user.id,
+            userName: assignedBy,
+            action: 'CREATE',
+            entityType: 'asset',
+            entityId: 'new',
+            entityLabel: form.assetTag.trim(),
+            details: `Created ${form.name.trim()}${imageFile ? ' with image' : ''}`,
+          },
+        });
+        await reloadFromApi(dispatch);
+        setCreatedItem({ id: created.id, assetTag: created.assetTag, name: created.name });
+        return;
+      }
+
+      const action = dispatch(
+        addAsset({
+          assetTag: form.assetTag.trim(),
+          name: form.name.trim(),
+          category: form.category,
+          manufacturer: form.manufacturer.trim(),
+          model: form.model.trim(),
+          serialNumber: form.serialNumber.trim(),
+          status,
+          lifecycleStage: form.lifecycleStage,
+          purchaseDate: form.purchaseDate || new Date().toISOString().split('T')[0],
+          purchaseCost,
+          currentValue,
+          location: form.location.trim() || 'HQ',
+          vendorId: form.vendorId,
+          warrantyExpiresAt: form.warrantyExpiresAt || createEmptyAssetForm().warrantyExpiresAt,
+          specs: form.specs.trim() || undefined,
+          department: form.department.trim() || undefined,
+          imageUrl: form.imageUrl,
+          notes,
+          assignedEmployeeId,
+        }),
+      );
+
+      const created = action.payload as { id: string; assetTag: string; name: string };
+
+      if (assignedEmployeeId) {
+        dispatch(
+          assignAsset({
+            assetId: created.id,
+            employeeId: assignedEmployeeId,
+            assignedBy: `${user.firstName} ${user.lastName}`,
+            notes: 'Assigned during asset creation',
+          }),
+        );
+      } else if (form.assignedTo.trim()) {
+        // Keep assignee hint in notes when no employee match
+        dispatch(
+          addAuditLog({
+            userId: user.id,
+            userName: `${user.firstName} ${user.lastName}`,
+            action: 'UPDATE',
+            entityType: 'asset',
+            entityId: created.id,
+            entityLabel: created.assetTag,
+            details: `Assignee "${form.assignedTo.trim()}" not matched to an employee`,
+          }),
+        );
+      }
+
+      dispatch(
+        addAuditLog({
+          userId: user.id,
+          userName: `${user.firstName} ${user.lastName}`,
+          action: 'CREATE',
+          entityType: 'asset',
+          entityId: created.id,
+          entityLabel: created.assetTag,
+          details: `Created ${created.name}${imageFile ? ' with image' : ''}`,
+        }),
+      );
+
+      setCreatedItem(created);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForAnother = () => {
+    setCreatedItem(null);
+    setForm(createEmptyAssetForm());
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  if (createdItem) {
+    return (
+      <Box sx={{ maxWidth: 520, mx: 'auto' }}>
+        <Card sx={{ textAlign: 'center', p: { xs: 3, sm: 4 } }}>
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              bgcolor: alpha('#2E7D32', 0.12),
+              color: 'success.main',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mx: 'auto',
+              mb: 2,
+            }}
+          >
+            <CheckCircleIcon sx={{ fontSize: 32 }} />
+          </Box>
+          <Typography variant="h5" fontWeight={700} gutterBottom>
+            Asset Created!
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            {createdItem.name} · {createdItem.assetTag}
+          </Typography>
+
+          <AssetQrPanel
+            assetId={createdItem.id}
+            assetTag={createdItem.assetTag}
+            size={200}
+            showDownload
+            caption="Scan to open asset lookup · Download and stick on the device"
+          />
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 3 }}>
+            <Button variant="contained" onClick={resetForAnother} startIcon={<RefreshIcon />}>
+              Add Another Asset
+            </Button>
+            <Button variant="outlined" component={RouterLink} to="/assets">
+              View All Assets
+            </Button>
+            <Button
+              variant="text"
+              component={RouterLink}
+              to={`/assets/${createdItem.id}`}
+            >
+              Open Asset Details
+            </Button>
+          </Box>
+        </Card>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ maxWidth: 900, mx: 'auto' }}>
+      <PageHeader
+        title="Add New Asset"
+        subtitle="A QR code will be generated automatically after saving"
+        breadcrumbs={[
+          { label: 'Assets', to: '/assets' },
+          { label: 'New Asset' },
+        ]}
+      />
+
+      <Box component="form" onSubmit={handleSubmit}>
+        <FormSection title="Identity">
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                required
+                label="Asset Tag"
+                value={form.assetTag}
+                onChange={(e) => set('assetTag', e.target.value)}
+                InputProps={{ sx: { fontFamily: 'monospace' } }}
+                helperText={
+                  <Button
+                    size="small"
+                    onClick={() => set('assetTag', generateAssetTag())}
+                    sx={{ p: 0, minWidth: 0, textTransform: 'none' }}
+                  >
+                    Regenerate tag
+                  </Button>
+                }
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Serial Number"
+                placeholder="SN-XXXX"
+                value={form.serialNumber}
+                onChange={(e) => set('serialNumber', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                required
+                label="Asset Name"
+                placeholder="e.g. MacBook Pro 14 — Rahul's Machine"
+                value={form.name}
+                onChange={(e) => set('name', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                select
+                fullWidth
+                required
+                label="Type"
+                value={form.category}
+                onChange={(e) => set('category', e.target.value)}
+              >
+                {ASSET_CATEGORIES.map((c) => (
+                  <MenuItem key={c} value={c}>
+                    {CATEGORY_LABELS[c]}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                select
+                fullWidth
+                label="Status"
+                value={form.status}
+                onChange={(e) => set('status', e.target.value)}
+              >
+                {ASSET_STATUSES.map((s) => (
+                  <MenuItem key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                select
+                fullWidth
+                label="Lifecycle"
+                value={form.lifecycleStage}
+                onChange={(e) => set('lifecycleStage', e.target.value)}
+              >
+                {LIFECYCLE_STAGES.map((s) => (
+                  <MenuItem key={s} value={s}>
+                    {LIFECYCLE_LABELS[s]}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Brand"
+                placeholder="Apple, Dell, HP..."
+                value={form.manufacturer}
+                onChange={(e) => set('manufacturer', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Model"
+                placeholder='MacBook Pro M3 14"'
+                value={form.model}
+                onChange={(e) => set('model', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                label="Specs / Description"
+                placeholder="16GB RAM, 512GB SSD..."
+                value={form.specs}
+                onChange={(e) => set('specs', e.target.value)}
+              />
+            </Grid>
+          </Grid>
+        </FormSection>
+
+        <FormSection title="Purchase & Financials">
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Purchase Date"
+                InputLabelProps={{ shrink: true }}
+                value={form.purchaseDate}
+                onChange={(e) => set('purchaseDate', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Purchase Price"
+                placeholder="85000"
+                value={form.purchaseCost}
+                onChange={(e) => {
+                  set('purchaseCost', e.target.value);
+                  if (!form.currentValue) set('currentValue', e.target.value);
+                }}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Current Value"
+                placeholder="65000"
+                value={form.currentValue}
+                onChange={(e) => set('currentValue', e.target.value)}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Warranty Expiry"
+                InputLabelProps={{ shrink: true }}
+                value={form.warrantyExpiresAt}
+                onChange={(e) => set('warrantyExpiresAt', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                select
+                fullWidth
+                label="Vendor"
+                value={form.vendorId}
+                onChange={(e) => set('vendorId', e.target.value)}
+              >
+                {vendors.map((v) => (
+                  <MenuItem key={v.id} value={v.id}>
+                    {v.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          </Grid>
+        </FormSection>
+
+        <FormSection title="Assignment & Location">
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Assigned To"
+                placeholder="Employee name"
+                value={form.assignedTo}
+                onChange={(e) => set('assignedTo', e.target.value)}
+                helperText="Matches existing employees by name; sets status to Deployed when found"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                select
+                label="Department"
+                value={form.department}
+                onChange={(e) => set('department', e.target.value)}
+                SelectProps={{ displayEmpty: true }}
+              >
+                <MenuItem value="">— None —</MenuItem>
+                {departmentOptions.map((name) => (
+                  <MenuItem key={name} value={name}>
+                    {name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Location"
+                placeholder="Office Floor 2, Remote..."
+                value={form.location}
+                onChange={(e) => set('location', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                label="Notes"
+                value={form.notes}
+                onChange={(e) => set('notes', e.target.value)}
+              />
+            </Grid>
+          </Grid>
+        </FormSection>
+
+        <FormSection title="Image">
+          <Box
+            sx={{
+              border: '2px dashed',
+              borderColor: imagePreview ? 'primary.main' : 'divider',
+              borderRadius: 2,
+              p: 3,
+              textAlign: 'center',
+              bgcolor: imagePreview ? alpha('#1565C0', 0.04) : 'background.default',
+            }}
+          >
+            {imagePreview ? (
+              <Box>
+                <Box
+                  component="img"
+                  src={imagePreview}
+                  alt="Asset preview"
+                  sx={{
+                    maxHeight: 200,
+                    maxWidth: '100%',
+                    borderRadius: 2,
+                    mb: 2,
+                    objectFit: 'contain',
+                  }}
+                />
+                <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                  {imageFile?.name}
+                </Typography>
+                <Button size="small" onClick={() => void handleImageChange(null)}>
+                  Remove image
+                </Button>
+              </Box>
+            ) : (
+              <>
+                <CloudUploadIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+                <Typography variant="body2" color="text.secondary" mb={2}>
+                  Upload a photo of the device (stored locally in this demo)
+                </Typography>
+                <Button variant="outlined" component="label">
+                  Choose Image
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={(e) => void handleImageChange(e.target.files?.[0] ?? null)}
+                  />
+                </Button>
+              </>
+            )}
+          </Box>
+        </FormSection>
+
+        <Box sx={{ display: 'flex', gap: 2, pt: 1 }}>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading || !form.assetTag || !form.name}
+            startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
+          >
+            {loading ? 'Saving...' : 'Save & Generate QR'}
+          </Button>
+          <Button variant="outlined" onClick={() => navigate('/assets')}>
+            Cancel
+          </Button>
+        </Box>
+      </Box>
+    </Box>
+  );
+}

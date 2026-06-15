@@ -1,10 +1,12 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
+import { DataBootstrap } from './components/DataBootstrap';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { AssetsPage } from './features/assets/AssetsPage';
 import { AssetDetailPage } from './features/assets/AssetDetailPage';
+import { NewAssetPage } from './features/assets/NewAssetPage';
 import { AssetLookupPage } from './features/assets/AssetLookupPage';
 import { EmployeesPage } from './features/employees/EmployeesPage';
 import { EmployeeDetailPage } from './features/employees/EmployeeDetailPage';
@@ -18,7 +20,9 @@ import { NetworkDeviceDetailPage } from './features/network/NetworkDeviceDetailP
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <DataBootstrap />
+      <Routes>
       <Route
         path="/login"
         element={
@@ -37,6 +41,7 @@ export default function App() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="assets" element={<AssetsPage />} />
+        <Route path="assets/new" element={<NewAssetPage />} />
         <Route path="assets/:id" element={<AssetDetailPage />} />
         <Route path="devices" element={<DevicesPage />} />
         <Route path="network-devices" element={<NetworkDevicesPage />} />
@@ -50,5 +55,6 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

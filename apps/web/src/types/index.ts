@@ -95,6 +95,9 @@ export interface Asset {
   assignedEmployeeId?: string;
   warrantyExpiresAt: string;
   notes?: string;
+  specs?: string;
+  department?: string;
+  imageUrl?: string;
   createdAt: string;
 }
 

@@ -16,8 +16,11 @@ const vendorsSlice = createSlice({
     deleteVendor: (state, action: PayloadAction<string>) => {
       state.items = state.items.filter((v) => v.id !== action.payload);
     },
+    replaceAllVendors: (state, action: PayloadAction<Vendor[]>) => {
+      state.items = action.payload;
+    },
   },
 });
 
-export const { addVendor, updateVendor, deleteVendor } = vendorsSlice.actions;
+export const { addVendor, updateVendor, deleteVendor, replaceAllVendors } = vendorsSlice.actions;
 export default vendorsSlice.reducer;

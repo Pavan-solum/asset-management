@@ -1,16 +1,23 @@
 {
-  "name": "it-asset-platform",
+  "name": "assetly",
   "version": "0.1.0",
   "private": true,
-  "description": "IT Asset & Remote Management Platform - Multi-tenant SaaS",
+  "description": "Assetly — IT Asset Management Platform",
   "scripts": {
     "dev": "npm run dev --prefix apps/web",
     "dev:web": "npm run dev --prefix apps/web",
+    "dev:full": "vercel dev",
     "build": "npm run build --prefix apps/web",
     "lint": "npm run lint --prefix apps/web",
     "preview": "npm run preview --prefix apps/web",
     "docker:up": "docker compose -f docker/docker-compose.demo.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.demo.yml down"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4"
+  },
+  "devDependencies": {
+    "vercel": "^39.0.0"
   },
   "engines": {
     "node": ">=20.0.0"

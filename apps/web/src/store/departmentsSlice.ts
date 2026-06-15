@@ -16,8 +16,12 @@ const departmentsSlice = createSlice({
     deleteDepartment: (state, action: PayloadAction<string>) => {
       state.items = state.items.filter((d) => d.id !== action.payload);
     },
+    replaceAllDepartments: (state, action: PayloadAction<Department[]>) => {
+      state.items = action.payload;
+    },
   },
 });
 
-export const { addDepartment, updateDepartment, deleteDepartment } = departmentsSlice.actions;
+export const { addDepartment, updateDepartment, deleteDepartment, replaceAllDepartments } =
+  departmentsSlice.actions;
 export default departmentsSlice.reducer;

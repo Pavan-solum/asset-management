@@ -24,8 +24,11 @@ const auditSlice = createSlice({
         createdAt: new Date().toISOString(),
       });
     },
+    replaceAllAuditLogs: (state, action: PayloadAction<AuditLog[]>) => {
+      state.items = action.payload;
+    },
   },
 });
 
-export const { addAuditLog } = auditSlice.actions;
+export const { addAuditLog, replaceAllAuditLogs } = auditSlice.actions;
 export default auditSlice.reducer;
