@@ -15,6 +15,7 @@ import InventoryIcon from '@mui/icons-material/Inventory2';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import PeopleIcon from '@mui/icons-material/People';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { useNavigate } from 'react-router-dom';
@@ -31,9 +32,10 @@ import {
   Legend,
 } from 'recharts';
 import { useAppSelector } from '../../hooks/storeHooks';
-import { useAuthUser } from '../../hooks/storeHooks';
+import { useAuthUser, usePermissions } from '../../hooks/storeHooks';
 import { formatCurrency, daysUntil } from '../../utils/format';
 import { STATUS_LABELS, CATEGORY_LABELS } from '../../data/demoData';
+import { getUserDisplayName } from '../../utils/userDisplay';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 
@@ -123,9 +125,13 @@ function ChartEmpty({ message }: { message: string }) {
 export function DashboardPage() {
   const navigate = useNavigate();
   const user = useAuthUser();
+  const { can } = usePermissions();
   const assets = useAppSelector((s) => s.assets.items);
   const employees = useAppSelector((s) => s.employees.items);
   const auditLogs = useAppSelector((s) => s.audit.items);
+  const requests = useAppSelector((s) => s.requests.items);
+  const pendingRequests = requests.filter((r) => r.status === 'submitted');
+  const showRequests = can('request:review');
 
   const byStatus = Object.entries(
     assets.reduce<Record<string, number>>((acc, a) => {
@@ -150,9 +156,47 @@ export function DashboardPage() {
   return (
     <Box>
       <PageHeader
-        title={`Welcome back, ${user?.firstName ?? 'there'}`}
+        title={`Welcome back, ${getUserDisplayName(user) || 'there'}`}
         subtitle="IT asset overview and operational insights"
       />
+
+      {showRequests && pendingRequests.length > 0 && (
+        <Card
+          sx={{
+            mb: 3,
+            border: (theme) => `1px solid ${alpha(theme.palette.warning.main, 0.35)}`,
+            bgcolor: (theme) => alpha(theme.palette.warning.main, 0.06),
+          }}
+        >
+          <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', py: 2.5 }}>
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: 2,
+                bgcolor: 'warning.main',
+                color: 'warning.contrastText',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <AssignmentIcon />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 200 }}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                {pendingRequests.length} device request{pendingRequests.length === 1 ? '' : 's'} awaiting review
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Employees have submitted equipment requests that need your approval.
+              </Typography>
+            </Box>
+            <Button variant="contained" color="warning" onClick={() => navigate('/requests')}>
+              Review requests
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {isEmpty && (
         <Card
@@ -237,6 +281,18 @@ export function DashboardPage() {
             color="#00897B"
           />
         </Grid>
+        {showRequests && (
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              title="Device Requests"
+              value={pendingRequests.length}
+              subtitle={`${requests.length} total · click to review`}
+              icon={<AssignmentIcon />}
+              color="#6A1B9A"
+              onClick={() => navigate('/requests')}
+            />
+          </Grid>
+        )}
       </Grid>
 
       <Grid container spacing={2.5} mb={3}>

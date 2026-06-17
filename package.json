@@ -5,8 +5,10 @@
   "description": "Assetly — IT Asset Management Platform",
   "scripts": {
     "dev": "npm run dev --prefix apps/web",
-    "dev:web": "npm run dev --prefix apps/web",
+    "dev:web": "npm run dev:web-only --prefix apps/web",
+    "dev:api": "tsx scripts/local-api.ts",
     "dev:full": "vercel dev",
+    "dev:stack": "npx concurrently -k -n api,web -c blue,green \"npm run dev:api\" \"npx wait-on -t 30000 http://127.0.0.1:3000/api/health && npm run dev --prefix apps/web\"",
     "build": "npm run build --prefix apps/web",
     "lint": "npm run lint --prefix apps/web",
     "preview": "npm run preview --prefix apps/web",
@@ -14,9 +16,11 @@
     "docker:down": "docker compose -f docker/docker-compose.demo.yml down"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^0.10.4"
+    "@neondatabase/serverless": "^0.10.4",
+    "jose": "^5.9.6"
   },
   "devDependencies": {
+    "tsx": "^4.19.2",
     "vercel": "^39.0.0"
   },
   "engines": {

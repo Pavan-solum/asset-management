@@ -15,6 +15,7 @@ import {
   Alert,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import EditIcon from '@mui/icons-material/Edit';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn';
 import QrCodeIcon from '@mui/icons-material/QrCode';
@@ -24,6 +25,7 @@ import { usePermissions } from '../../hooks/storeHooks';
 import { StatusChip } from '../../components/StatusChip';
 import { AssetQrPanel } from '../../components/AssetQrPanel';
 import { AssignAssetDialog, ReturnAssetDialog } from './AssignAssetDialog';
+import { AssetEditDialog } from './AssetEditDialog';
 import { formatCurrency, formatDate, formatDateTime, getEmployeeName } from '../../utils/format';
 import { CATEGORY_LABELS } from '../../data/demoData';
 
@@ -56,6 +58,7 @@ export function AssetDetailPage() {
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [showQr, setShowQr] = useState(false);
 
   if (!asset) {
@@ -99,6 +102,11 @@ export function AssetDetailPage() {
           <Button startIcon={<QrCodeIcon />} variant="outlined" onClick={() => setShowQr(!showQr)}>
             QR Code
           </Button>
+          {can('asset:write') && (
+            <Button startIcon={<EditIcon />} variant="outlined" onClick={() => setEditOpen(true)}>
+              Edit
+            </Button>
+          )}
           {can('asset:assign') && asset.status !== 'deployed' && (
             <Button startIcon={<AssignmentIndIcon />} variant="contained" onClick={() => setAssignOpen(true)}>
               Assign
@@ -269,6 +277,12 @@ export function AssetDetailPage() {
         onClose={() => setReturnOpen(false)}
         assetId={asset.id}
         assetTag={asset.assetTag}
+      />
+      <AssetEditDialog
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        asset={asset}
+        onDeleted={() => navigate('/assets')}
       />
     </Box>
   );

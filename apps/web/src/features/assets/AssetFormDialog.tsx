@@ -12,6 +12,8 @@ import {
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { addAsset } from '../../store/assetsSlice';
 import { addAuditLog } from '../../store/auditSlice';
+import { LoadingButton } from '../../components/Loader';
+import { withMinDelay } from '../../hooks/useAsyncAction';
 import type { AssetCategory, AssetStatus, LifecycleStage } from '../../types';
 
 interface Props {
@@ -42,31 +44,41 @@ export function AssetFormDialog({ open, onClose }: Props) {
   const user = useAppSelector((s) => s.auth.user);
   const vendors = useAppSelector((s) => s.vendors.items);
   const [form, setForm] = useState(defaultForm);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (field: string, value: string | number) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    if (!form.assetTag || !form.name) return;
-    dispatch(addAsset(form));
-    dispatch(
-      addAuditLog({
-        userId: user!.id,
-        userName: `${user!.firstName} ${user!.lastName}`,
-        action: 'CREATE',
-        entityType: 'asset',
-        entityId: 'new',
-        entityLabel: form.assetTag,
-        details: `Created ${form.name}`,
-      }),
-    );
-    setForm(defaultForm);
-    onClose();
+  const handleSubmit = async () => {
+    if (!form.assetTag || !form.name || loading) return;
+    setLoading(true);
+    try {
+      await withMinDelay(
+        Promise.resolve().then(() => {
+          dispatch(addAsset(form));
+          dispatch(
+            addAuditLog({
+              userId: user!.id,
+              userName: `${user!.firstName} ${user!.lastName}`,
+              action: 'CREATE',
+              entityType: 'asset',
+              entityId: 'new',
+              entityLabel: form.assetTag,
+              details: `Created ${form.name}`,
+            }),
+          );
+        }),
+      );
+      setForm(defaultForm);
+      onClose();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
       <DialogTitle>Add New Asset</DialogTitle>
       <DialogContent>
         <Grid container spacing={2} sx={{ mt: 0.5 }}>
@@ -201,10 +213,18 @@ export function AssetFormDialog({ open, onClose }: Props) {
         </Grid>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={!form.assetTag || !form.name}>
-          Create Asset
+        <Button onClick={onClose} disabled={loading}>
+          Cancel
         </Button>
+        <LoadingButton
+          variant="contained"
+          onClick={() => void handleSubmit()}
+          disabled={!form.assetTag || !form.name}
+          loading={loading}
+          loadingLabel="Creating…"
+        >
+          Create Asset
+        </LoadingButton>
       </DialogActions>
     </Dialog>
   );

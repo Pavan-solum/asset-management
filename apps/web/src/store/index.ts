@@ -7,6 +7,8 @@ import vendorsReducer from './vendorsSlice';
 import auditReducer from './auditSlice';
 
 import networkDevicesReducer from './networkDevicesSlice';
+import uiReducer from './uiSlice';
+import requestsReducer from './requestsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -17,6 +19,8 @@ export const store = configureStore({
     vendors: vendorsReducer,
     audit: auditReducer,
     networkDevices: networkDevicesReducer,
+    ui: uiReducer,
+    requests: requestsReducer,
   },
 });
 

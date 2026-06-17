@@ -15,7 +15,7 @@ export type AssetStatus = 'in_stock' | 'deployed' | 'in_repair' | 'retired' | 'l
 export type LifecycleStage = 'procurement' | 'active' | 'maintenance' | 'end_of_life';
 export type EmployeeStatus = 'active' | 'terminated' | 'on_leave';
 export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'ASSIGN' | 'RETURN' | 'LOGIN' | 'LOGOUT';
-export type UserRole = 'tenant_admin' | 'it_admin' | 'viewer';
+export type UserRole = 'tenant_admin' | 'it_admin' | 'viewer' | 'employee';
 
 export interface Tenant {
   id: string;
@@ -30,6 +30,7 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
+  employeeId?: string;
 }
 
 export interface Department {
@@ -101,6 +102,26 @@ export interface Asset {
   createdAt: string;
 }
 
+export type AssetRequestType = 'new' | 'replacement' | 'accessory';
+export type AssetRequestStatus = 'submitted' | 'approved' | 'rejected' | 'fulfilled';
+
+export interface AssetRequest {
+  id: string;
+  employeeId: string;
+  requestType: AssetRequestType;
+  category: AssetCategory;
+  description: string;
+  neededBy?: string;
+  status: AssetRequestStatus;
+  reviewNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  employeeName?: string;
+  employeeEmail?: string;
+  departmentName?: string;
+}
+
 export interface AuditLog {
   id: string;
   userId: string;
@@ -129,6 +150,10 @@ export const PERMISSIONS = {
   'vendor:write': ['tenant_admin', 'it_admin'],
   'audit:read': ['tenant_admin', 'it_admin', 'viewer'],
   'settings:write': ['tenant_admin'],
+  'request:create': ['employee'],
+  'request:read-own': ['employee'],
+  'request:read': ['tenant_admin', 'it_admin'],
+  'request:review': ['tenant_admin', 'it_admin'],
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -161,6 +186,20 @@ export interface NetworkDevice {
   vlan?: string;
   notes?: string;
 }
+
+/** Categories employees can request */
+export const REQUEST_CATEGORIES: AssetCategory[] = [
+  'laptop',
+  'desktop',
+  'mobile',
+  'monitor',
+  'keyboard',
+  'mouse',
+  'webcam',
+  'headset',
+  'peripheral',
+  'other',
+];
 
 /** Categories shown under the Devices menu (peripherals) */
 export const PERIPHERAL_CATEGORIES: AssetCategory[] = [

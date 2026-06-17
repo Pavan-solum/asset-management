@@ -12,6 +12,10 @@ import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { assignAsset, returnAsset } from '../../store/assetsSlice';
 import { addAuditLog } from '../../store/auditSlice';
 import { getEmployeeName } from '../../utils/format';
+import { LoadingButton } from '../../components/Loader';
+import { reloadFromApi } from '../../components/DataBootstrap';
+import { isApiEnabled } from '../../services/api/config';
+import { assignAssetApi, returnAssetApi } from '../../services/api/assets';
 
 interface AssignProps {
   open: boolean;
@@ -26,36 +30,57 @@ export function AssignAssetDialog({ open, onClose, assetId, assetTag }: AssignPr
   const employees = useAppSelector((s) => s.employees.items);
   const [employeeId, setEmployeeId] = useState('');
   const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleAssign = () => {
-    if (!employeeId || !user) return;
+  const handleAssign = async () => {
+    if (!employeeId || !user || loading) return;
     const emp = employees.find((e) => e.id === employeeId)!;
-    dispatch(
-      assignAsset({
-        assetId,
-        employeeId,
-        assignedBy: `${user.firstName} ${user.lastName}`,
-        notes,
-      }),
-    );
-    dispatch(
-      addAuditLog({
-        userId: user.id,
-        userName: `${user.firstName} ${user.lastName}`,
-        action: 'ASSIGN',
-        entityType: 'asset',
-        entityId: assetId,
-        entityLabel: assetTag,
-        details: `Assigned to ${getEmployeeName(emp.firstName, emp.lastName)}`,
-      }),
-    );
-    setEmployeeId('');
-    setNotes('');
-    onClose();
+    const assignedBy = `${user.firstName} ${user.lastName}`;
+    setLoading(true);
+    try {
+      if (isApiEnabled()) {
+        await assignAssetApi({
+          assetId,
+          employeeId,
+          assignedBy,
+          notes,
+          audit: {
+            userId: user.id,
+            userName: assignedBy,
+            action: 'ASSIGN',
+            entityType: 'asset',
+            entityId: assetId,
+            entityLabel: assetTag,
+            details: `Assigned to ${getEmployeeName(emp.firstName, emp.lastName)}`,
+          },
+        });
+        await reloadFromApi(dispatch);
+      } else {
+        dispatch(
+          assignAsset({ assetId, employeeId, assignedBy, notes }),
+        );
+        dispatch(
+          addAuditLog({
+            userId: user.id,
+            userName: assignedBy,
+            action: 'ASSIGN',
+            entityType: 'asset',
+            entityId: assetId,
+            entityLabel: assetTag,
+            details: `Assigned to ${getEmployeeName(emp.firstName, emp.lastName)}`,
+          }),
+        );
+      }
+      setEmployeeId('');
+      setNotes('');
+      onClose();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Assign Asset {assetTag}</DialogTitle>
       <DialogContent>
         <TextField
@@ -84,10 +109,18 @@ export function AssignAssetDialog({ open, onClose, assetId, assetTag }: AssignPr
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleAssign} disabled={!employeeId}>
-          Assign
+        <Button onClick={onClose} disabled={loading}>
+          Cancel
         </Button>
+        <LoadingButton
+          variant="contained"
+          onClick={() => void handleAssign()}
+          disabled={!employeeId}
+          loading={loading}
+          loadingLabel="Assigning…"
+        >
+          Assign
+        </LoadingButton>
       </DialogActions>
     </Dialog>
   );
@@ -104,33 +137,54 @@ export function ReturnAssetDialog({ open, onClose, assetId, assetTag }: ReturnPr
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const [condition, setCondition] = useState('Good condition');
+  const [loading, setLoading] = useState(false);
 
-  const handleReturn = () => {
-    if (!user) return;
-    dispatch(
-      returnAsset({
-        assetId,
-        performedBy: `${user.firstName} ${user.lastName}`,
-        returnCondition: condition,
-      }),
-    );
-    dispatch(
-      addAuditLog({
-        userId: user.id,
-        userName: `${user.firstName} ${user.lastName}`,
-        action: 'RETURN',
-        entityType: 'asset',
-        entityId: assetId,
-        entityLabel: assetTag,
-        details: `Returned — ${condition}`,
-      }),
-    );
-    setCondition('Good condition');
-    onClose();
+  const handleReturn = async () => {
+    if (!user || loading) return;
+    const performedBy = `${user.firstName} ${user.lastName}`;
+    setLoading(true);
+    try {
+      if (isApiEnabled()) {
+        await returnAssetApi({
+          assetId,
+          performedBy,
+          returnCondition: condition,
+          audit: {
+            userId: user.id,
+            userName: performedBy,
+            action: 'RETURN',
+            entityType: 'asset',
+            entityId: assetId,
+            entityLabel: assetTag,
+            details: `Returned — ${condition}`,
+          },
+        });
+        await reloadFromApi(dispatch);
+      } else {
+        dispatch(
+          returnAsset({ assetId, performedBy, returnCondition: condition }),
+        );
+        dispatch(
+          addAuditLog({
+            userId: user.id,
+            userName: performedBy,
+            action: 'RETURN',
+            entityType: 'asset',
+            entityId: assetId,
+            entityLabel: assetTag,
+            details: `Returned — ${condition}`,
+          }),
+        );
+      }
+      setCondition('Good condition');
+      onClose();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Return Asset {assetTag}</DialogTitle>
       <DialogContent>
         <TextField
@@ -144,10 +198,18 @@ export function ReturnAssetDialog({ open, onClose, assetId, assetTag }: ReturnPr
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" color="warning" onClick={handleReturn}>
-          Process Return
+        <Button onClick={onClose} disabled={loading}>
+          Cancel
         </Button>
+        <LoadingButton
+          variant="contained"
+          color="warning"
+          onClick={() => void handleReturn()}
+          loading={loading}
+          loadingLabel="Processing…"
+        >
+          Process Return
+        </LoadingButton>
       </DialogActions>
     </Dialog>
   );

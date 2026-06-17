@@ -1,8 +1,12 @@
 -- Assetly demo seed — run after 001_assetly_schema.sql
 
 INSERT INTO tenants (id, name, slug, plan)
-VALUES ('11111111-1111-1111-1111-111111111111', 'Acme Corp', 'acme-corp', 'professional')
+VALUES ('11111111-1111-1111-1111-111111111111', 'Solum Technologies', 'solum-technologies', 'professional')
 ON CONFLICT (slug) DO NOTHING;
+
+UPDATE tenants
+SET name = 'Solum Technologies', slug = 'solum-technologies'
+WHERE id = '11111111-1111-1111-1111-111111111111';
 
 INSERT INTO departments (id, tenant_id, name, cost_center) VALUES
   ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111111', 'Engineering', 'CC-100'),

@@ -1,6 +1,7 @@
 import type {
   Asset,
   AssetAssignment,
+  AssetRequest,
   AuditLog,
   Department,
   Employee,
@@ -10,43 +11,55 @@ import type {
   User,
   Vendor,
 } from '../types';
+import { COMPANY_EMAIL_DOMAIN, COMPANY_NAME, COMPANY_SLUG } from '../constants/brand';
 
 export const DEMO_TENANT: Tenant = {
-  id: 'tenant-acme',
-  name: 'Acme Corp',
-  slug: 'acme-corp',
+  id: 'tenant-solum',
+  name: COMPANY_NAME,
+  slug: COMPANY_SLUG,
   plan: 'Professional',
 };
 
 export const DEMO_USERS: Record<string, { password: string; user: User }> = {
-  'admin@acme.com': {
+  [`admin@${COMPANY_EMAIL_DOMAIN}`]: {
     password: 'Demo@123456',
     user: {
       id: 'user-admin',
-      email: 'admin@acme.com',
-      firstName: 'Jane',
-      lastName: 'Admin',
+      email: `admin@${COMPANY_EMAIL_DOMAIN}`,
+      firstName: 'Vasanth',
+      lastName: '',
       role: 'tenant_admin',
     },
   },
-  'itadmin@acme.com': {
+  [`itadmin@${COMPANY_EMAIL_DOMAIN}`]: {
     password: 'Demo@123456',
     user: {
       id: 'user-itadmin',
-      email: 'itadmin@acme.com',
-      firstName: 'Mike',
-      lastName: 'Thompson',
+      email: `itadmin@${COMPANY_EMAIL_DOMAIN}`,
+      firstName: 'Pavan',
+      lastName: '',
       role: 'it_admin',
     },
   },
-  'viewer@acme.com': {
+  [`viewer@${COMPANY_EMAIL_DOMAIN}`]: {
     password: 'Demo@123456',
     user: {
       id: 'user-viewer',
-      email: 'viewer@acme.com',
+      email: `viewer@${COMPANY_EMAIL_DOMAIN}`,
       firstName: 'Lisa',
       lastName: 'Viewer',
       role: 'viewer',
+    },
+  },
+  'sarah.chen@solumtechnologies.com': {
+    password: 'Demo@123456',
+    user: {
+      id: 'user-employee-sarah',
+      email: 'sarah.chen@solumtechnologies.com',
+      firstName: 'Sarah',
+      lastName: 'Chen',
+      role: 'employee',
+      employeeId: 'emp-001',
     },
   },
 };
@@ -70,16 +83,16 @@ export const DEMO_VENDORS: Vendor[] = [
 ];
 
 const employeeData: Omit<Employee, 'id'>[] = [
-  { employeeNumber: 'EMP-001', firstName: 'Sarah', lastName: 'Chen', email: 'sarah.chen@acme.com', jobTitle: 'Senior Engineer', departmentId: 'dept-eng', status: 'active', hireDate: '2024-01-15' },
-  { employeeNumber: 'EMP-002', firstName: 'Mike', lastName: 'Johnson', email: 'mike.johnson@acme.com', jobTitle: 'DevOps Engineer', departmentId: 'dept-eng', status: 'active', hireDate: '2023-06-01' },
-  { employeeNumber: 'EMP-003', firstName: 'Emily', lastName: 'Davis', email: 'emily.davis@acme.com', jobTitle: 'HR Manager', departmentId: 'dept-hr', status: 'active', hireDate: '2022-03-10' },
-  { employeeNumber: 'EMP-004', firstName: 'James', lastName: 'Wilson', email: 'james.wilson@acme.com', jobTitle: 'Sales Director', departmentId: 'dept-sales', status: 'active', hireDate: '2021-08-20' },
-  { employeeNumber: 'EMP-005', firstName: 'Priya', lastName: 'Patel', email: 'priya.patel@acme.com', jobTitle: 'Financial Analyst', departmentId: 'dept-fin', status: 'active', hireDate: '2024-02-01' },
-  { employeeNumber: 'EMP-006', firstName: 'David', lastName: 'Brown', email: 'david.brown@acme.com', jobTitle: 'Backend Developer', departmentId: 'dept-eng', status: 'active', hireDate: '2023-11-15' },
-  { employeeNumber: 'EMP-007', firstName: 'Anna', lastName: 'Martinez', email: 'anna.martinez@acme.com', jobTitle: 'Frontend Developer', departmentId: 'dept-eng', status: 'active', hireDate: '2024-04-01' },
-  { employeeNumber: 'EMP-008', firstName: 'Robert', lastName: 'Taylor', email: 'robert.taylor@acme.com', jobTitle: 'Account Executive', departmentId: 'dept-sales', status: 'active', hireDate: '2023-01-10' },
-  { employeeNumber: 'EMP-009', firstName: 'Jennifer', lastName: 'Lee', email: 'jennifer.lee@acme.com', jobTitle: 'Operations Manager', departmentId: 'dept-ops', status: 'active', hireDate: '2022-07-01' },
-  { employeeNumber: 'EMP-010', firstName: 'Chris', lastName: 'Anderson', email: 'chris.anderson@acme.com', jobTitle: 'QA Engineer', departmentId: 'dept-eng', status: 'active', hireDate: '2024-06-15' },
+  { employeeNumber: 'EMP-001', firstName: 'Sarah', lastName: 'Chen', email: 'sarah.chen@solumtechnologies.com', jobTitle: 'Senior Engineer', departmentId: 'dept-eng', status: 'active', hireDate: '2024-01-15' },
+  { employeeNumber: 'EMP-002', firstName: 'Mike', lastName: 'Johnson', email: 'mike.johnson@solumtechnologies.com', jobTitle: 'DevOps Engineer', departmentId: 'dept-eng', status: 'active', hireDate: '2023-06-01' },
+  { employeeNumber: 'EMP-003', firstName: 'Emily', lastName: 'Davis', email: 'emily.davis@solumtechnologies.com', jobTitle: 'HR Manager', departmentId: 'dept-hr', status: 'active', hireDate: '2022-03-10' },
+  { employeeNumber: 'EMP-004', firstName: 'James', lastName: 'Wilson', email: 'james.wilson@solumtechnologies.com', jobTitle: 'Sales Director', departmentId: 'dept-sales', status: 'active', hireDate: '2021-08-20' },
+  { employeeNumber: 'EMP-005', firstName: 'Priya', lastName: 'Patel', email: 'priya.patel@solumtechnologies.com', jobTitle: 'Financial Analyst', departmentId: 'dept-fin', status: 'active', hireDate: '2024-02-01' },
+  { employeeNumber: 'EMP-006', firstName: 'David', lastName: 'Brown', email: 'david.brown@solumtechnologies.com', jobTitle: 'Backend Developer', departmentId: 'dept-eng', status: 'active', hireDate: '2023-11-15' },
+  { employeeNumber: 'EMP-007', firstName: 'Anna', lastName: 'Martinez', email: 'anna.martinez@solumtechnologies.com', jobTitle: 'Frontend Developer', departmentId: 'dept-eng', status: 'active', hireDate: '2024-04-01' },
+  { employeeNumber: 'EMP-008', firstName: 'Robert', lastName: 'Taylor', email: 'robert.taylor@solumtechnologies.com', jobTitle: 'Account Executive', departmentId: 'dept-sales', status: 'active', hireDate: '2023-01-10' },
+  { employeeNumber: 'EMP-009', firstName: 'Jennifer', lastName: 'Lee', email: 'jennifer.lee@solumtechnologies.com', jobTitle: 'Operations Manager', departmentId: 'dept-ops', status: 'active', hireDate: '2022-07-01' },
+  { employeeNumber: 'EMP-010', firstName: 'Chris', lastName: 'Anderson', email: 'chris.anderson@solumtechnologies.com', jobTitle: 'QA Engineer', departmentId: 'dept-eng', status: 'active', hireDate: '2024-06-15' },
 ];
 
 export const DEMO_EMPLOYEES: Employee[] = employeeData.map((e, i) => ({
@@ -228,7 +241,7 @@ export function generateDemoAssignments(assets: Asset[]): AssetAssignment[] {
       assetId: a.id,
       employeeId: a.assignedEmployeeId!,
       assignedAt: daysAgo(60) + 'T10:00:00.000Z',
-      assignedBy: 'Jane Admin',
+      assignedBy: 'Vasanth',
       notes: 'Initial deployment',
     }));
 }
@@ -241,7 +254,7 @@ export function generateDemoOwnershipHistory(assets: Asset[]): OwnershipEvent[] 
       assetId: a.id,
       eventType: 'ASSIGNED',
       description: `Assigned to employee`,
-      performedBy: 'Jane Admin',
+      performedBy: 'Vasanth',
       createdAt: daysAgo(60) + 'T10:00:00.000Z',
     }));
 }
@@ -250,18 +263,18 @@ export const DEMO_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'audit-1',
     userId: 'user-admin',
-    userName: 'Jane Admin',
+    userName: 'Vasanth',
     action: 'LOGIN',
     entityType: 'user',
     entityId: 'user-admin',
-    entityLabel: 'Jane Admin',
+    entityLabel: 'Vasanth',
     details: 'Successful login',
     createdAt: new Date().toISOString(),
   },
   {
     id: 'audit-2',
     userId: 'user-itadmin',
-    userName: 'Mike Thompson',
+    userName: 'Pavan',
     action: 'ASSIGN',
     entityType: 'asset',
     entityId: 'asset-001',
@@ -272,7 +285,7 @@ export const DEMO_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'audit-3',
     userId: 'user-itadmin',
-    userName: 'Mike Thompson',
+    userName: 'Pavan',
     action: 'RETURN',
     entityType: 'asset',
     entityId: 'asset-042',
@@ -283,7 +296,7 @@ export const DEMO_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'audit-4',
     userId: 'user-admin',
-    userName: 'Jane Admin',
+    userName: 'Vasanth',
     action: 'CREATE',
     entityType: 'asset',
     entityId: 'asset-050',
@@ -294,7 +307,7 @@ export const DEMO_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'audit-5',
     userId: 'user-admin',
-    userName: 'Jane Admin',
+    userName: 'Vasanth',
     action: 'UPDATE',
     entityType: 'employee',
     entityId: 'emp-002',
@@ -303,6 +316,57 @@ export const DEMO_AUDIT_LOGS: AuditLog[] = [
     createdAt: daysAgo(10) + 'T16:45:00.000Z',
   },
 ];
+
+export const DEMO_ASSET_REQUESTS: AssetRequest[] = [
+  {
+    id: 'req-001',
+    employeeId: 'emp-001',
+    requestType: 'accessory',
+    category: 'monitor',
+    description: 'Need a second monitor for development work — current single 24" is limiting productivity.',
+    neededBy: daysFromNow(14),
+    status: 'submitted',
+    createdAt: daysAgo(1) + 'T09:00:00.000Z',
+    employeeName: 'Sarah Chen',
+    employeeEmail: 'sarah.chen@solumtechnologies.com',
+    departmentName: 'Engineering',
+  },
+  {
+    id: 'req-002',
+    employeeId: 'emp-006',
+    requestType: 'replacement',
+    category: 'laptop',
+    description: 'Current laptop battery no longer holds charge. Requesting replacement unit.',
+    status: 'approved',
+    reviewNotes: 'Approved — assign from in-stock inventory.',
+    reviewedBy: 'Pavan',
+    reviewedAt: daysAgo(2) + 'T11:00:00.000Z',
+    createdAt: daysAgo(5) + 'T14:00:00.000Z',
+    employeeName: 'David Brown',
+    employeeEmail: 'david.brown@solumtechnologies.com',
+    departmentName: 'Engineering',
+  },
+];
+
+export const REQUEST_TYPE_LABELS: Record<string, string> = {
+  new: 'New Device',
+  replacement: 'Replacement',
+  accessory: 'Accessory',
+};
+
+export const REQUEST_STATUS_LABELS: Record<string, string> = {
+  submitted: 'Submitted',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  fulfilled: 'Fulfilled',
+};
+
+export const REQUEST_STATUS_COLORS: Record<string, 'success' | 'info' | 'warning' | 'error' | 'default'> = {
+  submitted: 'info',
+  approved: 'success',
+  rejected: 'error',
+  fulfilled: 'default',
+};
 
 export const STATUS_LABELS: Record<string, string> = {
   in_stock: 'In Stock',

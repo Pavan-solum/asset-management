@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Box, Card, CardContent, Typography, Alert, Chip, CircularProgress } from '@mui/material';
+import { Box, Card, CardContent, Typography, Alert, Chip } from '@mui/material';
 import DevicesIcon from '@mui/icons-material/Devices';
 import { useParams } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/storeHooks';
 import { StatusChip } from '../../components/StatusChip';
+import { PageLoader } from '../../components/Loader';
 import { formatCurrency, formatDate, getEmployeeName } from '../../utils/format';
 import { CATEGORY_LABELS, DEMO_TENANT } from '../../data/demoData';
 import { APP_NAME } from '../../constants/brand';
@@ -46,11 +47,7 @@ export function AssetLookupPage() {
   const asset = isApiEnabled() ? remoteAsset : reduxAsset;
 
   if (loading) {
-    return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoader message="Loading asset details…" />;
   }
 
   if (!asset || notFound) {

@@ -20,7 +20,7 @@ try {
   const tables = await sql`
     SELECT table_name FROM information_schema.tables
     WHERE table_schema = 'public'
-      AND table_name IN ('assets', 'tenants', 'employees', 'departments', 'vendors')
+      AND table_name IN ('assets', 'tenants', 'employees', 'departments', 'vendors', 'user_passwords')
     ORDER BY table_name
   `;
   const names = tables.map((t) => t.table_name);

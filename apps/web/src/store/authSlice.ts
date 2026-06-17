@@ -1,11 +1,14 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { Tenant, User } from '../types';
 import { DEMO_TENANT, DEMO_USERS } from '../data/demoData';
+import { resolveDemoUser } from '../utils/userDisplay';
+import { storeToken } from '../services/api/auth';
 
 interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
   tenant: Tenant | null;
+  token: string | null;
   error: string | null;
 }
 
@@ -13,6 +16,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
   tenant: null,
+  token: null,
   error: null,
 };
 
@@ -30,19 +34,37 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.user = cred.user;
       state.tenant = DEMO_TENANT;
+      state.token = null;
       state.error = null;
+    },
+    setSession: (
+      state,
+      action: PayloadAction<{ user: User; tenant: Tenant; token: string }>,
+    ) => {
+      state.isAuthenticated = true;
+      state.user = resolveDemoUser(action.payload.user);
+      state.tenant = action.payload.tenant;
+      state.token = action.payload.token;
+      state.error = null;
+      storeToken(action.payload.token);
     },
     logout: (state) => {
       state.isAuthenticated = false;
       state.user = null;
       state.tenant = null;
+      state.token = null;
       state.error = null;
+      storeToken(null);
     },
     clearError: (state) => {
       state.error = null;
     },
+    setLoginError: (state, action: PayloadAction<string>) => {
+      state.error = action.payload;
+      state.isAuthenticated = false;
+    },
   },
 });
 
-export const { login, logout, clearError } = authSlice.actions;
+export const { login, setSession, logout, clearError, setLoginError } = authSlice.actions;
 export default authSlice.reducer;

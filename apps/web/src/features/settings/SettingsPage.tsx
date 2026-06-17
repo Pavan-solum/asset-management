@@ -14,6 +14,7 @@ import {
   Alert,
   Switch,
   FormControlLabel,
+  TextField,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockIcon from '@mui/icons-material/Lock';
@@ -23,16 +24,19 @@ import StorageIcon from '@mui/icons-material/Storage';
 import { useTenant, useAuthUser, usePermissions } from '../../hooks/storeHooks';
 import { PageHeader } from '../../components/PageHeader';
 import { useThemeMode } from '../../context/ThemeModeContext';
-import { APP_NAME } from '../../constants/brand';
+import { APP_NAME, COMPANY_EMAIL_DOMAIN } from '../../constants/brand';
 import { isApiEnabled } from '../../services/api/config';
 import { checkApiHealth } from '../../services/api/client';
+import { changePassword } from '../../services/api/auth';
+import { ApiError } from '../../services/api/client';
+import { LoadingButton } from '../../components/Loader';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
 
 const demoUsers = [
-  { name: 'Jane Admin', email: 'admin@acme.com', role: 'Tenant Admin' },
-  { name: 'Mike Thompson', email: 'itadmin@acme.com', role: 'IT Admin' },
-  { name: 'Lisa Viewer', email: 'viewer@acme.com', role: 'Viewer' },
+  { name: 'Vasanth', email: `admin@${COMPANY_EMAIL_DOMAIN}`, role: 'Tenant Admin' },
+  { name: 'Pavan', email: `itadmin@${COMPANY_EMAIL_DOMAIN}`, role: 'IT Admin' },
+  { name: 'Lisa Viewer', email: `viewer@${COMPANY_EMAIL_DOMAIN}`, role: 'Viewer' },
 ];
 
 const roadmapFeatures = [
@@ -51,13 +55,17 @@ export function SettingsPage() {
   const { mode, toggleMode } = useThemeMode();
   const isDark = mode === 'dark';
   const [dbConnected, setDbConnected] = useState<boolean | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     if (!isApiEnabled()) {
       setDbConnected(null);
       return;
     }
-    checkApiHealth().then(setDbConnected);
+    checkApiHealth().then((health) => setDbConnected(health.ok));
   }, []);
 
   return (
@@ -167,6 +175,58 @@ export function SettingsPage() {
               <SettingRow label="Email" value={user?.email ?? '—'} />
               <SettingRow label="Role" value={user?.role?.replace('_', ' ') ?? '—'} />
               <SettingRow label="MFA" value={<Chip label="Coming in Phase 2" size="small" variant="outlined" />} />
+              {isApiEnabled() && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    Change password
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="Current password"
+                    size="small"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    sx={{ mb: 1.5 }}
+                  />
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="New password"
+                    size="small"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    sx={{ mb: 1.5 }}
+                  />
+                  {passwordMsg && (
+                    <Alert severity={passwordMsg.startsWith('Password updated') ? 'success' : 'error'} sx={{ mb: 1.5 }}>
+                      {passwordMsg}
+                    </Alert>
+                  )}
+                  <LoadingButton
+                    variant="contained"
+                    size="small"
+                    loading={passwordLoading}
+                    disabled={!currentPassword || !newPassword}
+                    onClick={async () => {
+                      setPasswordLoading(true);
+                      setPasswordMsg(null);
+                      try {
+                        await changePassword(currentPassword, newPassword);
+                        setPasswordMsg('Password updated successfully.');
+                        setCurrentPassword('');
+                        setNewPassword('');
+                      } catch (e) {
+                        setPasswordMsg(e instanceof ApiError ? e.message : 'Password change failed');
+                      } finally {
+                        setPasswordLoading(false);
+                      }
+                    }}
+                  >
+                    Update password
+                  </LoadingButton>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>

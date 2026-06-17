@@ -86,6 +86,7 @@ export function AssetsPage() {
   };
 
   const exportCsv = () => {
+    const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
     const headers = ['Asset Tag', 'Name', 'Status', 'Category', 'Serial', 'Assignee', 'Warranty'];
     const rows = filtered.map((a) => [
       a.assetTag,
@@ -96,7 +97,7 @@ export function AssetsPage() {
       a.assignedEmployeeId ? getEmployeeName(employeeMap[a.assignedEmployeeId].firstName, employeeMap[a.assignedEmployeeId].lastName) : '',
       a.warrantyExpiresAt,
     ]);
-    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+    const csv = [headers, ...rows].map((r) => r.map(escape).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

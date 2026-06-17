@@ -20,19 +20,32 @@ import BusinessIcon from '@mui/icons-material/Business';
 import StoreIcon from '@mui/icons-material/Store';
 import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import DevicesIcon from '@mui/icons-material/Devices';
 import DevicesOtherIcon from '@mui/icons-material/DevicesOther';
 import LanIcon from '@mui/icons-material/Lan';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useTenant, useAuthUser } from '../../hooks/storeHooks';
+import { useTenant, useAuthUser, usePermissions } from '../../hooks/storeHooks';
+import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
+import type { Permission } from '../../types';
 import { APP_NAME } from '../../constants/brand';
 
 const DRAWER_WIDTH = 268;
 
-const navGroups = [
+type NavItem = {
+  to: string;
+  label: string;
+  icon: React.ReactNode;
+  permission?: Permission;
+};
+
+const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'Overview',
-    items: [{ to: '/', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> }],
+    items: [
+      { to: '/', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> },
+      { to: '/requests', label: 'Requests', icon: <AssignmentIcon fontSize="small" />, permission: 'request:review' },
+    ],
   },
   {
     label: 'Inventory',
@@ -73,12 +86,12 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const tenant = useTenant();
   const user = useAuthUser();
+  const { can } = usePermissions();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const initials = user
-    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
-    : '?';
+  const initials = getUserInitials(user);
+  const displayName = getUserDisplayName(user);
 
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -134,7 +147,9 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               {group.label}
             </Typography>
             <List disablePadding>
-              {group.items.map((item) => {
+              {group.items
+                .filter((item) => !item.permission || can(item.permission))
+                .map((item) => {
                 const active = isNavActive(location.pathname, item.to);
                 return (
                   <ListItemButton
@@ -198,7 +213,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </Avatar>
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="body2" fontWeight={600} noWrap>
-            {user?.firstName} {user?.lastName}
+            {displayName}
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap display="block">
             {user?.email}

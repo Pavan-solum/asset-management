@@ -17,10 +17,11 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar, DRAWER_WIDTH } from './Sidebar';
+import { GlobalSearch } from '../GlobalSearch';
 import { ThemeModeToggle } from '../ThemeModeToggle';
 import { useAppDispatch, useAuthUser, useTenant } from '../../hooks/storeHooks';
 import { logout } from '../../store/authSlice';
-import { APP_TAGLINE } from '../../constants/brand';
+import { getRoleLabel, getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -30,9 +31,8 @@ export function AppLayout() {
   const user = useAuthUser();
   const tenant = useTenant();
 
-  const initials = user
-    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
-    : '?';
+  const initials = getUserInitials(user);
+  const displayName = getUserDisplayName(user);
 
   const handleLogout = () => {
     setAnchorEl(null);
@@ -66,12 +66,13 @@ export function AppLayout() {
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ flex: 1, minWidth: 0, display: { xs: 'none', md: 'block' } }}>
+            <GlobalSearch />
+          </Box>
+
+          <Box sx={{ flex: { xs: 1, md: 0 }, minWidth: 0, display: { md: 'none' } }}>
             <Typography variant="subtitle1" fontWeight={700} noWrap>
               {tenant?.name}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap display="block">
-              {APP_TAGLINE}
             </Typography>
           </Box>
 
@@ -111,10 +112,10 @@ export function AppLayout() {
           >
             <Box sx={{ px: 2, py: 1.5 }}>
               <Typography variant="body2" fontWeight={600}>
-                {user?.firstName} {user?.lastName}
+                {displayName}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {user?.role?.replace(/_/g, ' ')}
+                {getRoleLabel(user?.role)}
               </Typography>
             </Box>
             <Divider />

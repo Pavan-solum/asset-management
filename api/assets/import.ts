@@ -1,5 +1,6 @@
 import { getSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
 import { assetInsertPayload, mapAsset, type DbAsset } from '../_lib/mappers';
+import { requireAuth } from '../_lib/auth';
 
 export const config = { runtime: 'edge' };
 
@@ -18,6 +19,9 @@ function isUuid(value: string): boolean {
 export default async function handler(req: Request) {
   if (req.method === 'OPTIONS') return corsPreflight();
   if (req.method !== 'POST') return error('Method not allowed', 405);
+
+  const auth = await requireAuth(req);
+  if (auth instanceof Response) return auth;
 
   try {
     const sql = getSql();

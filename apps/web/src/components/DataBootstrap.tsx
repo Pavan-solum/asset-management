@@ -9,6 +9,9 @@ import { replaceAllEmployees } from '../store/employeesSlice';
 import { replaceAllDepartments } from '../store/departmentsSlice';
 import { replaceAllVendors } from '../store/vendorsSlice';
 import { replaceAllAuditLogs } from '../store/auditSlice';
+import { replaceAllRequests } from '../store/requestsSlice';
+import { fetchAssetRequests } from '../services/api/requests';
+import { setBootstrapReady, startLoading, stopLoading } from '../store/uiSlice';
 import type { AppDispatch } from '../store';
 
 function hydrateFromSync(dispatch: AppDispatch, data: Awaited<ReturnType<typeof fetchSync>>) {
@@ -26,28 +29,48 @@ function hydrateFromSync(dispatch: AppDispatch, data: Awaited<ReturnType<typeof 
 }
 
 export async function reloadFromApi(dispatch: AppDispatch): Promise<void> {
-  const data = await fetchSync();
-  hydrateFromSync(dispatch, data);
+  dispatch(startLoading('Refreshing data…'));
+  try {
+    const data = await fetchSync();
+    hydrateFromSync(dispatch, data);
+  } finally {
+    dispatch(stopLoading());
+  }
 }
 
 export function DataBootstrap() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const role = useAppSelector((s) => s.auth.user?.role);
   const syncedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const [ready, setReady] = useState(!isApiEnabled());
+  const isEmployee = role === 'employee';
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      syncedRef.current = false;
+      dispatch(setBootstrapReady(!isApiEnabled()));
+    }
+  }, [dispatch, isAuthenticated]);
 
   useEffect(() => {
     if (!isApiEnabled() || !isAuthenticated || syncedRef.current) return;
 
+    if (isEmployee) {
+      dispatch(setBootstrapReady(true));
+      syncedRef.current = true;
+      return;
+    }
+
     let cancelled = false;
 
     (async () => {
+      dispatch(setBootstrapReady(false));
+      dispatch(startLoading('Loading your workspace…'));
       try {
-        const healthy = await checkApiHealth();
-        if (!healthy) {
-          setError('Backend unavailable. Check DATABASE_URL and run database migrations.');
-          setReady(true);
+        const health = await checkApiHealth();
+        if (!health.ok) {
+          setError(health.message ?? 'Backend unavailable.');
           return;
         }
 
@@ -55,31 +78,37 @@ export function DataBootstrap() {
         if (cancelled) return;
 
         hydrateFromSync(dispatch, data);
+
+        if (role === 'tenant_admin' || role === 'it_admin') {
+          try {
+            const requests = await fetchAssetRequests();
+            if (!cancelled) dispatch(replaceAllRequests(requests));
+          } catch {
+            /* requests load is non-blocking */
+          }
+        }
+
         syncedRef.current = true;
-        setReady(true);
       } catch (e) {
         const msg = e instanceof ApiError ? e.message : 'Failed to load data from server';
         setError(msg);
-        setReady(true);
+      } finally {
+        if (!cancelled) {
+          dispatch(stopLoading());
+          dispatch(setBootstrapReady(true));
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [dispatch, isAuthenticated]);
+  }, [dispatch, isAuthenticated, isEmployee, role]);
 
   if (!isApiEnabled()) return null;
 
   return (
     <>
-      {!ready && (
-        <Snackbar open anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
-          <Alert severity="info" variant="filled" sx={{ width: '100%' }}>
-            Loading data from database…
-          </Alert>
-        </Snackbar>
-      )}
       <Snackbar
         open={Boolean(error)}
         autoHideDuration={8000}

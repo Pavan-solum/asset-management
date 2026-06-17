@@ -1,7 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
+import { EmployeePortalLayout } from './components/layout/EmployeePortalLayout';
 import { DataBootstrap } from './components/DataBootstrap';
-import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
+import { GlobalLoadingBar } from './components/Loader';
+import { ProtectedRoute, PublicRoute, AdminRoute, EmployeeRoute } from './components/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { AssetsPage } from './features/assets/AssetsPage';
@@ -17,10 +19,13 @@ import { SettingsPage } from './features/settings/SettingsPage';
 import { DevicesPage } from './features/devices/DevicesPage';
 import { NetworkDevicesPage } from './features/network/NetworkDevicesPage';
 import { NetworkDeviceDetailPage } from './features/network/NetworkDeviceDetailPage';
+import { DeviceRequestPage } from './features/portal/DeviceRequestPage';
+import { RequestsPage } from './features/requests/RequestsPage';
 
 export default function App() {
   return (
     <>
+      <GlobalLoadingBar />
       <DataBootstrap />
       <Routes>
       <Route
@@ -35,7 +40,20 @@ export default function App() {
       <Route
         element={
           <ProtectedRoute>
-            <AppLayout />
+            <EmployeeRoute>
+              <EmployeePortalLayout />
+            </EmployeeRoute>
+          </ProtectedRoute>
+        }
+      >
+        <Route path="portal" element={<DeviceRequestPage />} />
+      </Route>
+      <Route
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AppLayout />
+            </AdminRoute>
           </ProtectedRoute>
         }
       >
@@ -50,6 +68,7 @@ export default function App() {
         <Route path="employees/:id" element={<EmployeeDetailPage />} />
         <Route path="departments" element={<DepartmentsPage />} />
         <Route path="vendors" element={<VendorsPage />} />
+        <Route path="requests" element={<RequestsPage />} />
         <Route path="audit" element={<AuditPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

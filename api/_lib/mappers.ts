@@ -97,6 +97,25 @@ export interface DbAuditLog {
   created_at: string;
 }
 
+export interface DbAssetRequest {
+  id: string;
+  tenant_id: string;
+  employee_id: string;
+  request_type: string;
+  category: string;
+  description: string;
+  needed_by: string | null;
+  status: string;
+  review_notes: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  employee_first_name?: string | null;
+  employee_last_name?: string | null;
+  employee_email?: string | null;
+  department_name?: string | null;
+}
+
 export function mapAsset(row: DbAsset) {
   return {
     id: row.id,
@@ -189,6 +208,28 @@ export function mapAuditLog(row: DbAuditLog) {
     entityLabel: row.entity_label ?? '',
     details: row.details ?? '',
     createdAt: row.created_at,
+  };
+}
+
+export function mapAssetRequest(row: DbAssetRequest) {
+  return {
+    id: row.id,
+    employeeId: row.employee_id,
+    requestType: row.request_type,
+    category: row.category,
+    description: row.description,
+    neededBy: row.needed_by ?? undefined,
+    status: row.status,
+    reviewNotes: row.review_notes ?? undefined,
+    reviewedBy: row.reviewed_by ?? undefined,
+    reviewedAt: row.reviewed_at ?? undefined,
+    createdAt: row.created_at,
+    employeeName:
+      row.employee_first_name && row.employee_last_name
+        ? `${row.employee_first_name} ${row.employee_last_name}`
+        : undefined,
+    employeeEmail: row.employee_email ?? undefined,
+    departmentName: row.department_name ?? undefined,
   };
 }
 

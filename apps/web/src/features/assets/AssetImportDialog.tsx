@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -28,6 +27,7 @@ import * as XLSX from 'xlsx';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { importInventory } from '../../store/assetsSlice';
 import { replaceAllEmployees } from '../../store/employeesSlice';
+import { DialogLoader, LoadingButton } from '../../components/Loader';
 import { addAuditLog } from '../../store/auditSlice';
 import { reloadFromApi } from '../../components/DataBootstrap';
 import { isApiEnabled } from '../../services/api/config';
@@ -87,6 +87,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
   const [reviewPage, setReviewPage] = useState(0);
   const [reviewRowsPerPage, setReviewRowsPerPage] = useState(10);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [, startTransition] = useTransition();
 
   const existingTagSet = useMemo(() => new Set(existingTags), [existingTags]);
@@ -219,8 +220,10 @@ export function AssetImportDialog({ open, onClose }: Props) {
   };
 
   const handleImport = async () => {
-    if (!user) return;
+    if (!user || isImporting) return;
 
+    setIsImporting(true);
+    try {
     const registry = new ImportEmployeeRegistry([]);
     const resolvedRows = validRows.map((row) => {
       if (!row.userRaw.trim()) return row;
@@ -339,6 +342,9 @@ export function AssetImportDialog({ open, onClose }: Props) {
     );
 
     handleClose();
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const missingMappings = (Object.keys(IMPORT_FIELD_LABELS) as ImportFieldKey[]).filter(
@@ -346,9 +352,10 @@ export function AssetImportDialog({ open, onClose }: Props) {
   );
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
+    <Dialog open={open} onClose={isImporting ? undefined : handleClose} maxWidth="lg" fullWidth>
       <DialogTitle>Import Assets from Excel</DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ position: 'relative' }}>
+        {isImporting && <DialogLoader message="Importing assets…" />}
         <Stepper activeStep={step} sx={{ mb: 3, mt: 1 }}>
           {STEPS.map((label) => (
             <Step key={label}>
@@ -665,29 +672,40 @@ export function AssetImportDialog({ open, onClose }: Props) {
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={handleClose} disabled={isImporting}>
+          Cancel
+        </Button>
         {step > 0 && step < 3 && (
-          <Button onClick={() => setStep((s) => s - 1)}>Back</Button>
-        )}
-        {step === 1 && (
-          <Button
-            variant="contained"
-            onClick={applyMapping}
-            disabled={isProcessing}
-            startIcon={isProcessing ? <CircularProgress size={16} color="inherit" /> : undefined}
-          >
-            {isProcessing ? 'Preparing review…' : 'Continue to review'}
+          <Button onClick={() => setStep((s) => s - 1)} disabled={isImporting}>
+            Back
           </Button>
         )}
+        {step === 1 && (
+          <LoadingButton
+            variant="contained"
+            onClick={applyMapping}
+            disabled={isProcessing || isImporting}
+            loading={isProcessing}
+            loadingLabel="Preparing review…"
+          >
+            Continue to review
+          </LoadingButton>
+        )}
         {step === 2 && (
-          <Button variant="contained" onClick={() => setStep(3)} disabled={validRows.length === 0}>
+          <Button variant="contained" onClick={() => setStep(3)} disabled={validRows.length === 0 || isImporting}>
             Continue ({validRows.length} valid)
           </Button>
         )}
         {step === 3 && (
-          <Button variant="contained" onClick={handleImport} disabled={validRows.length === 0}>
+          <LoadingButton
+            variant="contained"
+            onClick={() => void handleImport()}
+            disabled={validRows.length === 0 || isImporting}
+            loading={isImporting}
+            loadingLabel="Importing…"
+          >
             Import {validRows.length} assets
-          </Button>
+          </LoadingButton>
         )}
       </DialogActions>
     </Dialog>

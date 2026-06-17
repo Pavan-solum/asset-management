@@ -8,11 +8,15 @@ import {
   type DbAssignment,
   type DbOwnershipEvent,
 } from '../_lib/mappers';
+import { requireAuth } from '../_lib/auth';
 
 export const config = { runtime: 'edge' };
 
 export default async function handler(req: Request) {
   if (req.method === 'OPTIONS') return corsPreflight();
+
+  const auth = await requireAuth(req);
+  if (auth instanceof Response) return auth;
 
   const sql = getSql();
 

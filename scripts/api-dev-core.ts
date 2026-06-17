@@ -1,0 +1,131 @@
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import health from '../api/health';
+import sync from '../api/sync';
+import search from '../api/search';
+import upload from '../api/upload';
+import authLogin from '../api/auth/login';
+import authChangePassword from '../api/auth/change-password';
+import assetsIndex from '../api/assets/index';
+import assetsImport from '../api/assets/import';
+import assetsAssign from '../api/assets/assign';
+import assetsReturn from '../api/assets/return';
+import assetsById from '../api/assets/[id]';
+import employeesIndex from '../api/employees/index';
+import employeesById from '../api/employees/[id]';
+import departmentsIndex from '../api/departments/index';
+import departmentsById from '../api/departments/[id]';
+import vendorsIndex from '../api/vendors/index';
+import vendorsById from '../api/vendors/[id]';
+import requestsIndex from '../api/requests/index';
+import requestsById from '../api/requests/[id]';
+
+type ApiHandler = (req: Request) => Promise<Response>;
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+export function loadEnv() {
+  const candidates = [
+    resolve(process.cwd(), '.env'),
+    resolve(process.cwd(), '../.env'),
+    resolve(repoRoot, '.env'),
+  ];
+  for (const envPath of candidates) {
+    if (!existsSync(envPath)) continue;
+    try {
+      for (const line of readFileSync(envPath, 'utf8').split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eq = trimmed.indexOf('=');
+        if (eq === -1) continue;
+        const key = trimmed.slice(0, eq).trim();
+        const val = trimmed.slice(eq + 1).trim();
+        if (!process.env[key]) process.env[key] = val;
+      }
+      return;
+    } catch {
+      /* try next */
+    }
+  }
+}
+
+function resolveHandler(pathname: string): ApiHandler | null {
+  if (pathname === '/api/health') return health;
+  if (pathname === '/api/sync') return sync;
+  if (pathname === '/api/search') return search;
+  if (pathname === '/api/upload') return upload;
+  if (pathname === '/api/auth/login') return authLogin;
+  if (pathname === '/api/auth/change-password') return authChangePassword;
+  if (pathname === '/api/assets/import') return assetsImport;
+  if (pathname === '/api/assets/assign') return assetsAssign;
+  if (pathname === '/api/assets/return') return assetsReturn;
+  if (pathname === '/api/assets') return assetsIndex;
+  if (pathname === '/api/employees') return employeesIndex;
+  if (pathname === '/api/departments') return departmentsIndex;
+  if (pathname === '/api/vendors') return vendorsIndex;
+  if (pathname === '/api/requests') return requestsIndex;
+  if (/^\/api\/assets\/[^/]+$/.test(pathname)) return assetsById;
+  if (/^\/api\/employees\/[^/]+$/.test(pathname)) return employeesById;
+  if (/^\/api\/departments\/[^/]+$/.test(pathname)) return departmentsById;
+  if (/^\/api\/vendors\/[^/]+$/.test(pathname)) return vendorsById;
+  if (/^\/api\/requests\/[^/]+$/.test(pathname)) return requestsById;
+  return null;
+}
+
+async function readBody(req: IncomingMessage): Promise<Buffer | undefined> {
+  if (!req.method || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return undefined;
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  return chunks.length > 0 ? Buffer.concat(chunks) : undefined;
+}
+
+function toWebRequest(req: IncomingMessage, body?: Buffer): Request {
+  const host = req.headers.host ?? '127.0.0.1';
+  return new Request(`http://${host}${req.url}`, {
+    method: req.method,
+    headers: req.headers as HeadersInit,
+    body: body && body.length > 0 ? body : undefined,
+  });
+}
+
+async function writeWebResponse(res: ServerResponse, webRes: Response) {
+  res.statusCode = webRes.status;
+  webRes.headers.forEach((value, key) => {
+    res.setHeader(key, value);
+  });
+  res.end(Buffer.from(await webRes.arrayBuffer()));
+}
+
+export async function handleApiRequest(req: IncomingMessage, res: ServerResponse) {
+  if (!req.url) {
+    res.statusCode = 400;
+    res.end('Bad request');
+    return;
+  }
+
+  const pathname = new URL(req.url, `http://${req.headers.host ?? '127.0.0.1'}`).pathname;
+  const handler = resolveHandler(pathname);
+
+  if (!handler) {
+    res.statusCode = 404;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.end(JSON.stringify({ error: 'Not found' }));
+    return;
+  }
+
+  try {
+    const body = await readBody(req);
+    const response = await handler(toWebRequest(req, body));
+    await writeWebResponse(res, response);
+  } catch (e) {
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.end(JSON.stringify({ error: e instanceof Error ? e.message : 'Internal server error' }));
+  }
+}
+
+loadEnv();

@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { COMPANY_EMAIL_DOMAIN } from '../constants/brand';
 import type { AssetCategory, AssetStatus, Employee, Vendor } from '../types';
 
 export type ImportFieldKey = 'assetName' | 'serialNumber' | 'category' | 'assetTag' | 'user';
@@ -346,7 +347,7 @@ function parsePersonName(raw: string): { firstName: string; lastName: string } |
 function buildImportEmail(parsed: { firstName: string; lastName: string }, index: number): string {
   const first = parsed.firstName.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '') || 'user';
   const last = parsed.lastName.toLowerCase().replace(/[^a-z]/g, '') || `import${index}`;
-  return `${first}.${last}@acme.com`;
+  return `${first}.${last}@${COMPANY_EMAIL_DOMAIN}`;
 }
 
 export class ImportEmployeeRegistry {

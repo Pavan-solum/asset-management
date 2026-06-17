@@ -77,14 +77,22 @@ copy apps\web\.env.example apps\web\.env
 # Set VITE_USE_API=true
 ```
 
-Run full stack locally:
+Run full stack locally (recommended when `VITE_USE_API=true`):
 
 ```powershell
 npm install
+npm run dev:stack
+```
+
+This starts the local API on port **3000** and the Vite app on **5173** (API requests are proxied).
+
+Alternative — single process via Vercel CLI (requires `vercel login`):
+
+```powershell
 npm run dev:full
 ```
 
-This starts the Vite app + `/api` routes on `http://localhost:3000`.
+Open `http://localhost:5173` when using `dev:stack`, or the URL shown by `dev:full`.
 
 ---
 
@@ -117,10 +125,11 @@ This starts the Vite app + `/api` routes on `http://localhost:3000`.
 | Issue | Fix |
 |-------|-----|
 | `DATABASE_URL is not configured` | Add env var in Vercel and redeploy |
-| `Backend unavailable` on login | Run SQL migrations; check connection string includes `?sslmode=require` |
+| `Backend unavailable` / API routes not found | Run `npm run dev:stack` locally (not `npm run dev` alone). Root `.env` must contain `DATABASE_URL`. |
+| `Database disconnected` on `/api/health` | Check connection string includes `?sslmode=require`; run SQL migrations in Neon |
 | Data still disappears | Ensure `VITE_USE_API=true` was set **before** build (redeploy) |
 | Import fails on vendor FK | Run seed SQL so vendor UUIDs exist |
-| Local API 404 | Use `npm run dev:full` (not `npm run dev` alone) |
+| Local API 404 on port 5173 | Start API with `npm run dev:api` or use `npm run dev:stack` |
 
 ---
 

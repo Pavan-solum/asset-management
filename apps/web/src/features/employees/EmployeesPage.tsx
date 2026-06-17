@@ -25,6 +25,7 @@ import { SearchField } from '../../components/SearchField';
 import { EmptyState } from '../../components/EmptyState';
 import { getEmployeeName } from '../../utils/format';
 import { employeeMatchesSearch } from '../../utils/search';
+import { EmployeeFormDialog } from './EmployeeFormDialog';
 
 export function EmployeesPage() {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ export function EmployeesPage() {
   const assets = useAppSelector((s) => s.assets.items);
   const { can } = usePermissions();
   const [search, setSearch] = useState('');
+  const [formOpen, setFormOpen] = useState(false);
 
   const deptMap = useMemo(
     () => Object.fromEntries(departments.map((d) => [d.id, d.name])),
@@ -65,7 +67,7 @@ export function EmployeesPage() {
         breadcrumbs={[{ label: 'Dashboard', to: '/' }, { label: 'Employees' }]}
         actions={
           can('employee:write') ? (
-            <Button startIcon={<AddIcon />} variant="contained" disabled>
+            <Button startIcon={<AddIcon />} variant="contained" onClick={() => setFormOpen(true)}>
               Add Employee
             </Button>
           ) : undefined
@@ -161,6 +163,8 @@ export function EmployeesPage() {
           </TableContainer>
         )}
       </Card>
+
+      <EmployeeFormDialog open={formOpen} onClose={() => setFormOpen(false)} />
     </Box>
   );
 }

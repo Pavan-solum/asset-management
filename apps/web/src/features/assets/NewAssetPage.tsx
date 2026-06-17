@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
   Grid,
   MenuItem,
   TextField,
@@ -20,9 +19,11 @@ import { addAsset, assignAsset } from '../../store/assetsSlice';
 import { addAuditLog } from '../../store/auditSlice';
 import { PageHeader } from '../../components/PageHeader';
 import { AssetQrPanel } from '../../components/AssetQrPanel';
+import { LoadingButton } from '../../components/Loader';
 import { reloadFromApi } from '../../components/DataBootstrap';
 import { isApiEnabled } from '../../services/api/config';
 import { createAsset as createAssetApi } from '../../services/api/assets';
+import { uploadImage } from '../../services/api/entities';
 import { CATEGORY_LABELS } from '../../data/demoData';
 import {
   ASSET_CATEGORIES,
@@ -113,6 +114,11 @@ export function NewAssetPage() {
       const assignedBy = `${user.firstName} ${user.lastName}`;
 
       if (isApiEnabled()) {
+        let imageUrl = form.imageUrl;
+        if (imageUrl && imageFile) {
+          const uploaded = await uploadImage(imageUrl, imageFile.name);
+          imageUrl = uploaded.url;
+        }
         const created = await createAssetApi({
           id: crypto.randomUUID(),
           assetTag: form.assetTag.trim(),
@@ -131,7 +137,7 @@ export function NewAssetPage() {
           warrantyExpiresAt: form.warrantyExpiresAt || createEmptyAssetForm().warrantyExpiresAt,
           specs: form.specs.trim() || undefined,
           department: form.department.trim() || undefined,
-          imageUrl: form.imageUrl,
+          imageUrl,
           notes,
           assignedEmployeeId,
           assignedBy: assignedEmployeeId ? assignedBy : undefined,
@@ -580,14 +586,15 @@ export function NewAssetPage() {
         </FormSection>
 
         <Box sx={{ display: 'flex', gap: 2, pt: 1 }}>
-          <Button
+          <LoadingButton
             type="submit"
             variant="contained"
             disabled={loading || !form.assetTag || !form.name}
-            startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
+            loading={loading}
+            loadingLabel="Saving…"
           >
-            {loading ? 'Saving...' : 'Save & Generate QR'}
-          </Button>
+            Save & Generate QR
+          </LoadingButton>
           <Button variant="outlined" onClick={() => navigate('/assets')}>
             Cancel
           </Button>

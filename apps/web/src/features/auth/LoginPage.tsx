@@ -24,14 +24,21 @@ import SecurityIcon from '@mui/icons-material/Security';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { login, clearError } from '../../store/authSlice';
-import { APP_NAME, APP_TAGLINE } from '../../constants/brand';
+import { login, clearError, setSession, setLoginError } from '../../store/authSlice';
+import { APP_NAME, APP_TAGLINE, COMPANY_EMAIL_DOMAIN, COMPANY_NAME } from '../../constants/brand';
 import { ThemeModeToggle } from '../../components/ThemeModeToggle';
+import { LoadingButton } from '../../components/Loader';
+import { withMinDelay } from '../../hooks/useAsyncAction';
+import { isApiEnabled } from '../../services/api/config';
+import { apiLogin } from '../../services/api/auth';
+import { ApiError, checkApiHealth, loginErrorMessage } from '../../services/api/client';
+import { getHomeRouteForRole } from '../../utils/routing';
 
 const demoAccounts = [
-  { email: 'admin@acme.com', role: 'Tenant Admin', desc: 'Full access' },
-  { email: 'itadmin@acme.com', role: 'IT Admin', desc: 'No user/settings delete' },
-  { email: 'viewer@acme.com', role: 'Viewer', desc: 'Read-only' },
+  { email: `admin@${COMPANY_EMAIL_DOMAIN}`, role: 'Tenant Admin', desc: 'Full access' },
+  { email: `itadmin@${COMPANY_EMAIL_DOMAIN}`, role: 'IT Admin', desc: 'Review device requests' },
+  { email: `viewer@${COMPANY_EMAIL_DOMAIN}`, role: 'Viewer', desc: 'Read-only' },
+  { email: 'sarah.chen@solumtechnologies.com', role: 'Employee', desc: 'Device request portal only' },
 ];
 
 const features = [
@@ -41,24 +48,60 @@ const features = [
 ];
 
 export function LoginPage() {
-  const [email, setEmail] = useState('admin@acme.com');
+  const [email, setEmail] = useState(`admin@${COMPANY_EMAIL_DOMAIN}`);
   const [password, setPassword] = useState('Demo@123456');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiWarning, setApiWarning] = useState<string | null>(null);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
   const isWide = useMediaQuery(theme.breakpoints.up('md'));
   const error = useAppSelector((s) => s.auth.error);
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const role = useAppSelector((s) => s.auth.user?.role);
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/');
-  }, [isAuthenticated, navigate]);
+    if (isAuthenticated) navigate(getHomeRouteForRole(role));
+  }, [isAuthenticated, navigate, role]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!isApiEnabled()) return;
+    void checkApiHealth().then((result) => {
+      setApiWarning(result.ok ? null : (result.message ?? 'Backend unavailable'));
+    });
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     dispatch(clearError());
-    dispatch(login({ email, password }));
+    setLoading(true);
+    try {
+      if (isApiEnabled()) {
+        const data = await apiLogin(email, password);
+        dispatch(
+          setSession({
+            user: data.user,
+            tenant: data.tenant,
+            token: data.token,
+          }),
+        );
+      } else {
+        await withMinDelay(
+          Promise.resolve().then(() => {
+            dispatch(login({ email, password }));
+          }),
+        );
+      }
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? loginErrorMessage(err.status, err.message)
+          : 'Sign in failed';
+      dispatch(setLoginError(msg));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fillDemo = (demoEmail: string) => {
@@ -189,8 +232,14 @@ export function LoginPage() {
               Sign in
             </Typography>
             <Typography variant="body2" color="text.secondary" mb={3}>
-              Acme Corp demo tenant
+              {COMPANY_NAME} demo tenant
             </Typography>
+
+            {apiWarning && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {apiWarning}
+              </Alert>
+            )}
 
             {error && (
               <Alert severity="error" sx={{ mb: 2 }}>
@@ -208,6 +257,7 @@ export function LoginPage() {
                 margin="normal"
                 required
                 autoComplete="email"
+                disabled={loading}
               />
               <TextField
                 fullWidth
@@ -218,6 +268,7 @@ export function LoginPage() {
                 margin="normal"
                 required
                 autoComplete="current-password"
+                disabled={loading}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -232,9 +283,17 @@ export function LoginPage() {
                   ),
                 }}
               />
-              <Button type="submit" fullWidth variant="contained" size="large" sx={{ mt: 3, py: 1.5 }}>
+              <LoadingButton
+                type="submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                sx={{ mt: 3, py: 1.5 }}
+                loading={loading}
+                loadingLabel="Signing in…"
+              >
                 Sign In
-              </Button>
+              </LoadingButton>
             </Box>
 
             <Divider sx={{ my: 3 }}>
