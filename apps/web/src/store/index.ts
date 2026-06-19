@@ -4,6 +4,7 @@ import assetsReducer from './assetsSlice';
 import employeesReducer from './employeesSlice';
 import departmentsReducer from './departmentsSlice';
 import vendorsReducer from './vendorsSlice';
+import hrReducer from './hrSlice';
 import auditReducer from './auditSlice';
 
 import networkDevicesReducer from './networkDevicesSlice';
@@ -17,6 +18,7 @@ export const store = configureStore({
     employees: employeesReducer,
     departments: departmentsReducer,
     vendors: vendorsReducer,
+    hr: hrReducer,
     audit: auditReducer,
     networkDevices: networkDevicesReducer,
     ui: uiReducer,

@@ -1,11 +1,14 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
+import { HRLayout } from './components/layout/HRLayout';
 import { EmployeePortalLayout } from './components/layout/EmployeePortalLayout';
 import { DataBootstrap } from './components/DataBootstrap';
 import { GlobalLoadingBar } from './components/Loader';
 import { ProtectedRoute, PublicRoute, AdminRoute, EmployeeRoute } from './components/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
+import { HRPage } from './features/hr/HRPage';
+import { LandingPage } from './features/portal/LandingPage';
 import { AssetsPage } from './features/assets/AssetsPage';
 import { AssetDetailPage } from './features/assets/AssetDetailPage';
 import { NewAssetPage } from './features/assets/NewAssetPage';
@@ -36,6 +39,7 @@ export default function App() {
           </PublicRoute>
         }
       />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/lookup/:id" element={<AssetLookupPage />} />
       <Route
         element={
@@ -48,6 +52,21 @@ export default function App() {
       >
         <Route path="portal" element={<DeviceRequestPage />} />
       </Route>
+      <Route path="/hr"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <HRLayout />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<HRPage />} />
+        <Route path="employees" element={<EmployeesPage />} />
+        <Route path="employees/:id" element={<EmployeeDetailPage />} />
+        <Route path="departments" element={<DepartmentsPage />} />
+      </Route>
+
       <Route
         element={
           <ProtectedRoute>
@@ -57,7 +76,7 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<DashboardPage />} />
+        <Route path="dashboard" element={<DashboardPage />} />
         <Route path="assets" element={<AssetsPage />} />
         <Route path="assets/new" element={<NewAssetPage />} />
         <Route path="assets/:id" element={<AssetDetailPage />} />

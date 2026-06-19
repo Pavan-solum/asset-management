@@ -14,21 +14,13 @@ import {
   useTheme,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import InventoryIcon from '@mui/icons-material/Inventory2';
-import StoreIcon from '@mui/icons-material/Store';
 import PeopleIcon from '@mui/icons-material/People';
 import BusinessIcon from '@mui/icons-material/Business';
-import HistoryIcon from '@mui/icons-material/History';
-import SettingsIcon from '@mui/icons-material/Settings';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import DevicesIcon from '@mui/icons-material/Devices';
-import DevicesOtherIcon from '@mui/icons-material/DevicesOther';
-import LanIcon from '@mui/icons-material/Lan';
+import HomeIcon from '@mui/icons-material/Home';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTenant, useAuthUser, usePermissions } from '../../hooks/storeHooks';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import type { Permission } from '../../types';
-import { APP_NAME } from '../../constants/brand';
 
 const DRAWER_WIDTH = 268;
 
@@ -43,36 +35,25 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'Overview',
     items: [
-      { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> },
-      { to: '/requests', label: 'Requests', icon: <AssignmentIcon fontSize="small" />, permission: 'request:review' },
+      { to: '/hr', label: 'HR Dashboard', icon: <DashboardIcon fontSize="small" /> },
     ],
   },
   {
-    label: 'Inventory',
+    label: 'Directory',
     items: [
-      { to: '/assets', label: 'Assets', icon: <InventoryIcon fontSize="small" /> },
-      { to: '/devices', label: 'Devices', icon: <DevicesOtherIcon fontSize="small" /> },
-      { to: '/network-devices', label: 'Network Devices', icon: <LanIcon fontSize="small" /> },
+      { to: '/hr/employees', label: 'Employees', icon: <PeopleIcon fontSize="small" /> },
+      { to: '/hr/departments', label: 'Departments', icon: <BusinessIcon fontSize="small" /> },
     ],
   },
   {
-    label: 'Organization',
+    label: 'Navigation',
     items: [
-      { to: '/employees', label: 'Employees', icon: <PeopleIcon fontSize="small" /> },
-      { to: '/departments', label: 'Departments', icon: <BusinessIcon fontSize="small" /> },
-      { to: '/vendors', label: 'Vendors', icon: <StoreIcon fontSize="small" /> },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
-      { to: '/audit', label: 'Audit Logs', icon: <HistoryIcon fontSize="small" /> },
-      { to: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
+      { to: '/', label: 'Back to Portal', icon: <HomeIcon fontSize="small" /> },
     ],
   },
 ];
 
-interface SidebarProps {
+interface HRSidebarProps {
   mobileOpen: boolean;
   onClose: () => void;
 }
@@ -82,7 +63,7 @@ function isNavActive(pathname: string, to: string): boolean {
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
-export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
+export function HRSidebar({ mobileOpen, onClose }: HRSidebarProps) {
   const location = useLocation();
   const tenant = useTenant();
   const user = useAuthUser();
@@ -104,11 +85,11 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             boxShadow: '0 4px 12px rgba(21, 101, 192, 0.3)',
           }}
         >
-          <DevicesIcon fontSize="small" />
+          <PeopleIcon fontSize="small" />
         </Avatar>
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2} noWrap>
-            {APP_NAME}
+            HR Policy App
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap display="block">
             {tenant?.name}
@@ -118,7 +99,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
       <Box sx={{ px: 2.5, pb: 1.5 }}>
         <Chip
-          label={tenant?.plan ?? 'Professional'}
+          label="HR Module"
           size="small"
           color="primary"
           variant="outlined"
