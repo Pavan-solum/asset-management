@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { HRLayout } from './components/layout/HRLayout';
+import { ExecDocsLayout } from './components/layout/ExecDocsLayout';
 import { EmployeePortalLayout } from './components/layout/EmployeePortalLayout';
 import { DataBootstrap } from './components/DataBootstrap';
 import { GlobalLoadingBar } from './components/Loader';
@@ -24,6 +25,11 @@ import { NetworkDevicesPage } from './features/network/NetworkDevicesPage';
 import { NetworkDeviceDetailPage } from './features/network/NetworkDeviceDetailPage';
 import { DeviceRequestPage } from './features/portal/DeviceRequestPage';
 import { RequestsPage } from './features/requests/RequestsPage';
+import { DashboardPage as ExeDocsDashboardPage } from './features/exe-docs/dashboard/DashboardPage';
+import { LibraryPage } from './features/exe-docs/library/LibraryPage';
+import { FinancePage } from './features/exe-docs/finance/FinancePage';
+import { MeetingsPage } from './features/exe-docs/meetings/MeetingsPage';
+import { CompliancePage } from './features/exe-docs/compliance/CompliancePage';
 
 export default function App() {
   return (
@@ -91,6 +97,24 @@ export default function App() {
         <Route path="audit" element={<AuditPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
+
+      <Route
+        path="/exec-docs"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <ExecDocsLayout />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<ExeDocsDashboardPage />} />
+        <Route path="library" element={<LibraryPage />} />
+        <Route path="finance" element={<FinancePage />} />
+        <Route path="meetings" element={<MeetingsPage />} />
+        <Route path="compliance" element={<CompliancePage />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </>

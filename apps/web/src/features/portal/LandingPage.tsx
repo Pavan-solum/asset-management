@@ -72,7 +72,7 @@ export function LandingPage() {
       title: 'Employee Doc Management',
       description: 'Securely manage employee documents, onboarding checklists, and verification.',
       icon: <FolderIcon sx={{ fontSize: 48 }} />,
-      path: '/onboarding',
+      path: '/exec-docs',
     },
     {
       title: 'Finance & Expenses',
