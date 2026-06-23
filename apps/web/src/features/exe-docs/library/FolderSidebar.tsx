@@ -22,68 +22,35 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { CreateFolderDialog } from './modal/CreateFolderDialog';
 import { UploadFileDialog } from './modal/UploadFileDialog';
+import { DocumentRowData } from './DocumentsTable';
 
-interface SubfolderConfig {
+export interface SubfolderConfig {
   name: string;
-  count: number;
 }
 
-interface FolderConfig {
+export interface FolderConfig {
   name: string;
-  count: number;
   subfolders?: SubfolderConfig[];
   isShared?: boolean;
 }
 
-const INITIAL_FOLDERS: FolderConfig[] = [
-  {
-    name: 'HR',
-    count: 12,
-    subfolders: [
-      { name: 'Employee Docs', count: 8 },
-      { name: 'Policies', count: 4 },
-    ],
-  },
-  {
-    name: 'Sales',
-    count: 45,
-    subfolders: [
-      { name: 'Leads & Prospects', count: 25 },
-      { name: 'Customers', count: 20 },
-    ],
-  },
-  {
-    name: 'Marketing',
-    count: 28,
-    subfolders: [
-      { name: 'Campaigns', count: 12 },
-      { name: 'Brand Assets', count: 10 },
-      { name: 'Market Research', count: 6 },
-    ],
-  },
-  {
-    name: 'Operations',
-    count: 15,
-    subfolders: [
-      { name: 'Vendor Management', count: 5 },
-      { name: 'Inventory', count: 7 },
-      { name: 'SOPs', count: 3 },
-    ],
-  },
-  {
-    name: 'Shared',
-    count: 102,
-    isShared: true,
-  },
-];
-
 interface FolderSidebarProps {
   selectedFolder: string;
   onSelectFolder: (name: string) => void;
+  folders: FolderConfig[];
+  setFolders: React.Dispatch<React.SetStateAction<FolderConfig[]>>;
+  documents: Record<string, DocumentRowData[]>;
+  setDocuments: React.Dispatch<React.SetStateAction<Record<string, DocumentRowData[]>>>;
 }
 
-export function FolderSidebar({ selectedFolder, onSelectFolder }: FolderSidebarProps) {
-  const [folders, setFolders] = useState<FolderConfig[]>(INITIAL_FOLDERS);
+export function FolderSidebar({
+  selectedFolder,
+  onSelectFolder,
+  folders,
+  setFolders,
+  documents,
+  setDocuments,
+}: FolderSidebarProps) {
   
   // Collapsible State
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({
@@ -150,7 +117,12 @@ export function FolderSidebar({ selectedFolder, onSelectFolder }: FolderSidebarP
     return `Company Documents > HR > Employee Docs`;
   };
 
-  const getSelectedFolderPath = () => getFolderPath(selectedFolder);
+  const getFolderCount = (folder: FolderConfig): number => {
+    if (folder.subfolders && folder.subfolders.length > 0) {
+      return folder.subfolders.reduce((sum, sub) => sum + (documents[sub.name]?.length ?? 0), 0);
+    }
+    return documents[folder.name]?.length ?? 0;
+  };
 
   const handleCreateFolderSubmit = (folderName: string, _role: string) => {
     const isTopLevel = folders.some((f) => f.name === targetFolder);
@@ -162,8 +134,7 @@ export function FolderSidebar({ selectedFolder, onSelectFolder }: FolderSidebarP
           if (f.name === targetFolder) {
             return {
               ...f,
-              count: f.count + 1,
-              subfolders: [...(f.subfolders || []), { name: folderName, count: 0 }],
+              subfolders: [...(f.subfolders || []), { name: folderName }],
             };
           }
           return f;
@@ -186,8 +157,7 @@ export function FolderSidebar({ selectedFolder, onSelectFolder }: FolderSidebarP
             if (f.name === parentName) {
               return {
                 ...f,
-                count: f.count + 1,
-                subfolders: [...(f.subfolders || []), { name: folderName, count: 0 }],
+                subfolders: [...(f.subfolders || []), { name: folderName }],
               };
             }
             return f;
@@ -197,7 +167,7 @@ export function FolderSidebar({ selectedFolder, onSelectFolder }: FolderSidebarP
         onSelectFolder(folderName);
       } else {
         // Fallback: add as new top-level folder before 'Shared'
-        const newFolder: FolderConfig = { name: folderName, count: 0 };
+        const newFolder: FolderConfig = { name: folderName };
         setFolders((prev) => {
           const index = prev.findIndex((f) => f.name === 'Shared');
           const updated = [...prev];
@@ -206,30 +176,40 @@ export function FolderSidebar({ selectedFolder, onSelectFolder }: FolderSidebarP
         });
       }
     }
+
+    // Initialize document list for the new folder
+    setDocuments((prev) => ({
+      ...prev,
+      [folderName]: [],
+    }));
+
     setFolderDialogOpen(false);
   };
 
-  const handleUploadFileSubmit = (_fileData: { name: string; type: string }) => {
-    setFolders((prev) =>
-      prev.map((folder) => {
-        if (folder.name === targetFolder) {
-          return { ...folder, count: folder.count + 1 };
-        }
-        if (folder.subfolders) {
-          const hasSub = folder.subfolders.some((s) => s.name === targetFolder);
-          if (hasSub) {
-            return {
-              ...folder,
-              count: folder.count + 1,
-              subfolders: folder.subfolders.map((sub) =>
-                sub.name === targetFolder ? { ...sub, count: sub.count + 1 } : sub
-              ),
-            };
-          }
-        }
-        return folder;
-      })
-    );
+  const handleUploadFileSubmit = (fileData: {
+    name: string;
+    type: string;
+    description: string;
+    accessLevel: string;
+    permissions: string[];
+    requireApproval: boolean;
+  }) => {
+    const newDoc: DocumentRowData = {
+      id: `doc-${Date.now()}`,
+      title: fileData.name,
+      type: fileData.type.toUpperCase(),
+      access: fileData.permissions.length > 0 ? fileData.permissions : [fileData.accessLevel.toUpperCase()],
+      lastModified: 'Just now',
+      owner: 'Current User',
+      status: fileData.requireApproval ? 'Draft' : 'Approved',
+      iconType: fileData.type.toLowerCase().includes('pdf') ? 'contact' : 'sales',
+    };
+
+    setDocuments((prev) => ({
+      ...prev,
+      [targetFolder]: [...(prev[targetFolder] || []), newDoc],
+    }));
+
     setFileDialogOpen(false);
   };
 
@@ -312,7 +292,7 @@ export function FolderSidebar({ selectedFolder, onSelectFolder }: FolderSidebarP
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{folder.name}</span>
-                          <span style={{ color: '#90A4AE', fontSize: '0.875rem', fontWeight: 400 }}>({folder.count})</span>
+                          <span style={{ color: '#90A4AE', fontSize: '0.875rem', fontWeight: 400 }}>({getFolderCount(folder)})</span>
                         </Box>
                       }
                     />
@@ -405,7 +385,7 @@ export function FolderSidebar({ selectedFolder, onSelectFolder }: FolderSidebarP
                               primary={
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                   <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{sub.name}</span>
-                                  <span style={{ color: '#90A4AE', fontSize: '0.875rem', fontWeight: 400 }}>({sub.count})</span>
+                                  <span style={{ color: '#90A4AE', fontSize: '0.875rem', fontWeight: 400 }}>({documents[sub.name]?.length ?? 0})</span>
                                 </Box>
                               }
                             />

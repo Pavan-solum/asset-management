@@ -1,13 +1,40 @@
-import { useState } from 'react';
-import { Box, Grid, Card, Typography } from '@mui/material';
+import { useState, useEffect } from 'react';
+import { Box, Grid, Card, Typography, CircularProgress } from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
 import HistoryIcon from '@mui/icons-material/History';
 import { PageHeader } from '../../../components/PageHeader';
-import { FolderSidebar } from './FolderSidebar';
-import { DocumentsTable } from './DocumentsTable';
+import { FolderSidebar, FolderConfig } from './FolderSidebar';
+import { DocumentsTable, DocumentRowData } from './DocumentsTable';
 
 export function LibraryPage() {
   const [selectedFolder, setSelectedFolder] = useState('Employee Docs');
+  const [folders, setFolders] = useState<FolderConfig[]>([]);
+  const [documents, setDocuments] = useState<Record<string, DocumentRowData[]>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/data/library.json')
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data.folders) setFolders(data.folders);
+        if (data.documents) setDocuments(data.documents);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching library data:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  const totalFilesCount = Object.values(documents).reduce(
+    (sum, docList) => sum + (docList?.length ?? 0),
+    0
+  );
 
   const headerSummaryCards = (
     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -52,7 +79,7 @@ export function LibraryPage() {
             TOTAL FILES
           </Typography>
           <Typography variant="subtitle1" fontWeight={800}>
-            1,284
+            {loading ? '...' : totalFilesCount.toLocaleString()}
           </Typography>
         </Box>
       </Card>
@@ -105,6 +132,26 @@ export function LibraryPage() {
     </Box>
   );
 
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '400px',
+          gap: 2,
+        }}
+      >
+        <CircularProgress size={40} thickness={4} sx={{ color: '#1565C0' }} />
+        <Typography variant="body2" color="text.secondary" fontWeight={500}>
+          Loading library data...
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <PageHeader
@@ -123,12 +170,16 @@ export function LibraryPage() {
           <FolderSidebar
             selectedFolder={selectedFolder}
             onSelectFolder={setSelectedFolder}
+            folders={folders}
+            setFolders={setFolders}
+            documents={documents}
+            setDocuments={setDocuments}
           />
         </Grid>
 
         {/* Right Side - Documents Table */}
         <Grid item xs={12} md={9}>
-          <DocumentsTable selectedFolder={selectedFolder} />
+          <DocumentsTable selectedFolder={selectedFolder} documents={documents} />
         </Grid>
       </Grid>
     </Box>

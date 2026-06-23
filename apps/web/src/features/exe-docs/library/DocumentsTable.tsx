@@ -27,7 +27,7 @@ import ArticleIcon from '@mui/icons-material/Article';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 
-interface DocumentRowData {
+export interface DocumentRowData {
   id: string;
   title: string;
   type: string;
@@ -38,55 +38,13 @@ interface DocumentRowData {
   iconType: 'contact' | 'sales' | 'marketing';
 }
 
-const mockDocuments: DocumentRowData[] = [
-  {
-    id: 'doc-1',
-    title: 'EMP001 - John Doe Profile',
-    type: 'HR DOC',
-    access: ['SUPER ADMIN', 'HR MGR'],
-    lastModified: 'Today',
-    owner: 'HR Dept',
-    status: 'Confidential',
-    iconType: 'contact',
-  },
-  {
-    id: 'doc-2',
-    title: 'Q4 Enterprise Sales Contract',
-    type: 'SALES',
-    access: ['SUPER ADMIN', 'LEGAL'],
-    lastModified: '2h ago',
-    owner: 'Sales Ops',
-    status: 'Draft',
-    iconType: 'sales',
-  },
-  {
-    id: 'doc-3',
-    title: 'Global Rebranding Brief',
-    type: 'MARKETING',
-    access: ['SUPER ADMIN', 'DEPT ADMIN'],
-    lastModified: 'Yesterday',
-    owner: 'Mktg Lead',
-    status: 'Approved',
-    iconType: 'marketing',
-  },
-];
-
-// Documents keyed by folder name — unlisted folders show as empty
-const FOLDER_DOCUMENTS: Record<string, DocumentRowData[]> = {
-  'Employee Docs': mockDocuments,
-  'Policies': [mockDocuments[0]],
-  'Leads & Prospects': [mockDocuments[1]],
-  'Customers': [mockDocuments[1]],
-  'Campaigns': [mockDocuments[2]],
-  'Brand Assets': [mockDocuments[2]],
-};
-
 interface DocumentsTableProps {
   selectedFolder: string;
+  documents: Record<string, DocumentRowData[]>;
 }
 
-export function DocumentsTable({ selectedFolder }: DocumentsTableProps) {
-  const folderDocs = FOLDER_DOCUMENTS[selectedFolder] ?? [];
+export function DocumentsTable({ selectedFolder, documents }: DocumentsTableProps) {
+  const folderDocs = documents[selectedFolder] ?? [];
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -157,7 +115,7 @@ export function DocumentsTable({ selectedFolder }: DocumentsTableProps) {
             startIcon={
               <Checkbox
                 checked={isAllSelected}
-                indeterminate={selectedIds.length > 0 && selectedIds.length < mockDocuments.length}
+                indeterminate={selectedIds.length > 0 && selectedIds.length < folderDocs.length}
                 size="small"
                 sx={{ p: 0, color: 'primary.main' }}
               />
