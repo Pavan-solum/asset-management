@@ -25,6 +25,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ContactPageIcon from '@mui/icons-material/ContactPage';
 import ArticleIcon from '@mui/icons-material/Article';
 import CampaignIcon from '@mui/icons-material/Campaign';
+import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 
 interface DocumentRowData {
   id: string;
@@ -70,13 +71,28 @@ const mockDocuments: DocumentRowData[] = [
   },
 ];
 
-export function DocumentsTable() {
+// Documents keyed by folder name — unlisted folders show as empty
+const FOLDER_DOCUMENTS: Record<string, DocumentRowData[]> = {
+  'Employee Docs': mockDocuments,
+  'Policies': [mockDocuments[0]],
+  'Leads & Prospects': [mockDocuments[1]],
+  'Customers': [mockDocuments[1]],
+  'Campaigns': [mockDocuments[2]],
+  'Brand Assets': [mockDocuments[2]],
+};
+
+interface DocumentsTableProps {
+  selectedFolder: string;
+}
+
+export function DocumentsTable({ selectedFolder }: DocumentsTableProps) {
+  const folderDocs = FOLDER_DOCUMENTS[selectedFolder] ?? [];
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(mockDocuments.map((d) => d.id));
+      setSelectedIds(folderDocs.map((d) => d.id));
     } else {
       setSelectedIds([]);
     }
@@ -90,7 +106,7 @@ export function DocumentsTable() {
     }
   };
 
-  const isAllSelected = mockDocuments.length > 0 && selectedIds.length === mockDocuments.length;
+  const isAllSelected = folderDocs.length > 0 && selectedIds.length === folderDocs.length;
 
   const renderIcon = (type: 'contact' | 'sales' | 'marketing') => {
     switch (type) {
@@ -223,7 +239,31 @@ export function DocumentsTable() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {mockDocuments.map((row) => {
+            {folderDocs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      py: 8,
+                      gap: 1.5,
+                    }}
+                  >
+                    <FolderOpenOutlinedIcon sx={{ fontSize: 48, color: '#CFD8DC' }} />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#90A4AE' }}>
+                      {selectedFolder}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#B0BEC5' }}>
+                      This folder is empty. Upload files to get started.
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ) : (
+              folderDocs.map((row) => {
               const isSelected = selectedIds.includes(row.id);
               return (
                 <TableRow
@@ -300,7 +340,8 @@ export function DocumentsTable() {
                   </TableCell>
                 </TableRow>
               );
-            })}
+              })
+            )}
           </TableBody>
         </Table>
       </TableContainer>

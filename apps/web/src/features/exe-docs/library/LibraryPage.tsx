@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Box, Grid, Card, Typography } from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
 import HistoryIcon from '@mui/icons-material/History';
@@ -6,6 +7,8 @@ import { FolderSidebar } from './FolderSidebar';
 import { DocumentsTable } from './DocumentsTable';
 
 export function LibraryPage() {
+  const [selectedFolder, setSelectedFolder] = useState('Employee Docs');
+
   const headerSummaryCards = (
     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
       {/* Card 1: Total Files */}
@@ -117,12 +120,15 @@ export function LibraryPage() {
       <Grid container spacing={3}>
         {/* Left Side - Folder Hierarchy & States */}
         <Grid item xs={12} md={3}>
-          <FolderSidebar />
+          <FolderSidebar
+            selectedFolder={selectedFolder}
+            onSelectFolder={setSelectedFolder}
+          />
         </Grid>
 
         {/* Right Side - Documents Table */}
         <Grid item xs={12} md={9}>
-          <DocumentsTable />
+          <DocumentsTable selectedFolder={selectedFolder} />
         </Grid>
       </Grid>
     </Box>

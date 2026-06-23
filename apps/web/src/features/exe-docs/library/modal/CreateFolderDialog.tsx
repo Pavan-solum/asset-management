@@ -15,11 +15,13 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 
 interface CreateFolderDialogProps {
   open: boolean;
   onClose: () => void;
   onCreate: (folderName: string, role: string) => void;
+  folderPath?: string;
 }
 
 interface RoleOption {
@@ -29,7 +31,7 @@ interface RoleOption {
   icon: React.ReactNode;
 }
 
-export function CreateFolderDialog({ open, onClose, onCreate }: CreateFolderDialogProps) {
+export function CreateFolderDialog({ open, onClose, onCreate, folderPath }: CreateFolderDialogProps) {
   const [folderName, setFolderName] = useState('');
   const [selectedRole, setSelectedRole] = useState('all-employees');
 
@@ -94,6 +96,63 @@ export function CreateFolderDialog({ open, onClose, onCreate }: CreateFolderDial
 
       <form onSubmit={handleSubmit}>
         <DialogContent sx={{ p: 0, mb: 3 }}>
+
+          {/* Creation Path */}
+          {folderPath && (
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 700,
+                  color: '#616161',
+                  letterSpacing: '0.08em',
+                  display: 'block',
+                  mb: 1,
+                  fontSize: '0.72rem',
+                }}
+              >
+                CREATION PATH
+              </Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  bgcolor: '#EBF3FB',
+                  border: '1px solid #C8DFF5',
+                  borderRadius: '10px',
+                  px: 1.5,
+                  py: 0.9,
+                }}
+              >
+                <FolderOutlinedIcon sx={{ fontSize: '1.1rem', color: '#5B8DB8', flexShrink: 0 }} />
+                {folderPath.split(' > ').map((part, index, arr) => (
+                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontSize: '0.8rem',
+                        fontWeight: index === arr.length - 1 ? 700 : 500,
+                        color: index === arr.length - 1 ? '#1A3C5E' : '#5B7FA6',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {part}
+                    </Typography>
+                    {index < arr.length - 1 && (
+                      <Typography
+                        variant="caption"
+                        sx={{ fontSize: '0.8rem', color: '#8BAECB', lineHeight: 1, fontWeight: 400 }}
+                      >
+                        ›
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+
           {/* Folder Name Field */}
           <Box sx={{ mb: 3 }}>
             <Typography

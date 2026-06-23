@@ -77,8 +77,12 @@ const INITIAL_FOLDERS: FolderConfig[] = [
   },
 ];
 
-export function FolderSidebar() {
-  const [selectedFolder, setSelectedFolder] = useState('Employee Docs');
+interface FolderSidebarProps {
+  selectedFolder: string;
+  onSelectFolder: (name: string) => void;
+}
+
+export function FolderSidebar({ selectedFolder, onSelectFolder }: FolderSidebarProps) {
   const [folders, setFolders] = useState<FolderConfig[]>(INITIAL_FOLDERS);
   
   // Collapsible State
@@ -100,6 +104,12 @@ export function FolderSidebar() {
   // Modal State
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [fileDialogOpen, setFileDialogOpen] = useState(false);
+
+  // Tracks which folder the dialog was triggered from (independent of sidebar selection)
+  const [targetFolder, setTargetFolder] = useState<string>(selectedFolder);
+
+  // Hover state for inline folder actions
+  const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
 
   const toggleFolder = (folderName: string) => {
     setOpenFolders((prev) => ({
@@ -125,13 +135,13 @@ export function FolderSidebar() {
     }
   };
 
-  const getSelectedFolderPath = () => {
+  const getFolderPath = (name: string) => {
     for (const folder of folders) {
-      if (folder.name === selectedFolder) {
+      if (folder.name === name) {
         return `Company Documents > ${folder.name}`;
       }
       if (folder.subfolders) {
-        const sub = folder.subfolders.find((s) => s.name === selectedFolder);
+        const sub = folder.subfolders.find((s) => s.name === name);
         if (sub) {
           return `Company Documents > ${folder.name} > ${sub.name}`;
         }
@@ -140,41 +150,61 @@ export function FolderSidebar() {
     return `Company Documents > HR > Employee Docs`;
   };
 
-  const handleCreateFolderSubmit = (folderName: string, _role: string) => {
-    const isParentSelected = folders.some((f) => f.name === selectedFolder);
+  const getSelectedFolderPath = () => getFolderPath(selectedFolder);
 
-    if (isParentSelected) {
+  const handleCreateFolderSubmit = (folderName: string, _role: string) => {
+    const isTopLevel = folders.some((f) => f.name === targetFolder);
+
+    if (isTopLevel) {
+      // Add as a subfolder under the clicked top-level folder
       setFolders((prev) =>
         prev.map((f) => {
-          if (f.name === selectedFolder) {
-            const sub = f.subfolders || [];
+          if (f.name === targetFolder) {
             return {
               ...f,
               count: f.count + 1,
-              subfolders: [...sub, { name: folderName, count: 0 }],
+              subfolders: [...(f.subfolders || []), { name: folderName, count: 0 }],
             };
           }
           return f;
         })
       );
-      setOpenFolders((prev) => ({
-        ...prev,
-        [selectedFolder]: true,
-      }));
+      setOpenFolders((prev) => ({ ...prev, [targetFolder]: true }));
+      onSelectFolder(folderName);
     } else {
-      const newFolder: FolderConfig = {
-        name: folderName,
-        count: 0,
-      };
-      setFolders((prev) => {
-        const index = prev.findIndex((f) => f.name === 'Shared');
-        if (index !== -1) {
-          const updated = [...prev];
-          updated.splice(index, 0, newFolder);
-          return updated;
+      // targetFolder is a subfolder — add new folder as sibling under the same parent
+      let parentName: string | null = null;
+      for (const folder of folders) {
+        if (folder.subfolders?.some((s) => s.name === targetFolder)) {
+          parentName = folder.name;
+          break;
         }
-        return [...prev, newFolder];
-      });
+      }
+      if (parentName) {
+        setFolders((prev) =>
+          prev.map((f) => {
+            if (f.name === parentName) {
+              return {
+                ...f,
+                count: f.count + 1,
+                subfolders: [...(f.subfolders || []), { name: folderName, count: 0 }],
+              };
+            }
+            return f;
+          })
+        );
+        setOpenFolders((prev) => ({ ...prev, [parentName!]: true }));
+        onSelectFolder(folderName);
+      } else {
+        // Fallback: add as new top-level folder before 'Shared'
+        const newFolder: FolderConfig = { name: folderName, count: 0 };
+        setFolders((prev) => {
+          const index = prev.findIndex((f) => f.name === 'Shared');
+          const updated = [...prev];
+          index !== -1 ? updated.splice(index, 0, newFolder) : updated.push(newFolder);
+          return updated;
+        });
+      }
     }
     setFolderDialogOpen(false);
   };
@@ -182,27 +212,18 @@ export function FolderSidebar() {
   const handleUploadFileSubmit = (_fileData: { name: string; type: string }) => {
     setFolders((prev) =>
       prev.map((folder) => {
-        if (folder.name === selectedFolder) {
-          return {
-            ...folder,
-            count: folder.count + 1,
-          };
+        if (folder.name === targetFolder) {
+          return { ...folder, count: folder.count + 1 };
         }
         if (folder.subfolders) {
-          const hasSub = folder.subfolders.some((s) => s.name === selectedFolder);
+          const hasSub = folder.subfolders.some((s) => s.name === targetFolder);
           if (hasSub) {
             return {
               ...folder,
               count: folder.count + 1,
-              subfolders: folder.subfolders.map((sub) => {
-                if (sub.name === selectedFolder) {
-                  return {
-                    ...sub,
-                    count: sub.count + 1,
-                  };
-                }
-                return sub;
-              }),
+              subfolders: folder.subfolders.map((sub) =>
+                sub.name === targetFolder ? { ...sub, count: sub.count + 1 } : sub
+              ),
             };
           }
         }
@@ -222,11 +243,11 @@ export function FolderSidebar() {
               FOLDERS
             </Typography>
             
-            {/* Outlined Action Icons */}
+            {/* Outlined Action Icons — target the currently selected folder */}
             <Box sx={{ display: 'flex', gap: 0.5 }}>
               <IconButton
                 size="small"
-                onClick={() => setFolderDialogOpen(true)}
+                onClick={() => { setTargetFolder(selectedFolder); setFolderDialogOpen(true); }}
                 sx={{
                   color: '#1565C0',
                   p: 0.5,
@@ -237,7 +258,7 @@ export function FolderSidebar() {
               </IconButton>
               <IconButton
                 size="small"
-                onClick={() => setFileDialogOpen(true)}
+                onClick={() => { setTargetFolder(selectedFolder); setFileDialogOpen(true); }}
                 sx={{
                   color: '#1565C0',
                   p: 0.5,
@@ -262,16 +283,19 @@ export function FolderSidebar() {
                       if (hasSubfolders) {
                         toggleFolder(folder.name);
                       } else {
-                        setSelectedFolder(folder.name);
+                        onSelectFolder(folder.name);
                       }
                     }}
                     selected={isSelected}
+                    onMouseEnter={() => setHoveredFolder(folder.name)}
+                    onMouseLeave={() => setHoveredFolder(null)}
                     sx={{
                       borderRadius: '8px',
                       mb: 0.5,
                       py: 0.75,
                       color: isSelected ? 'primary.main' : 'text.primary',
                       '&:hover': { bgcolor: 'action.hover' },
+                      pr: 0.5,
                     }}
                   >
                     <ListItemIcon sx={{ minWidth: 32, color: '#757575' }}>
@@ -292,6 +316,54 @@ export function FolderSidebar() {
                         </Box>
                       }
                     />
+
+                    {/* Inline hover action buttons */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.25,
+                        opacity: hoveredFolder === folder.name ? 1 : 0,
+                        transition: 'opacity 0.15s ease',
+                        ml: 'auto',
+                        flexShrink: 0,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <IconButton
+                        size="small"
+                        title="Create Folder"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTargetFolder(folder.name);
+                          setFolderDialogOpen(true);
+                        }}
+                        sx={{
+                          color: '#1565C0',
+                          p: 0.4,
+                          '&:hover': { bgcolor: 'rgba(21,101,192,0.1)' },
+                        }}
+                      >
+                        <CreateNewFolderOutlinedIcon sx={{ fontSize: '1rem' }} />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        title="Upload File"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTargetFolder(folder.name);
+                          setFileDialogOpen(true);
+                        }}
+                        sx={{
+                          color: '#1565C0',
+                          p: 0.4,
+                          '&:hover': { bgcolor: 'rgba(21,101,192,0.1)' },
+                        }}
+                      >
+                        <NoteAddOutlinedIcon sx={{ fontSize: '1rem' }} />
+                      </IconButton>
+                    </Box>
+
                     {hasSubfolders && (isOpen ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />)}
                   </ListItemButton>
 
@@ -310,11 +382,14 @@ export function FolderSidebar() {
                           <ListItemButton
                             key={sub.name}
                             selected={selectedFolder === sub.name}
-                            onClick={() => setSelectedFolder(sub.name)}
+                            onClick={() => onSelectFolder(sub.name)}
+                            onMouseEnter={() => setHoveredFolder(sub.name)}
+                            onMouseLeave={() => setHoveredFolder(null)}
                             sx={{
                               borderRadius: '8px',
                               mb: 0.5,
                               py: 0.5,
+                              pr: 0.5,
                               '&.Mui-selected': {
                                 bgcolor: 'rgba(21, 101, 192, 0.08)',
                                 color: 'primary.main',
@@ -334,6 +409,53 @@ export function FolderSidebar() {
                                 </Box>
                               }
                             />
+
+                            {/* Inline hover action buttons for subfolder */}
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.25,
+                                opacity: hoveredFolder === sub.name ? 1 : 0,
+                                transition: 'opacity 0.15s ease',
+                                ml: 'auto',
+                                flexShrink: 0,
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <IconButton
+                                size="small"
+                                title="Create Folder"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTargetFolder(sub.name);
+                                  setFolderDialogOpen(true);
+                                }}
+                                sx={{
+                                  color: '#1565C0',
+                                  p: 0.4,
+                                  '&:hover': { bgcolor: 'rgba(21,101,192,0.1)' },
+                                }}
+                              >
+                                <CreateNewFolderOutlinedIcon sx={{ fontSize: '1rem' }} />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                title="Upload File"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTargetFolder(sub.name);
+                                  setFileDialogOpen(true);
+                                }}
+                                sx={{
+                                  color: '#1565C0',
+                                  p: 0.4,
+                                  '&:hover': { bgcolor: 'rgba(21,101,192,0.1)' },
+                                }}
+                              >
+                                <NoteAddOutlinedIcon sx={{ fontSize: '1rem' }} />
+                              </IconButton>
+                            </Box>
                           </ListItemButton>
                         ))}
                       </List>
@@ -431,6 +553,7 @@ export function FolderSidebar() {
         open={folderDialogOpen}
         onClose={() => setFolderDialogOpen(false)}
         onCreate={handleCreateFolderSubmit}
+        folderPath={getFolderPath(targetFolder)}
       />
 
       {/* External Custom Upload File Dialog Component */}
@@ -438,7 +561,7 @@ export function FolderSidebar() {
         open={fileDialogOpen}
         onClose={() => setFileDialogOpen(false)}
         onUpload={handleUploadFileSubmit}
-        selectedFolderPath={getSelectedFolderPath()}
+        selectedFolderPath={getFolderPath(targetFolder)}
       />
     </Box>
   );
