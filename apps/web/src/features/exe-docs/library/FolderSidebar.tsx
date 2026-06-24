@@ -78,6 +78,10 @@ export function FolderSidebar({
   // Hover state for inline folder actions
   const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
 
+  // Drag and Drop State
+  const [draggedFolder, setDraggedFolder] = useState<string | null>(null);
+  const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
+
   const toggleFolder = (folderName: string) => {
     setOpenFolders((prev) => ({
       ...prev,
@@ -122,6 +126,166 @@ export function FolderSidebar({
       return folder.subfolders.reduce((sum, sub) => sum + (documents[sub.name]?.length ?? 0), 0);
     }
     return documents[folder.name]?.length ?? 0;
+  };
+
+  // Drag & Drop Handlers
+  const handleDragStart = (e: React.DragEvent, folderName: string) => {
+    e.dataTransfer.setData('text/plain', folderName);
+    setDraggedFolder(folderName);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedFolder(null);
+    setDragOverFolder(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent dragging onto itself
+    if (draggedFolder === targetName) return;
+
+    setDragOverFolder(targetName);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverFolder(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetFolderName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const sourceFolderName = e.dataTransfer.getData('text/plain') || draggedFolder;
+    
+    setDragOverFolder(null);
+    setDraggedFolder(null);
+
+    if (!sourceFolderName || sourceFolderName === targetFolderName) return;
+
+    moveFolder(sourceFolderName, targetFolderName);
+  };
+
+  const moveFolder = (sourceFolderName: string, targetFolderName: string) => {
+    let extractedFolder: FolderConfig | SubfolderConfig | null = null;
+    let isSourceTopLevel = false;
+
+    // 1. Locate and extract source folder
+    const topIndex = folders.findIndex((f) => f.name === sourceFolderName);
+    if (topIndex !== -1) {
+      extractedFolder = folders[topIndex];
+      isSourceTopLevel = true;
+    }
+
+    let parentOfSource: string | null = null;
+    if (!extractedFolder) {
+      for (const folder of folders) {
+        if (folder.subfolders) {
+          const subIndex = folder.subfolders.findIndex((s) => s.name === sourceFolderName);
+          if (subIndex !== -1) {
+            extractedFolder = folder.subfolders[subIndex];
+            parentOfSource = folder.name;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!extractedFolder) return;
+
+    // 2. Resolve drop target parent if dropping on a subfolder
+    let finalTarget = targetFolderName;
+    if (targetFolderName !== 'root') {
+      const isTargetTopLevel = folders.some((f) => f.name === targetFolderName);
+      if (!isTargetTopLevel) {
+        // Find parent of the subfolder we dropped on
+        let foundParent: string | null = null;
+        for (const folder of folders) {
+          if (folder.subfolders?.some((s) => s.name === targetFolderName)) {
+            foundParent = folder.name;
+            break;
+          }
+        }
+        if (foundParent) {
+          finalTarget = foundParent;
+        } else {
+          finalTarget = 'root';
+        }
+      }
+    }
+
+    // Prevent dragging a top-level folder into its own subfolders
+    if (isSourceTopLevel && finalTarget !== 'root') {
+      const sourceFolderObj = extractedFolder as FolderConfig;
+      if (sourceFolderObj.subfolders?.some((sub) => sub.name === finalTarget)) {
+        return;
+      }
+    }
+
+    // 3. Remove source folder from its previous location
+    let updatedFolders = folders.map((folder) => {
+      if (parentOfSource && folder.name === parentOfSource) {
+        return {
+          ...folder,
+          subfolders: folder.subfolders?.filter((s) => s.name !== sourceFolderName) || [],
+        };
+      }
+      return folder;
+    });
+
+    if (isSourceTopLevel) {
+      updatedFolders = updatedFolders.filter((f) => f.name !== sourceFolderName);
+    }
+
+    // 4. Place extracted folder under target
+    if (finalTarget === 'root') {
+      // Add as top-level folder
+      const newTopFolder: FolderConfig = {
+        name: extractedFolder.name,
+        subfolders: (extractedFolder as FolderConfig).subfolders || [],
+      };
+      const sharedIndex = updatedFolders.findIndex((f) => f.name === 'Shared');
+      if (sharedIndex !== -1) {
+        updatedFolders.splice(sharedIndex, 0, newTopFolder);
+      } else {
+        updatedFolders.push(newTopFolder);
+      }
+    } else {
+      // Add as subfolder under target top-level folder
+      updatedFolders = updatedFolders.map((folder) => {
+        if (folder.name === finalTarget) {
+          const sourceSubfolders = (extractedFolder as FolderConfig).subfolders || [];
+          const newSubfoldersList = [...(folder.subfolders || [])];
+
+          // Add dragged folder name to list of subfolders
+          if (!newSubfoldersList.some((s) => s.name === extractedFolder!.name)) {
+            newSubfoldersList.push({ name: extractedFolder!.name });
+          }
+
+          // Transfer all child subfolders to the new parent
+          sourceSubfolders.forEach((sub) => {
+            if (!newSubfoldersList.some((s) => s.name === sub.name)) {
+              newSubfoldersList.push({ name: sub.name });
+            }
+          });
+
+          return {
+            ...folder,
+            subfolders: newSubfoldersList,
+          };
+        }
+        return folder;
+      });
+
+      // Automatically open the target folder
+      setOpenFolders((prev) => ({
+        ...prev,
+        [finalTarget]: true,
+      }));
+    }
+
+    setFolders(updatedFolders);
   };
 
   const handleCreateFolderSubmit = (folderName: string, _role: string) => {
@@ -250,7 +414,19 @@ export function FolderSidebar({
             </Box>
           </Box>
 
-          <List disablePadding>
+          <List
+            disablePadding
+            onDragOver={(e) => handleDragOver(e, 'root')}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, 'root')}
+            sx={{
+              minHeight: '200px',
+              border: dragOverFolder === 'root' ? '2px dashed #1565C0' : '2px dashed transparent',
+              borderRadius: '8px',
+              p: dragOverFolder === 'root' ? 1 : 0,
+              transition: 'all 0.2s ease',
+            }}
+          >
             {folders.map((folder) => {
               const hasSubfolders = folder.subfolders && folder.subfolders.length > 0;
               const isOpen = openFolders[folder.name];
@@ -259,6 +435,12 @@ export function FolderSidebar({
               return (
                 <Box key={folder.name}>
                   <ListItemButton
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, folder.name)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleDragOver(e, folder.name)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, folder.name)}
                     onClick={() => {
                       if (hasSubfolders) {
                         toggleFolder(folder.name);
@@ -274,8 +456,13 @@ export function FolderSidebar({
                       mb: 0.5,
                       py: 0.75,
                       color: isSelected ? 'primary.main' : 'text.primary',
-                      '&:hover': { bgcolor: 'action.hover' },
                       pr: 0.5,
+                      opacity: draggedFolder === folder.name ? 0.4 : 1,
+                      outline: dragOverFolder === folder.name ? '2px dashed #1565C0' : 'none',
+                      outlineOffset: '-2px',
+                      bgcolor: dragOverFolder === folder.name ? 'rgba(21, 101, 192, 0.08)' : (isSelected ? 'action.selected' : 'transparent'),
+                      transition: 'all 0.15s ease',
+                      '&:hover': { bgcolor: 'action.hover' },
                     }}
                   >
                     <ListItemIcon sx={{ minWidth: 32, color: '#757575' }}>
@@ -361,6 +548,12 @@ export function FolderSidebar({
                         {folder.subfolders?.map((sub) => (
                           <ListItemButton
                             key={sub.name}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, sub.name)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => handleDragOver(e, sub.name)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, sub.name)}
                             selected={selectedFolder === sub.name}
                             onClick={() => onSelectFolder(sub.name)}
                             onMouseEnter={() => setHoveredFolder(sub.name)}
@@ -370,6 +563,11 @@ export function FolderSidebar({
                               mb: 0.5,
                               py: 0.5,
                               pr: 0.5,
+                              opacity: draggedFolder === sub.name ? 0.4 : 1,
+                              outline: dragOverFolder === sub.name ? '2px dashed #1565C0' : 'none',
+                              outlineOffset: '-2px',
+                              bgcolor: dragOverFolder === sub.name ? 'rgba(21, 101, 192, 0.08)' : 'transparent',
+                              transition: 'all 0.15s ease',
                               '&.Mui-selected': {
                                 bgcolor: 'rgba(21, 101, 192, 0.08)',
                                 color: 'primary.main',

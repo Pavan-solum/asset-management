@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,6 @@ import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
-
 
 interface RoleOption {
   id: string;
@@ -77,6 +76,14 @@ const ACCESS_ROLE_OPTIONS: RoleOption[] = [
 
 const ROLES = ['Super Admin', 'Dept Admin', 'Team Lead', 'Employee'];
 
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
 export function UploadFileDialog({
   open,
   onClose,
@@ -91,7 +98,33 @@ export function UploadFileDialog({
   const [requireApproval, setRequireApproval] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
+  // Preview & Progress States
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [fileSizeStr, setFileSizeStr] = useState('');
+  const [textPreview, setTextPreview] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset dialog state when opened freshly
+  useEffect(() => {
+    if (open) {
+      setFileName('');
+      setFileType('PDF Document');
+      setDescription('');
+      setAccessLevel('management-only');
+      setPermissions(['Super Admin', 'Dept Admin']);
+      setRequireApproval(false);
+      
+      if (filePreviewUrl) {
+        URL.revokeObjectURL(filePreviewUrl);
+      }
+      setSelectedFile(null);
+      setFilePreviewUrl(null);
+      setTextPreview(null);
+      setFileSizeStr('');
+    }
+  }, [open]);
 
   const handleRoleToggle = (role: string) => {
     setPermissions((prev) =>
@@ -123,24 +156,64 @@ export function UploadFileDialog({
   };
 
   const processSelectedFile = (file: File) => {
-    // Extract base name without extension
+    // Revoke previous URL if any
+    if (filePreviewUrl) {
+      URL.revokeObjectURL(filePreviewUrl);
+    }
+
+    setSelectedFile(file);
+    setFileSizeStr(formatFileSize(file.size));
+
+    // Get file extension
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+    // Create Object URL for images or PDFs
+    if (file.type.startsWith('image/') || ext === 'pdf') {
+      setFilePreviewUrl(URL.createObjectURL(file));
+      setTextPreview(null);
+    } else if (file.type.startsWith('text/') || ['txt', 'md', 'json', 'js', 'ts', 'css', 'html', 'xml'].includes(ext)) {
+      setFilePreviewUrl(null);
+
+      // Read text file preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        setTextPreview(text.substring(0, 150));
+      };
+      reader.readAsText(file);
+    } else {
+      setFilePreviewUrl(null);
+      setTextPreview(null);
+    }
+
+    // Extract base name without extension for the input box
     const dotIndex = file.name.lastIndexOf('.');
     const name = dotIndex !== -1 ? file.name.substring(0, dotIndex) : file.name;
     setFileName(name);
 
     // Auto-detect type
-    const ext = file.name.split('.').pop()?.toLowerCase();
     if (ext === 'pdf') {
       setFileType('PDF Document');
-    } else if (['doc', 'docx'].includes(ext || '')) {
+    } else if (['doc', 'docx'].includes(ext)) {
       setFileType('Word Document');
-    } else if (['xls', 'xlsx', 'csv'].includes(ext || '')) {
+    } else if (['xls', 'xlsx', 'csv'].includes(ext)) {
       setFileType('Excel Spreadsheet');
-    } else if (['ppt', 'pptx'].includes(ext || '')) {
+    } else if (['ppt', 'pptx'].includes(ext)) {
       setFileType('PowerPoint Presentation');
-    } else if (['png', 'jpg', 'jpeg', 'svg', 'webp'].includes(ext || '')) {
+    } else if (['png', 'jpg', 'jpeg', 'svg', 'webp'].includes(ext)) {
       setFileType('Image Asset');
     }
+  };
+
+  const clearSelectedFile = () => {
+    if (filePreviewUrl) {
+      URL.revokeObjectURL(filePreviewUrl);
+    }
+    setSelectedFile(null);
+    setFilePreviewUrl(null);
+    setTextPreview(null);
+    setFileSizeStr('');
+    setFileName('');
   };
 
   const triggerBrowse = () => {
@@ -159,8 +232,7 @@ export function UploadFileDialog({
       requireApproval,
     });
     // Reset states
-    setFileName('');
-    setFileType('PDF Document');
+    clearSelectedFile();
     setDescription('');
     setAccessLevel('management-only');
     setPermissions(['Super Admin', 'Dept Admin']);
@@ -222,75 +294,311 @@ export function UploadFileDialog({
           <Grid container spacing={4}>
             {/* Left Column: Drag & Drop + File Info */}
             <Grid item xs={12} md={7}>
-              {/* Drag and Drop Zone */}
-              <Box
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                sx={{
-                  border: '2px dashed',
-                  borderColor: dragOver ? '#1565C0' : '#CFD8DC',
-                  borderRadius: '16px',
-                  bgcolor: dragOver ? '#F0F7FF' : '#FAFCFE',
-                  py: 4,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  mb: 3,
-                  '&:hover': {
-                    borderColor: '#1565C0',
-                    bgcolor: '#F0F7FF',
-                  },
-                }}
-                onClick={triggerBrowse}
-              >
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: 'none' }}
-                  onChange={handleFileSelect}
-                />
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+              />
+
+              {/* Conditional File Upload Area */}
+              {selectedFile ? (
                 <Box
                   sx={{
-                    p: 1.5,
-                    bgcolor: '#E3F2FD',
-                    color: '#1565C0',
-                    borderRadius: '50%',
-                    mb: 1.5,
-                    display: 'flex',
+                    border: '1px solid #CFD8DC',
+                    borderRadius: '16px',
+                    bgcolor: '#FAFCFE',
+                    p: 3,
+                    mb: 3,
                   }}
                 >
-                  <UploadFileOutlinedIcon sx={{ fontSize: 28 }} />
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mb: 2.5 }}>
+                    {/* Sphere / Image Preview Box */}
+                    <Box
+                      sx={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: '12px',
+                        bgcolor: '#0D1117',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      }}
+                    >
+                      {(() => {
+                        const ext = selectedFile.name.split('.').pop()?.toLowerCase() || '';
+
+                        // 1. Image Preview
+                        if (selectedFile.type.startsWith('image/')) {
+                          return (
+                            <img
+                              src={filePreviewUrl || ''}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              alt="File preview"
+                            />
+                          );
+                        }
+
+                        // 2. PDF Preview
+                        if (ext === 'pdf') {
+                          return (
+                            <object
+                              data={`${filePreviewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                              type="application/pdf"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                pointerEvents: 'none',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {/* Fallback styling for PDF if object tag is not supported */}
+                              <Box
+                                sx={{
+                                  width: '100%',
+                                  height: '100%',
+                                  bgcolor: '#FFEBEE',
+                                  color: '#C62828',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.625rem' }}>
+                                  PDF
+                                </Typography>
+                              </Box>
+                            </object>
+                          );
+                        }
+
+                        // 3. Text Preview
+                        if (textPreview !== null) {
+                          return (
+                            <Box
+                              sx={{
+                                width: '100%',
+                                height: '100%',
+                                bgcolor: '#FFF',
+                                p: 0.5,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <Typography
+                                sx={{
+                                  fontFamily: 'monospace',
+                                  fontSize: '5px',
+                                  lineHeight: 1.1,
+                                  color: '#37474F',
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-all',
+                                  textAlign: 'left',
+                                }}
+                              >
+                                {textPreview}
+                              </Typography>
+                            </Box>
+                          );
+                        }
+
+                        // 4. Color-coded Office and other extensions fallbacks
+                        let themeBg = '#ECEFF1';
+                        let themeText = '#546E7A';
+
+                        if (['doc', 'docx'].includes(ext)) {
+                          themeBg = '#E3F2FD';
+                          themeText = '#1565C0';
+                        } else if (['xls', 'xlsx', 'csv'].includes(ext)) {
+                          themeBg = '#E8F5E9';
+                          themeText = '#2E7D32';
+                        } else if (['ppt', 'pptx'].includes(ext)) {
+                          themeBg = '#FFF3E0';
+                          themeText = '#EF6C00';
+                        }
+
+                        return (
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: '100%',
+                              bgcolor: themeBg,
+                              color: themeText,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.625rem', textTransform: 'uppercase' }}>
+                              {ext}
+                            </Typography>
+                          </Box>
+                        );
+                      })()}
+                    </Box>
+
+                    {/* File details & progress */}
+                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 700,
+                            color: '#263238',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '75%',
+                          }}
+                        >
+                          {selectedFile.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#78909C', fontWeight: 600 }}>
+                          {fileSizeStr}
+                        </Typography>
+                      </Box>
+
+                      {/* Progress Bar Row */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                        <Box sx={{ flexGrow: 1, height: 6, bgcolor: '#ECEFF1', borderRadius: 3, overflow: 'hidden' }}>
+                          <Box sx={{ width: '100%', height: '100%', bgcolor: '#4CAF50', borderRadius: 3 }} />
+                        </Box>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" fill="#4CAF50" />
+                          <path d="M9 12l2 2 4-4" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </Box>
+
+                      <Typography variant="caption" sx={{ color: '#4CAF50', fontWeight: 800, letterSpacing: '0.05em', fontSize: '0.6875rem' }}>
+                        UPLOAD COMPLETE
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Buttons Row */}
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      onClick={clearSelectedFile}
+                      startIcon={
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      }
+                      sx={{
+                        borderRadius: '8px',
+                        borderColor: '#CFD8DC',
+                        color: '#546E7A',
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        py: 1,
+                        fontSize: '0.875rem',
+                        '&:hover': {
+                          bgcolor: '#F5F7FA',
+                          borderColor: '#B0BEC5',
+                        },
+                      }}
+                    >
+                      Remove
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      onClick={triggerBrowse}
+                      startIcon={
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 11-.57-8.38l.73-.72" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      }
+                      sx={{
+                        borderRadius: '8px',
+                        borderColor: '#1565C0',
+                        color: '#1565C0',
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        py: 1,
+                        fontSize: '0.875rem',
+                        '&:hover': {
+                          bgcolor: 'rgba(21, 101, 192, 0.04)',
+                          borderColor: '#0D47A1',
+                        },
+                      }}
+                    >
+                      Replace
+                    </Button>
+                  </Box>
                 </Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#263238' }}>
-                  Drag and Drop File
-                </Typography>
-                <Typography variant="caption" sx={{ color: '#78909C', mb: 2, display: 'block', mt: 0.25 }}>
-                  Or click to browse your local storage
-                </Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
+              ) : (
+                /* Drag and Drop Zone */
+                <Box
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
                   sx={{
-                    borderRadius: '8px',
-                    borderColor: '#1565C0',
-                    color: '#1565C0',
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    px: 3,
+                    border: '2px dashed',
+                    borderColor: dragOver ? '#1565C0' : '#CFD8DC',
+                    borderRadius: '16px',
+                    bgcolor: dragOver ? '#F0F7FF' : '#FAFCFE',
+                    py: 5,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    mb: 3,
                     '&:hover': {
-                      borderColor: '#0D47A1',
-                      bgcolor: 'rgba(21, 101, 192, 0.04)',
+                      borderColor: '#1565C0',
+                      bgcolor: '#F0F7FF',
                     },
                   }}
+                  onClick={triggerBrowse}
                 >
-                  Browse Files
-                </Button>
-              </Box>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      bgcolor: '#E3F2FD',
+                      color: '#1565C0',
+                      borderRadius: '50%',
+                      mb: 1.5,
+                      display: 'flex',
+                    }}
+                  >
+                    <UploadFileOutlinedIcon sx={{ fontSize: 28 }} />
+                  </Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#263238' }}>
+                    Drag and Drop File
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#78909C', mb: 2, display: 'block', mt: 0.25 }}>
+                    Or click to browse your local storage
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      borderRadius: '8px',
+                      borderColor: '#1565C0',
+                      color: '#1565C0',
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      px: 3,
+                      '&:hover': {
+                        borderColor: '#0D47A1',
+                        bgcolor: 'rgba(21, 101, 192, 0.04)',
+                      },
+                    }}
+                  >
+                    Browse Files
+                  </Button>
+                </Box>
+              )}
 
               {/* File Information Section */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -604,6 +912,7 @@ export function UploadFileDialog({
                   fullWidth
                   type="submit"
                   variant="contained"
+                  disabled={!selectedFile || !fileName.trim()}
                   startIcon={<CloudUploadOutlinedIcon />}
                   sx={{
                     borderRadius: '12px',
@@ -616,6 +925,10 @@ export function UploadFileDialog({
                     '&:hover': {
                       bgcolor: '#0A3C8B',
                       boxShadow: 'none',
+                    },
+                    '&.Mui-disabled': {
+                      bgcolor: '#E0E0E0',
+                      color: '#9E9E9E',
                     },
                   }}
                 >
