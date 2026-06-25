@@ -24,6 +24,7 @@ import { NetworkDevicesPage } from './features/network/NetworkDevicesPage';
 import { NetworkDeviceDetailPage } from './features/network/NetworkDeviceDetailPage';
 import { DeviceRequestPage } from './features/portal/DeviceRequestPage';
 import { RequestsPage } from './features/requests/RequestsPage';
+import { EndpointsPage } from './features/endpoints/EndpointsPage';
 
 export default function App() {
   return (
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="departments" element={<DepartmentsPage />} />
         <Route path="vendors" element={<VendorsPage />} />
         <Route path="requests" element={<RequestsPage />} />
+        <Route path="endpoints" element={<EndpointsPage />} />
         <Route path="audit" element={<AuditPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

@@ -93,8 +93,8 @@ export function DataBootstrap() {
         const msg = e instanceof ApiError ? e.message : 'Failed to load data from server';
         setError(msg);
       } finally {
+        dispatch(stopLoading());
         if (!cancelled) {
-          dispatch(stopLoading());
           dispatch(setBootstrapReady(true));
         }
       }
