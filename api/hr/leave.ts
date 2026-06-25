@@ -1,5 +1,5 @@
-import { getSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../../_lib/db';
-import { requireAuth, insertAuditLog } from '../../_lib/auth';
+import { getSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { requireAuth, insertAuditLog } from '../_lib/auth';
 
 export const config = { runtime: 'edge' };
 
@@ -31,7 +31,7 @@ export default async function handler(req: Request) {
         `;
       }
 
-      return json(rows.map(row => ({
+      return json(rows.map((row: any) => ({
         id: row.id,
         employeeId: row.employee_id,
         leaveType: row.leave_type,

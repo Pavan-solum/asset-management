@@ -38,7 +38,7 @@ export default async function handler(req: Request) {
             OR model ILIKE ${pattern} OR location ILIKE ${pattern}
           )
         ORDER BY created_at DESC LIMIT 10
-      ` as Promise<DbAsset[]>,
+      ` as unknown as Promise<DbAsset[]>,
       sql`
         SELECT * FROM employees
         WHERE tenant_id = ${DEMO_TENANT_ID}
@@ -48,19 +48,19 @@ export default async function handler(req: Request) {
             OR job_title ILIKE ${pattern}
           )
         ORDER BY created_at DESC LIMIT 10
-      ` as Promise<DbEmployee[]>,
+      ` as unknown as Promise<DbEmployee[]>,
       sql`
         SELECT * FROM departments
         WHERE tenant_id = ${DEMO_TENANT_ID}
           AND (name ILIKE ${pattern} OR cost_center ILIKE ${pattern})
         ORDER BY name ASC LIMIT 5
-      ` as Promise<DbDepartment[]>,
+      ` as unknown as Promise<DbDepartment[]>,
       sql`
         SELECT * FROM vendors
         WHERE tenant_id = ${DEMO_TENANT_ID}
           AND (name ILIKE ${pattern} OR contact_email ILIKE ${pattern})
         ORDER BY name ASC LIMIT 5
-      ` as Promise<DbVendor[]>,
+      ` as unknown as Promise<DbVendor[]>,
     ]);
 
     return json({
