@@ -2,7 +2,7 @@ const si = require('systeminformation');
 const axios = require('axios');
 const { execSync } = require('child_process');
 
-const MANAGER_URL = process.env.MANAGER_URL || 'http://localhost:3000';
+const MANAGER_URL = process.env.MANAGER_URL || 'https://asset-management-245s-bxpt7v82l-pavan-kumar-v-projects.vercel.app';
 const TENANT_ID = process.env.TENANT_ID || '11111111-1111-1111-1111-111111111111';
 let endpointId = process.env.ENDPOINT_ID || null;
 let command_results = [];
