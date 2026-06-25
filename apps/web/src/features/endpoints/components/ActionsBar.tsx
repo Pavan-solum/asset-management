@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, Paper, Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+import { Button, Paper, Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import SecurityIcon from '@mui/icons-material/Security';
 import SyncIcon from '@mui/icons-material/Sync';
 import BlockIcon from '@mui/icons-material/Block';

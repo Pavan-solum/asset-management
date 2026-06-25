@@ -157,7 +157,7 @@ function EndpointRow({ endpoint }: { endpoint: any }) {
                   <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Active Network Connections</Typography>
                     
-                    <Tabs value={portTab} onChange={(e, val) => setPortTab(val)} aria-label="network tabs" sx={{ minHeight: '36px', mb: 1 }}>
+                    <Tabs value={portTab} onChange={(_, val) => setPortTab(val)} aria-label="network tabs" sx={{ minHeight: '36px', mb: 1 }}>
                       <Tab label={`All (${allPorts.length})`} value="All" sx={{ minHeight: '36px', py: 0.5 }} />
                       <Tab label={`Listening (${allPorts.filter((p:any) => p.state?.toLowerCase() === 'listen').length})`} value="Listening" sx={{ minHeight: '36px', py: 0.5 }} />
                       <Tab label={`Established (${allPorts.filter((p:any) => p.state?.toLowerCase() === 'established').length})`} value="Established" sx={{ minHeight: '36px', py: 0.5 }} />
