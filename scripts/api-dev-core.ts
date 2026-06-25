@@ -21,6 +21,15 @@ import vendorsIndex from '../api/vendors/index';
 import vendorsById from '../api/vendors/[id]';
 import requestsIndex from '../api/requests/index';
 import requestsById from '../api/requests/[id]';
+import endpointsIndex from '../api/endpoints/index';
+import endpointsRegister from '../api/endpoints/register';
+import endpointsTelemetry from '../api/endpoints/telemetry';
+import endpointsThreats from '../api/endpoints/[id]/threats';
+import endpointsInstalledApps from '../api/endpoints/[id]/installed-apps';
+import endpointsDeviceContext from '../api/endpoints/[id]/device-context';
+import endpointsActionsForceScan from '../api/endpoints/[id]/actions/force-scan';
+import endpointsActionsIsolate from '../api/endpoints/[id]/actions/isolate';
+import endpointsActionsSync from '../api/endpoints/[id]/actions/sync';
 
 type ApiHandler = (req: Request) => Promise<Response>;
 
@@ -66,11 +75,23 @@ function resolveHandler(pathname: string): ApiHandler | null {
   if (pathname === '/api/departments') return departmentsIndex;
   if (pathname === '/api/vendors') return vendorsIndex;
   if (pathname === '/api/requests') return requestsIndex;
+  if (pathname === '/api/endpoints') return endpointsIndex;
+  if (pathname === '/api/endpoints/register') return endpointsRegister;
+  if (pathname === '/api/endpoints/telemetry') return endpointsTelemetry;
   if (/^\/api\/assets\/[^/]+$/.test(pathname)) return assetsById;
   if (/^\/api\/employees\/[^/]+$/.test(pathname)) return employeesById;
   if (/^\/api\/departments\/[^/]+$/.test(pathname)) return departmentsById;
   if (/^\/api\/vendors\/[^/]+$/.test(pathname)) return vendorsById;
   if (/^\/api\/requests\/[^/]+$/.test(pathname)) return requestsById;
+
+  // New endpoint API routes
+  if (/^\/api\/endpoints\/[^/]+\/threats$/.test(pathname)) return endpointsThreats;
+  if (/^\/api\/endpoints\/[^/]+\/installed-apps$/.test(pathname)) return endpointsInstalledApps;
+  if (/^\/api\/endpoints\/[^/]+\/device-context$/.test(pathname)) return endpointsDeviceContext;
+  if (/^\/api\/endpoints\/[^/]+\/actions\/force-scan$/.test(pathname)) return endpointsActionsForceScan;
+  if (/^\/api\/endpoints\/[^/]+\/actions\/isolate$/.test(pathname)) return endpointsActionsIsolate;
+  if (/^\/api\/endpoints\/[^/]+\/actions\/sync$/.test(pathname)) return endpointsActionsSync;
+
   return null;
 }
 
@@ -86,7 +107,7 @@ function toWebRequest(req: IncomingMessage, body?: Buffer): Request {
   return new Request(`http://${host}${req.url}`, {
     method: req.method,
     headers: req.headers as HeadersInit,
-    body: body && body.length > 0 ? body : undefined,
+    body: body && body.length > 0 ? (body as unknown as BodyInit) : undefined,
   });
 }
 

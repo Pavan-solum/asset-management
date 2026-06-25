@@ -24,6 +24,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import DevicesIcon from '@mui/icons-material/Devices';
 import DevicesOtherIcon from '@mui/icons-material/DevicesOther';
 import LanIcon from '@mui/icons-material/Lan';
+import SecurityIcon from '@mui/icons-material/Security';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTenant, useAuthUser, usePermissions } from '../../hooks/storeHooks';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
@@ -66,6 +67,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'System',
     items: [
+      { to: '/endpoints', label: 'Endpoint Security', icon: <SecurityIcon fontSize="small" /> },
       { to: '/audit', label: 'Audit Logs', icon: <HistoryIcon fontSize="small" /> },
       { to: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
     ],
