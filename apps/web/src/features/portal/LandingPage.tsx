@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, Grid, Typography, Divider, alpha } from '@mui/material';
+import { Box, Card, CardContent, Grid, Typography, Divider, alpha, useTheme } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import PeopleIcon from '@mui/icons-material/People';
@@ -54,6 +54,8 @@ function ModuleCard({ title, description, icon, path }: ModuleCardProps) {
 
 export function LandingPage() {
   const user = useAuthUser();
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
 
   const modules = [
     {
@@ -89,9 +91,13 @@ export function LandingPage() {
           component="img" 
           src="/logo.png" 
           alt="Asset Manager Logo" 
-          sx={{ height: 100, mb: 3, objectFit: 'contain', mixBlendMode: 'multiply' }} 
+          sx={{ 
+            height: 100, mb: 3, objectFit: 'contain', 
+            mixBlendMode: isDarkMode ? 'screen' : 'multiply',
+            filter: isDarkMode ? 'invert(1) hue-rotate(180deg)' : 'none'
+          }} 
         />
-        <Typography variant="h3" fontWeight={800} gutterBottom sx={{ letterSpacing: '-0.02em', color: '#1a1a1a' }}>
+        <Typography variant="h3" fontWeight={800} gutterBottom sx={{ letterSpacing: '-0.02em', color: 'text.primary' }}>
           Unified Corporate Portal
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 800, mx: 'auto' }}>

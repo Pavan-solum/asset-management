@@ -101,6 +101,8 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const initials = getUserInitials(user);
   const displayName = getUserDisplayName(user);
 
+  const isDarkMode = theme.palette.mode === 'dark';
+
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar sx={{ px: 2.5, gap: 1.5, minHeight: { xs: 64, md: 72 } }}>
@@ -108,7 +110,12 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           component="img"
           src="/logo.png"
           alt="App Logo"
-          sx={{ width: 64, height: 64, objectFit: 'contain', mixBlendMode: 'multiply', transform: 'scale(1.3)' }}
+          sx={{ 
+            width: 64, height: 64, objectFit: 'contain', 
+            mixBlendMode: isDarkMode ? 'screen' : 'multiply', 
+            filter: isDarkMode ? 'invert(1) hue-rotate(180deg)' : 'none',
+            transform: 'scale(1.3)' 
+          }}
         />
         <Box sx={{ minWidth: 0 }}>
           <Typography fontWeight={600} lineHeight={1.2} noWrap sx={{ fontSize: '0.95rem', color: '#1a1a1a' }}>
