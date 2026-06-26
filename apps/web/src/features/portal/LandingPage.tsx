@@ -85,6 +85,12 @@ export function LandingPage() {
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 2, md: 4 } }}>
       <Box sx={{ mb: 6, textAlign: 'center', pt: 8 }}>
+        <Box 
+          component="img" 
+          src="/logo.png" 
+          alt="Asset Manager Logo" 
+          sx={{ height: 100, mb: 3, objectFit: 'contain', mixBlendMode: 'multiply' }} 
+        />
         <Typography variant="h3" fontWeight={800} gutterBottom sx={{ letterSpacing: '-0.02em', color: '#1a1a1a' }}>
           Unified Corporate Portal
         </Typography>
