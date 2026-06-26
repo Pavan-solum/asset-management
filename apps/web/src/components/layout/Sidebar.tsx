@@ -21,7 +21,6 @@ import BusinessIcon from '@mui/icons-material/Business';
 import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import DevicesIcon from '@mui/icons-material/Devices';
 import DevicesOtherIcon from '@mui/icons-material/DevicesOther';
 import LanIcon from '@mui/icons-material/Lan';
 import SecurityIcon from '@mui/icons-material/Security';
