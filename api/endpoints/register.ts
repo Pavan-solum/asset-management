@@ -72,6 +72,7 @@ export default async function handler(req: Request) {
 
     return json({ status: 'success', endpoint: { id: endpointId } });
   } catch (e) {
+    console.error('Registration API error:', e);
     return error(e instanceof Error ? e.message : 'Registration failed', 500);
   }
 }
