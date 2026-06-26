@@ -118,7 +118,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           }}
         />
         <Box sx={{ minWidth: 0 }}>
-          <Typography fontWeight={600} lineHeight={1.2} noWrap sx={{ fontSize: '0.95rem', color: '#1a1a1a' }}>
+          <Typography fontWeight={600} lineHeight={1.2} noWrap sx={{ fontSize: '0.95rem', color: 'text.primary' }}>
             {APP_NAME}
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap display="block" sx={{ fontSize: '0.7rem' }}>
