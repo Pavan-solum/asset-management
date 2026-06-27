@@ -33,6 +33,7 @@ const defaultForm = {
   purchaseDate: new Date().toISOString().split('T')[0],
   purchaseCost: 1299,
   currentValue: 1299,
+  repairCost: 0,
   location: 'HQ',
   vendorId: 'vendor-dell',
   warrantyExpiresAt: '',

@@ -92,6 +92,7 @@ export interface Asset {
   purchaseDate: string;
   purchaseCost: number;
   currentValue: number;
+  repairCost: number;
   location: string;
   vendorId: string;
   assignedEmployeeId?: string;

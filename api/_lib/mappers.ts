@@ -18,6 +18,7 @@ export interface DbAsset {
   purchase_date: string | null;
   purchase_cost: string | number | null;
   current_value: string | number | null;
+  repair_cost: string | number | null;
   location: string | null;
   department: string | null;
   specs: string | null;
@@ -130,6 +131,7 @@ export function mapAsset(row: DbAsset) {
     purchaseDate: row.purchase_date ?? '',
     purchaseCost: Number(row.purchase_cost ?? 0),
     currentValue: Number(row.current_value ?? 0),
+    repairCost: Number(row.repair_cost ?? 0),
     location: row.location ?? '',
     department: row.department ?? undefined,
     specs: row.specs ?? undefined,
@@ -256,6 +258,7 @@ export function assetInsertPayload(body: Record<string, unknown>, tenantId = DEM
     purchaseDate: body.purchaseDate ? String(body.purchaseDate) : null,
     purchaseCost: Number(body.purchaseCost ?? 0),
     currentValue: Number(body.currentValue ?? body.purchaseCost ?? 0),
+    repairCost: Number(body.repairCost ?? 0),
     location: String(body.location ?? ''),
     department: body.department ? String(body.department) : null,
     specs: body.specs ? String(body.specs) : null,

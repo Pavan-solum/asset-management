@@ -42,13 +42,13 @@ export function QrScannerDialog({ open, onClose, onScanSuccess }: QrScannerDialo
         scannerRef.current = new Html5QrcodeScanner(scannerId, config, false);
         
         scannerRef.current.render(
-          (decodedText) => {
+          (decodedText: string) => {
             if (scannerRef.current) {
               scannerRef.current.clear().catch(console.error);
             }
             onScanSuccess(decodedText);
           },
-          (errorMessage) => {
+          (errorMessage: string) => {
             if (typeof errorMessage === 'string' && errorMessage.includes('NotAllowedError')) {
               setError('Camera permission was denied. Please allow camera access to scan.');
             }
