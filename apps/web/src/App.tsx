@@ -25,6 +25,12 @@ import { NetworkDeviceDetailPage } from './features/network/NetworkDeviceDetailP
 import { DeviceRequestPage } from './features/portal/DeviceRequestPage';
 import { RequestsPage } from './features/requests/RequestsPage';
 import { EndpointsPage } from './features/endpoints/EndpointsPage';
+import { LifecyclePage } from './features/lifecycle/LifecyclePage';
+import { FinancePage } from './features/finance/FinancePage';
+import { SoftwarePage } from './features/software/SoftwarePage';
+import { MaintenancePage } from './features/maintenance/MaintenancePage';
+import { AnalyticsPage } from './features/analytics/AnalyticsPage';
+import { MobilePage } from './features/mobile/MobilePage';
 
 export default function App() {
   return (
@@ -92,6 +98,12 @@ export default function App() {
         <Route path="endpoints" element={<EndpointsPage />} />
         <Route path="audit" element={<AuditPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="lifecycle" element={<LifecyclePage />} />
+        <Route path="finance" element={<FinancePage />} />
+        <Route path="software" element={<SoftwarePage />} />
+        <Route path="maintenance" element={<MaintenancePage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="mobile" element={<MobilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
