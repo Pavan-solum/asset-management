@@ -389,6 +389,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   headset: 'Headset',
   peripheral: 'Peripheral',
   network: 'Network',
+  software: 'Software',
   other: 'Other',
 };
 

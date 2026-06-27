@@ -10,6 +10,7 @@ export type AssetCategory =
   | 'headset'
   | 'peripheral'
   | 'network'
+  | 'software'
   | 'other';
 export type AssetStatus = 'in_stock' | 'deployed' | 'in_repair' | 'retired' | 'lost' | 'disposed';
 export type LifecycleStage = 'procurement' | 'active' | 'maintenance' | 'end_of_life';
@@ -94,7 +95,9 @@ export interface Asset {
   location: string;
   vendorId: string;
   assignedEmployeeId?: string;
+  assignedAssetId?: string;
   warrantyExpiresAt: string;
+  activationKey?: string;
   notes?: string;
   specs?: string;
   department?: string;

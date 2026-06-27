@@ -9,7 +9,9 @@ import {
   TextField,
   Typography,
   alpha,
+  Autocomplete,
 } from '@mui/material';
+import { createFilterOptions } from '@mui/material/Autocomplete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -24,6 +26,7 @@ import { reloadFromApi } from '../../components/DataBootstrap';
 import { isApiEnabled } from '../../services/api/config';
 import { createAsset as createAssetApi } from '../../services/api/assets';
 import { uploadImage } from '../../services/api/entities';
+import { EmployeeFormDialog } from '../employees/EmployeeFormDialog';
 import { CATEGORY_LABELS } from '../../data/demoData';
 import {
   ASSET_CATEGORIES,
@@ -63,6 +66,14 @@ function FormSection({ title, children }: { title: string; children: React.React
   );
 }
 
+type EmployeeOption = {
+  id?: string;
+  firstName?: string;
+  lastName?: string;
+  inputValue?: string;
+};
+const filter = createFilterOptions<EmployeeOption>();
+
 export function NewAssetPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -70,12 +81,20 @@ export function NewAssetPage() {
   const vendors = useAppSelector((s) => s.vendors.items);
   const employees = useAppSelector((s) => s.employees.items);
   const departments = useAppSelector((s) => s.departments.items);
+  const assets = useAppSelector((s) => s.assets.items);
 
   const [form, setForm] = useState<AssetFormState>(createEmptyAssetForm);
+
+  const isHardware = ['laptop', 'desktop', 'server', 'mobile', 'network'].includes(form.category);
+  const hardwareAssets = useMemo(
+    () => assets.filter(a => ['laptop', 'desktop', 'server', 'mobile', 'network'].includes(a.category)),
+    [assets]
+  );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [createdItem, setCreatedItem] = useState<CreatedAsset | null>(null);
+  const [showEmployeeForm, setShowEmployeeForm] = useState(false);
 
   const set = (field: keyof AssetFormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -104,11 +123,11 @@ export function NewAssetPage() {
 
     setLoading(true);
     try {
+      const assignedEmployeeId = isHardware ? findEmployeeByAssigneeName(form.assignedTo, employees) : undefined;
+      const assignedAssetId = !isHardware && form.assignedAssetId ? form.assignedAssetId : undefined;
       const purchaseCost = Number(form.purchaseCost) || 0;
       const currentValue = Number(form.currentValue) || purchaseCost;
-      const assignedEmployeeId = findEmployeeByAssigneeName(form.assignedTo, employees);
-      const status: AssetStatus =
-        assignedEmployeeId && form.status === 'in_stock' ? 'deployed' : form.status;
+      const status: AssetStatus = assignedEmployeeId || assignedAssetId ? 'deployed' : (form.status as AssetStatus);
 
       const notes = [form.specs && `Specs: ${form.specs}`, form.notes].filter(Boolean).join('\n\n') || undefined;
       const assignedBy = `${user.firstName} ${user.lastName}`;
@@ -126,7 +145,8 @@ export function NewAssetPage() {
           category: form.category,
           manufacturer: form.manufacturer.trim(),
           model: form.model.trim(),
-          serialNumber: form.serialNumber.trim(),
+          serialNumber: form.category !== 'software' ? form.serialNumber.trim() : '',
+          activationKey: form.category === 'software' ? form.activationKey?.trim() : undefined,
           status,
           lifecycleStage: form.lifecycleStage,
           purchaseDate: form.purchaseDate || new Date().toISOString().split('T')[0],
@@ -140,7 +160,8 @@ export function NewAssetPage() {
           imageUrl,
           notes,
           assignedEmployeeId,
-          assignedBy: assignedEmployeeId ? assignedBy : undefined,
+          assignedAssetId,
+          assignedBy: assignedEmployeeId || assignedAssetId ? assignedBy : undefined,
           qrOrigin: window.location.origin,
           audit: {
             userId: user.id,
@@ -164,7 +185,8 @@ export function NewAssetPage() {
           category: form.category,
           manufacturer: form.manufacturer.trim(),
           model: form.model.trim(),
-          serialNumber: form.serialNumber.trim(),
+          serialNumber: form.category !== 'software' ? form.serialNumber.trim() : '',
+          activationKey: form.category === 'software' ? form.activationKey?.trim() : '',
           status,
           lifecycleStage: form.lifecycleStage,
           purchaseDate: form.purchaseDate || new Date().toISOString().split('T')[0],
@@ -178,6 +200,7 @@ export function NewAssetPage() {
           imageUrl: form.imageUrl,
           notes,
           assignedEmployeeId,
+          assignedAssetId,
         }),
       );
 
@@ -192,7 +215,7 @@ export function NewAssetPage() {
             notes: 'Assigned during asset creation',
           }),
         );
-      } else if (form.assignedTo.trim()) {
+      } else if (isHardware && form.assignedTo.trim()) {
         // Keep assignee hint in notes when no employee match
         dispatch(
           addAuditLog({
@@ -203,6 +226,19 @@ export function NewAssetPage() {
             entityId: created.id,
             entityLabel: created.assetTag,
             details: `Assignee "${form.assignedTo.trim()}" not matched to an employee`,
+          }),
+        );
+      } else if (assignedAssetId) {
+        const targetAsset = assets.find((a) => a.id === assignedAssetId);
+        dispatch(
+          addAuditLog({
+            userId: user.id,
+            userName: `${user.firstName} ${user.lastName}`,
+            action: 'ASSIGN',
+            entityType: 'asset',
+            entityId: created.id,
+            entityLabel: created.assetTag,
+            details: `Assigned to Asset ${targetAsset?.assetTag || assignedAssetId}`,
           }),
         );
       }
@@ -322,25 +358,6 @@ export function NewAssetPage() {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                fullWidth
-                label="Serial Number"
-                placeholder="SN-XXXX"
-                value={form.serialNumber}
-                onChange={(e) => set('serialNumber', e.target.value)}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                required
-                label="Asset Name"
-                placeholder="e.g. MacBook Pro 14 — Rahul's Machine"
-                value={form.name}
-                onChange={(e) => set('name', e.target.value)}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
                 select
                 fullWidth
                 required
@@ -355,7 +372,17 @@ export function NewAssetPage() {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                required
+                label="Asset Name"
+                placeholder="e.g. MacBook Pro 14 — Rahul's Machine"
+                value={form.name}
+                onChange={(e) => set('name', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
               <TextField
                 select
                 fullWidth
@@ -370,7 +397,7 @@ export function NewAssetPage() {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 select
                 fullWidth
@@ -385,31 +412,59 @@ export function NewAssetPage() {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6}>
+          </Grid>
+        </FormSection>
+
+        <FormSection title={form.category === 'software' ? 'Software Details' : 'Hardware Details'}>
+          <Grid container spacing={2}>
+            {form.category === 'software' ? (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Activation Key"
+                  placeholder="XXXX-XXXX-XXXX-XXXX"
+                  value={form.activationKey || ''}
+                  onChange={(e) => set('activationKey', e.target.value)}
+                />
+              </Grid>
+            ) : (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Serial Number"
+                  placeholder="SN-XXXX"
+                  value={form.serialNumber}
+                  onChange={(e) => set('serialNumber', e.target.value)}
+                />
+              </Grid>
+            )}
+            <Grid item xs={12} sm={form.category === 'software' ? 6 : 6}>
               <TextField
                 fullWidth
-                label="Brand"
-                placeholder="Apple, Dell, HP..."
+                label={form.category === 'software' ? 'Publisher' : 'Manufacturer'}
+                placeholder={form.category === 'software' ? 'Microsoft, Adobe...' : 'Apple, Dell, HP...'}
                 value={form.manufacturer}
                 onChange={(e) => set('manufacturer', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Model"
-                placeholder='MacBook Pro M3 14"'
-                value={form.model}
-                onChange={(e) => set('model', e.target.value)}
-              />
-            </Grid>
+            {form.category !== 'software' && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Model"
+                  placeholder='MacBook Pro M3 14"'
+                  value={form.model}
+                  onChange={(e) => set('model', e.target.value)}
+                />
+              </Grid>
+            )}
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 multiline
                 rows={2}
                 label="Specs / Description"
-                placeholder="16GB RAM, 512GB SSD..."
+                placeholder={form.category === 'software' ? 'License details, seats...' : '16GB RAM, 512GB SSD...'}
                 value={form.specs}
                 onChange={(e) => set('specs', e.target.value)}
               />
@@ -419,7 +474,7 @@ export function NewAssetPage() {
 
         <FormSection title="Purchase & Financials">
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={form.category === 'software' ? 6 : 4}>
               <TextField
                 fullWidth
                 type="date"
@@ -429,7 +484,7 @@ export function NewAssetPage() {
                 onChange={(e) => set('purchaseDate', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={form.category === 'software' ? 6 : 4}>
               <TextField
                 fullWidth
                 type="number"
@@ -443,22 +498,24 @@ export function NewAssetPage() {
                 inputProps={{ min: 0 }}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Current Value"
-                placeholder="65000"
-                value={form.currentValue}
-                onChange={(e) => set('currentValue', e.target.value)}
-                inputProps={{ min: 0 }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            {form.category !== 'software' && (
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Current Value"
+                  placeholder="65000"
+                  value={form.currentValue}
+                  onChange={(e) => set('currentValue', e.target.value)}
+                  inputProps={{ min: 0 }}
+                />
+              </Grid>
+            )}
+            <Grid item xs={12} sm={form.category === 'software' ? 6 : 6}>
               <TextField
                 fullWidth
                 type="date"
-                label="Warranty Expiry"
+                label={form.category === 'software' ? "Validity Date" : "Warranty Expiry"}
                 InputLabelProps={{ shrink: true }}
                 value={form.warrantyExpiresAt}
                 onChange={(e) => set('warrantyExpiresAt', e.target.value)}
@@ -485,14 +542,59 @@ export function NewAssetPage() {
         <FormSection title="Assignment & Location">
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Assigned To"
-                placeholder="Employee name"
-                value={form.assignedTo}
-                onChange={(e) => set('assignedTo', e.target.value)}
-                helperText="Matches existing employees by name; sets status to Deployed when found"
-              />
+              {isHardware ? (
+                <Autocomplete
+                  value={form.assignedTo}
+                  onChange={(_, newValue) => {
+                    if (typeof newValue === 'string') {
+                      set('assignedTo', newValue);
+                    } else if (newValue && newValue.inputValue) {
+                      setShowEmployeeForm(true);
+                      set('assignedTo', newValue.inputValue);
+                    } else {
+                      set('assignedTo', newValue ? `${newValue.firstName} ${newValue.lastName}` : '');
+                    }
+                  }}
+                  filterOptions={(options, params) => {
+                    const filtered = filter(options, params);
+                    const { inputValue } = params;
+                    const isExisting = options.some((option) => inputValue.toLowerCase() === `${option.firstName} ${option.lastName}`.toLowerCase());
+                    if (inputValue !== '' && !isExisting) {
+                      filtered.push({
+                        inputValue,
+                        firstName: `Add "${inputValue}"`,
+                        lastName: '',
+                      });
+                    }
+                    return filtered;
+                  }}
+                  selectOnFocus
+                  clearOnBlur
+                  handleHomeEndKeys
+                  options={employees.map(e => ({ id: e.id, firstName: e.firstName, lastName: e.lastName } as EmployeeOption))}
+                  getOptionLabel={(option) => {
+                    if (typeof option === 'string') return option;
+                    if (option.inputValue) return option.inputValue;
+                    return `${option.firstName} ${option.lastName}`;
+                  }}
+                  renderOption={(props, option) => <li {...props}>{option.inputValue ? `Add "${option.inputValue}"` : `${option.firstName} ${option.lastName}`}</li>}
+                  freeSolo
+                  renderInput={(params) => (
+                    <TextField {...params} label="Assigned To Employee" placeholder="Employee name" helperText="Matches existing employees by name; sets status to Deployed when found. If not found, you can add them." />
+                  )}
+                />
+              ) : (
+                <Autocomplete
+                  value={hardwareAssets.find(a => a.id === form.assignedAssetId) || null}
+                  onChange={(_, newValue) => set('assignedAssetId', newValue ? newValue.id : '')}
+                  options={hardwareAssets}
+                  getOptionLabel={(option) => `${option.assetTag} - ${option.name}`}
+                  renderOption={(props, option) => <li {...props}>{option.assetTag} - {option.name}</li>}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Assigned To Asset" placeholder="Select target hardware" helperText="Assign this item to an existing hardware asset." />
+                  )}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
@@ -502,6 +604,7 @@ export function NewAssetPage() {
                 value={form.department}
                 onChange={(e) => set('department', e.target.value)}
                 SelectProps={{ displayEmpty: true }}
+                InputLabelProps={{ shrink: true }}
               >
                 <MenuItem value="">— None —</MenuItem>
                 {departmentOptions.map((name) => (
@@ -600,6 +703,7 @@ export function NewAssetPage() {
           </Button>
         </Box>
       </Box>
+      <EmployeeFormDialog open={showEmployeeForm} onClose={() => setShowEmployeeForm(false)} />
     </Box>
   );
 }

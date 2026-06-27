@@ -24,6 +24,12 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import DevicesOtherIcon from '@mui/icons-material/DevicesOther';
 import LanIcon from '@mui/icons-material/Lan';
 import SecurityIcon from '@mui/icons-material/Security';
+import SyncIcon from '@mui/icons-material/Sync';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import CodeIcon from '@mui/icons-material/Code';
+import BuildIcon from '@mui/icons-material/Build';
+import AutoGraphIcon from '@mui/icons-material/AutoGraph';
+import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import HomeIcon from '@mui/icons-material/Home';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTenant, useAuthUser, usePermissions } from '../../hooks/storeHooks';
@@ -45,6 +51,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Overview',
     items: [
       { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> },
+      { to: '/analytics', label: 'AI & Analytics', icon: <AutoGraphIcon fontSize="small" /> },
       { to: '/requests', label: 'Requests', icon: <AssignmentIcon fontSize="small" />, permission: 'request:review' },
     ],
   },
@@ -52,8 +59,18 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Inventory',
     items: [
       { to: '/assets', label: 'Assets', icon: <InventoryIcon fontSize="small" /> },
+      { to: '/lifecycle', label: 'Lifecycle', icon: <SyncIcon fontSize="small" /> },
       { to: '/devices', label: 'Devices', icon: <DevicesOtherIcon fontSize="small" /> },
       { to: '/network-devices', label: 'Network Devices', icon: <LanIcon fontSize="small" /> },
+      { to: '/mobile', label: 'Mobile & Field', icon: <PhoneIphoneIcon fontSize="small" /> },
+    ],
+  },
+  {
+    label: 'Finance & Maintenance',
+    items: [
+      { to: '/finance', label: 'Finance', icon: <AttachMoneyIcon fontSize="small" /> },
+      { to: '/software', label: 'Software SAM', icon: <CodeIcon fontSize="small" /> },
+      { to: '/maintenance', label: 'Maintenance', icon: <BuildIcon fontSize="small" /> },
     ],
   },
   {
