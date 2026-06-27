@@ -6,6 +6,7 @@ import health from '../api/health';
 import sync from '../api/sync';
 import search from '../api/search';
 import upload from '../api/upload';
+import chat from '../api/chat';
 import authLogin from '../api/auth/login';
 import authChangePassword from '../api/auth/change-password';
 import assetsIndex from '../api/assets/index';
@@ -65,6 +66,7 @@ function resolveHandler(pathname: string): ApiHandler | null {
   if (pathname === '/api/sync') return sync;
   if (pathname === '/api/search') return search;
   if (pathname === '/api/upload') return upload;
+  if (pathname === '/api/chat') return chat;
   if (pathname === '/api/auth/login') return authLogin;
   if (pathname === '/api/auth/change-password') return authChangePassword;
   if (pathname === '/api/assets/import') return assetsImport;

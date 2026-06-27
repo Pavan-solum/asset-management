@@ -22,7 +22,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import SecurityIcon from '@mui/icons-material/Security';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { login, clearError, setSession, setLoginError } from '../../store/authSlice';
 import { APP_NAME, APP_TAGLINE, COMPANY_EMAIL_DOMAIN, COMPANY_NAME } from '../../constants/brand';
@@ -60,10 +60,14 @@ export function LoginPage() {
   const error = useAppSelector((s) => s.auth.error);
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
   const role = useAppSelector((s) => s.auth.user?.role);
+  const location = useLocation();
 
   useEffect(() => {
-    if (isAuthenticated) navigate(getHomeRouteForRole(role));
-  }, [isAuthenticated, navigate, role]);
+    if (isAuthenticated) {
+      const from = location.state?.from || getHomeRouteForRole(role);
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, role, location]);
 
   useEffect(() => {
     if (!isApiEnabled()) return;

@@ -7,7 +7,7 @@ export default async function handler(req: Request) {
   if (req.method !== 'POST') return error('Method not allowed', 405);
 
   try {
-    const body = await req.json();
+    const body = await req.json() as Record<string, any>;
     const { endpoint_id, cpu_usage, memory_total, memory_used, running_processes, firewall_status, defender_status, antivirus_updated_at, active_ports, last_logged_user, uptime_seconds, last_reboot_at, agent_version, bitlocker_status, bitlocker_drive, threats, command_results } = body;
 
     if (!endpoint_id) {

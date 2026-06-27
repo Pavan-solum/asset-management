@@ -21,7 +21,6 @@ import BusinessIcon from '@mui/icons-material/Business';
 import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import DevicesIcon from '@mui/icons-material/Devices';
 import DevicesOtherIcon from '@mui/icons-material/DevicesOther';
 import LanIcon from '@mui/icons-material/Lan';
 import SecurityIcon from '@mui/icons-material/Security';
@@ -31,6 +30,7 @@ import CodeIcon from '@mui/icons-material/Code';
 import BuildIcon from '@mui/icons-material/Build';
 import AutoGraphIcon from '@mui/icons-material/AutoGraph';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
+import HomeIcon from '@mui/icons-material/Home';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTenant, useAuthUser, usePermissions } from '../../hooks/storeHooks';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
@@ -89,6 +89,12 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { to: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
     ],
   },
+  {
+    label: 'Navigation',
+    items: [
+      { to: '/', label: 'Back to Portal', icon: <HomeIcon fontSize="small" /> },
+    ],
+  },
 ];
 
 interface SidebarProps {
@@ -112,24 +118,27 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const initials = getUserInitials(user);
   const displayName = getUserDisplayName(user);
 
+  const isDarkMode = theme.palette.mode === 'dark';
+
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar sx={{ px: 2.5, gap: 1.5, minHeight: { xs: 64, md: 72 } }}>
-        <Avatar
-          sx={{
-            bgcolor: 'primary.main',
-            width: 42,
-            height: 42,
-            boxShadow: '0 4px 12px rgba(21, 101, 192, 0.3)',
+        <Box
+          component="img"
+          src="/logo.png"
+          alt="App Logo"
+          sx={{ 
+            width: 64, height: 64, objectFit: 'contain', 
+            mixBlendMode: isDarkMode ? 'screen' : 'multiply', 
+            filter: isDarkMode ? 'invert(1) hue-rotate(180deg)' : 'none',
+            transform: 'scale(1.3)' 
           }}
-        >
-          <DevicesIcon fontSize="small" />
-        </Avatar>
+        />
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2} noWrap>
+          <Typography fontWeight={600} lineHeight={1.2} noWrap sx={{ fontSize: '0.95rem', color: 'text.primary' }}>
             {APP_NAME}
           </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap display="block">
+          <Typography variant="caption" color="text.secondary" noWrap display="block" sx={{ fontSize: '0.7rem' }}>
             {tenant?.name}
           </Typography>
         </Box>
