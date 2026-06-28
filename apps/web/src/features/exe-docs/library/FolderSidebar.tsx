@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -26,6 +26,7 @@ import { DocumentRowData } from './DocumentsTable';
 
 export interface SubfolderConfig {
   name: string;
+  subfolders?: SubfolderConfig[];
 }
 
 export interface FolderConfig {
@@ -77,20 +78,22 @@ export function FolderSidebar({
   // Tracks which folder the dialog was triggered from (independent of sidebar selection)
   const [targetFolder, setTargetFolder] = useState<string>(selectedFolder);
 
-  // Hover state for inline folder actions
-  const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
+
 
   // Drag and Drop State
   const [draggedFolder, setDraggedFolder] = useState<string | null>(null);
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
 
+  const lastTriggerUpload = useRef(triggerUpload);
+
   // Listen to external dialog trigger actions from header "Create New" button
   useEffect(() => {
-    if (triggerUpload > 0) {
+    if (triggerUpload > lastTriggerUpload.current) {
       setTargetFolder(selectedFolder);
       setDialogInitialTab(0);
       setContentDialogOpen(true);
     }
+    lastTriggerUpload.current = triggerUpload;
   }, [triggerUpload, selectedFolder]);
 
   const toggleFolder = (folderName: string) => {
@@ -118,14 +121,24 @@ export function FolderSidebar({
   };
 
   const getFolderPath = (name: string) => {
+    if (name === 'root') {
+      return 'Company Documents';
+    }
     for (const folder of folders) {
       if (folder.name === name) {
         return `Company Documents > ${folder.name}`;
       }
       if (folder.subfolders) {
-        const sub = folder.subfolders.find((s) => s.name === name);
-        if (sub) {
-          return `Company Documents > ${folder.name} > ${sub.name}`;
+        for (const sub of folder.subfolders) {
+          if (sub.name === name) {
+            return `Company Documents > ${folder.name} > ${sub.name}`;
+          }
+          if (sub.subfolders) {
+            const subSub = sub.subfolders.find((ss) => ss.name === name);
+            if (subSub) {
+              return `Company Documents > ${folder.name} > ${sub.name} > ${subSub.name}`;
+            }
+          }
         }
       }
     }
@@ -309,7 +322,7 @@ export function FolderSidebar({
           if (f.name === targetFolder) {
             return {
               ...f,
-              subfolders: [...(f.subfolders || []), { name: folderName }],
+              subfolders: [...(f.subfolders || []), { name: folderName, subfolders: [] }],
             };
           }
           return f;
@@ -318,37 +331,88 @@ export function FolderSidebar({
       setOpenFolders((prev) => ({ ...prev, [targetFolder]: true }));
       onSelectFolder(folderName);
     } else {
-      // targetFolder is a subfolder — add new folder as sibling under the same parent
-      let parentName: string | null = null;
-      for (const folder of folders) {
-        if (folder.subfolders?.some((s) => s.name === targetFolder)) {
-          parentName = folder.name;
+      // Check if targetFolder is a level-2 subfolder
+      let parentFolder: FolderConfig | null = null;
+      for (const f of folders) {
+        if (f.subfolders?.some((s) => s.name === targetFolder)) {
+          parentFolder = f;
           break;
         }
       }
-      if (parentName) {
+
+      if (parentFolder) {
+        // Add as a sub-subfolder under targetFolder (inside Employee Docs)
         setFolders((prev) =>
           prev.map((f) => {
-            if (f.name === parentName) {
+            if (f.name === parentFolder!.name) {
               return {
                 ...f,
-                subfolders: [...(f.subfolders || []), { name: folderName }],
+                subfolders: f.subfolders?.map((s) => {
+                  if (s.name === targetFolder) {
+                    return {
+                      ...s,
+                      subfolders: [...(s.subfolders || []), { name: folderName, subfolders: [] }],
+                    };
+                  }
+                  return s;
+                }),
               };
             }
             return f;
           })
         );
-        setOpenFolders((prev) => ({ ...prev, [parentName!]: true }));
+        setOpenFolders((prev) => ({ ...prev, [parentFolder!.name]: true, [targetFolder]: true }));
         onSelectFolder(folderName);
       } else {
-        // Fallback: add as new top-level folder before 'Shared'
-        const newFolder: FolderConfig = { name: folderName };
-        setFolders((prev) => {
-          const index = prev.findIndex((f) => f.name === 'Shared');
-          const updated = [...prev];
-          index !== -1 ? updated.splice(index, 0, newFolder) : updated.push(newFolder);
-          return updated;
-        });
+        // Check if targetFolder is already a level-3 sub-subfolder
+        let parentSub: SubfolderConfig | null = null;
+        let grandParent: FolderConfig | null = null;
+        for (const f of folders) {
+          if (f.subfolders) {
+            for (const s of f.subfolders) {
+              if (s.subfolders?.some((ss) => ss.name === targetFolder)) {
+                parentSub = s;
+                grandParent = f;
+                break;
+              }
+            }
+          }
+          if (parentSub) break;
+        }
+
+        if (parentSub && grandParent) {
+          // Add as sibling under parentSub (same level-3)
+          setFolders((prev) =>
+            prev.map((f) => {
+              if (f.name === grandParent!.name) {
+                return {
+                  ...f,
+                  subfolders: f.subfolders?.map((s) => {
+                    if (s.name === parentSub!.name) {
+                      return {
+                        ...s,
+                        subfolders: [...(s.subfolders || []), { name: folderName, subfolders: [] }],
+                      };
+                    }
+                    return s;
+                  }),
+                };
+              }
+              return f;
+            })
+          );
+          setOpenFolders((prev) => ({ ...prev, [grandParent!.name]: true, [parentSub!.name]: true }));
+          onSelectFolder(folderName);
+        } else {
+          // Fallback: add as new top-level folder before 'Shared'
+          const newFolder: FolderConfig = { name: folderName, subfolders: [] };
+          setFolders((prev) => {
+            const index = prev.findIndex((f) => f.name === 'Shared');
+            const updated = [...prev];
+            index !== -1 ? updated.splice(index, 0, newFolder) : updated.push(newFolder);
+            return updated;
+          });
+        }
       }
     }
 
@@ -432,7 +496,7 @@ export function FolderSidebar({
             <Box sx={{ display: 'flex', gap: 0.5 }}>
               <IconButton
                 size="small"
-                onClick={() => { setTargetFolder(selectedFolder); setDialogInitialTab(2); setContentDialogOpen(true); }}
+                onClick={() => { setTargetFolder('root'); setDialogInitialTab(2); setContentDialogOpen(true); }}
                 sx={{
                   color: '#1565C0',
                   p: 0.5,
@@ -479,8 +543,6 @@ export function FolderSidebar({
                       }
                     }}
                     selected={isSelected}
-                    onMouseEnter={() => setHoveredFolder(folder.name)}
-                    onMouseLeave={() => setHoveredFolder(null)}
                     sx={{
                       borderRadius: '8px',
                       mb: 0.5,
@@ -514,38 +576,6 @@ export function FolderSidebar({
                       }
                     />
 
-                    {/* Inline hover action buttons */}
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.25,
-                        opacity: hoveredFolder === folder.name ? 1 : 0,
-                        transition: 'opacity 0.15s ease',
-                        ml: 'auto',
-                        flexShrink: 0,
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <IconButton
-                        size="small"
-                        title="Create Folder"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setTargetFolder(folder.name);
-                          setDialogInitialTab(2);
-                          setContentDialogOpen(true);
-                        }}
-                        sx={{
-                          color: '#1565C0',
-                          p: 0.4,
-                          '&:hover': { bgcolor: 'rgba(21,101,192,0.1)' },
-                        }}
-                      >
-                        <CreateNewFolderOutlinedIcon sx={{ fontSize: '1rem' }} />
-                      </IconButton>
-                    </Box>
-
                     {hasSubfolders && (isOpen ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />)}
                   </ListItemButton>
 
@@ -560,82 +590,109 @@ export function FolderSidebar({
                           borderColor: 'divider',
                         }}
                       >
-                        {folder.subfolders?.map((sub) => (
-                          <ListItemButton
-                            key={sub.name}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, sub.name)}
-                            onDragEnd={handleDragEnd}
-                            onDragOver={(e) => handleDragOver(e, sub.name)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, sub.name)}
-                            selected={selectedFolder === sub.name}
-                            onClick={() => onSelectFolder(sub.name)}
-                            onMouseEnter={() => setHoveredFolder(sub.name)}
-                            onMouseLeave={() => setHoveredFolder(null)}
-                            sx={{
-                              borderRadius: '8px',
-                              mb: 0.5,
-                              py: 0.5,
-                              pr: 0.5,
-                              opacity: draggedFolder === sub.name ? 0.4 : 1,
-                              outline: dragOverFolder === sub.name ? '2px dashed #1565C0' : 'none',
-                              outlineOffset: '-2px',
-                              bgcolor: dragOverFolder === sub.name ? 'rgba(21, 101, 192, 0.08)' : 'transparent',
-                              transition: 'all 0.15s ease',
-                              '&.Mui-selected': {
-                                bgcolor: 'rgba(21, 101, 192, 0.08)',
-                                color: 'primary.main',
-                                '& .MuiListItemIcon-root': { color: 'primary.main' },
-                              },
-                            }}
-                          >
-                            <ListItemIcon sx={{ minWidth: 32, color: '#757575' }}>
-                              <FolderOutlinedIcon fontSize="small" />
-                            </ListItemIcon>
-                            
-                            <ListItemText
-                              primary={
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{sub.name}</span>
-                                  <span style={{ color: '#90A4AE', fontSize: '0.875rem', fontWeight: 400 }}>({documents[sub.name]?.length ?? 0})</span>
-                                </Box>
-                              }
-                            />
-
-                            {/* Inline hover action buttons for subfolder */}
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.25,
-                                opacity: hoveredFolder === sub.name ? 1 : 0,
-                                transition: 'opacity 0.15s ease',
-                                ml: 'auto',
-                                flexShrink: 0,
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <IconButton
-                                size="small"
-                                title="Create Folder"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTargetFolder(sub.name);
-                                  setDialogInitialTab(2);
-                                  setContentDialogOpen(true);
+                        {folder.subfolders?.map((sub) => {
+                          const hasSubSub = sub.subfolders && sub.subfolders.length > 0;
+                          const isSubOpen = openFolders[sub.name];
+                          return (
+                            <Box key={sub.name}>
+                              <ListItemButton
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, sub.name)}
+                                onDragEnd={handleDragEnd}
+                                onDragOver={(e) => handleDragOver(e, sub.name)}
+                                onDragLeave={handleDragLeave}
+                                onDrop={(e) => handleDrop(e, sub.name)}
+                                selected={selectedFolder === sub.name}
+                                onClick={() => {
+                                  onSelectFolder(sub.name);
+                                  if (hasSubSub) {
+                                    toggleFolder(sub.name);
+                                  }
                                 }}
                                 sx={{
-                                  color: '#1565C0',
-                                  p: 0.4,
-                                  '&:hover': { bgcolor: 'rgba(21,101,192,0.1)' },
+                                  borderRadius: '8px',
+                                  mb: 0.5,
+                                  py: 0.5,
+                                  pr: 0.5,
+                                  opacity: draggedFolder === sub.name ? 0.4 : 1,
+                                  outline: dragOverFolder === sub.name ? '2px dashed #1565C0' : 'none',
+                                  outlineOffset: '-2px',
+                                  bgcolor: dragOverFolder === sub.name ? 'rgba(21, 101, 192, 0.08)' : 'transparent',
+                                  transition: 'all 0.15s ease',
+                                  '&.Mui-selected': {
+                                    bgcolor: 'rgba(21, 101, 192, 0.08)',
+                                    color: 'primary.main',
+                                    '& .MuiListItemIcon-root': { color: 'primary.main' },
+                                  },
                                 }}
                               >
-                                <CreateNewFolderOutlinedIcon sx={{ fontSize: '1rem' }} />
-                              </IconButton>
+                                <ListItemIcon sx={{ minWidth: 32, color: '#757575' }}>
+                                  {hasSubSub && isSubOpen ? (
+                                    <FolderOpenOutlinedIcon fontSize="small" />
+                                  ) : (
+                                    <FolderOutlinedIcon fontSize="small" />
+                                  )}
+                                </ListItemIcon>
+                                
+                                <ListItemText
+                                  primary={
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{sub.name}</span>
+                                      <span style={{ color: '#90A4AE', fontSize: '0.875rem', fontWeight: 400 }}>({documents[sub.name]?.length ?? 0})</span>
+                                    </Box>
+                                  }
+                                />
+                                {hasSubSub && (isSubOpen ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />)}
+                              </ListItemButton>
+
+                              {hasSubSub && (
+                                <Collapse in={isSubOpen} timeout="auto" unmountOnExit>
+                                  <List
+                                    disablePadding
+                                    sx={{
+                                      pl: 2,
+                                      ml: 2,
+                                      borderLeft: '1px solid',
+                                      borderColor: 'divider',
+                                    }}
+                                  >
+                                    {sub.subfolders?.map((subSub) => (
+                                      <ListItemButton
+                                        key={subSub.name}
+                                        selected={selectedFolder === subSub.name}
+                                        onClick={() => onSelectFolder(subSub.name)}
+                                        sx={{
+                                          borderRadius: '8px',
+                                          mb: 0.5,
+                                          py: 0.5,
+                                          pr: 0.5,
+                                          transition: 'all 0.15s ease',
+                                          '&.Mui-selected': {
+                                            bgcolor: 'rgba(21, 101, 192, 0.08)',
+                                            color: 'primary.main',
+                                            '& .MuiListItemIcon-root': { color: 'primary.main' },
+                                          },
+                                        }}
+                                      >
+                                        <ListItemIcon sx={{ minWidth: 32, color: '#757575' }}>
+                                          <FolderOutlinedIcon fontSize="small" />
+                                        </ListItemIcon>
+                                        <ListItemText
+                                          primary={
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                              <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{subSub.name}</span>
+                                              <span style={{ color: '#90A4AE', fontSize: '0.875rem', fontWeight: 400 }}>({documents[subSub.name]?.length ?? 0})</span>
+                                            </Box>
+                                          }
+                                        />
+                                      </ListItemButton>
+                                    ))}
+                                  </List>
+                                </Collapse>
+                              )}
                             </Box>
-                          </ListItemButton>
-                        ))}
+                          );
+                        })}
                       </List>
                     </Collapse>
                   )}
