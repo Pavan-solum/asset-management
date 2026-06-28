@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Box, Grid, Card, Typography, CircularProgress } from '@mui/material';
-import FolderIcon from '@mui/icons-material/Folder';
-import HistoryIcon from '@mui/icons-material/History';
+import {
+  Box,
+  Grid,
+  CircularProgress,
+  Button,
+  Typography,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import { PageHeader } from '../../../components/PageHeader';
 import { FolderSidebar, FolderConfig } from './FolderSidebar';
 import { DocumentsTable, DocumentRowData } from './DocumentsTable';
@@ -11,6 +16,7 @@ export function LibraryPage() {
   const [folders, setFolders] = useState<FolderConfig[]>([]);
   const [documents, setDocuments] = useState<Record<string, DocumentRowData[]>>({});
   const [loading, setLoading] = useState(true);
+  const [triggerUpload, setTriggerUpload] = useState(0);
 
   useEffect(() => {
     fetch('/data/library.json')
@@ -31,105 +37,30 @@ export function LibraryPage() {
       });
   }, []);
 
-  const totalFilesCount = Object.values(documents).reduce(
-    (sum, docList) => sum + (docList?.length ?? 0),
-    0
-  );
+  const handleCreateNewClick = () => {
+    setTriggerUpload((prev) => prev + 1);
+  };
 
-  const headerSummaryCards = (
-    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-      {/* Card 1: Total Files */}
-      <Card
-        variant="outlined"
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          p: 1.5,
-          pl: 2,
-          pr: 4,
-          gap: 2,
-          borderRadius: 3,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Box
-          sx={{
-            p: 1,
-            bgcolor: 'rgba(21, 101, 192, 0.08)',
-            color: 'primary.main',
-            borderRadius: '50%',
-            display: 'flex',
-          }}
-        >
-          <FolderIcon fontSize="small" />
-        </Box>
-        <Box>
-          <Typography
-            variant="caption"
-            sx={{
-              textTransform: 'uppercase',
-              color: 'text.secondary',
-              fontWeight: 700,
-              fontSize: '0.625rem',
-              letterSpacing: '0.05em',
-              display: 'block',
-            }}
-          >
-            TOTAL FILES
-          </Typography>
-          <Typography variant="subtitle1" fontWeight={800}>
-            {loading ? '...' : totalFilesCount.toLocaleString()}
-          </Typography>
-        </Box>
-      </Card>
-
-      {/* Card 2: Last Modified */}
-      <Card
-        variant="outlined"
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          p: 1.5,
-          pl: 2,
-          pr: 4,
-          gap: 2,
-          borderRadius: 3,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Box
-          sx={{
-            p: 1,
-            bgcolor: 'rgba(38, 166, 154, 0.08)',
-            color: '#26A69A',
-            borderRadius: '50%',
-            display: 'flex',
-          }}
-        >
-          <HistoryIcon fontSize="small" />
-        </Box>
-        <Box>
-          <Typography
-            variant="caption"
-            sx={{
-              textTransform: 'uppercase',
-              color: 'text.secondary',
-              fontWeight: 700,
-              fontSize: '0.625rem',
-              letterSpacing: '0.05em',
-              display: 'block',
-            }}
-          >
-            LAST MODIFIED
-          </Typography>
-          <Typography variant="subtitle1" fontWeight={800}>
-            2h ago
-          </Typography>
-        </Box>
-      </Card>
-    </Box>
+  const headerActions = (
+    <Button
+      variant="contained"
+      color="primary"
+      startIcon={<AddIcon />}
+      onClick={handleCreateNewClick}
+      sx={{
+        borderRadius: '20px',
+        px: 3,
+        py: 1,
+        fontWeight: 700,
+        textTransform: 'none',
+        boxShadow: '0 4px 14px rgba(21, 101, 192, 0.3)',
+        '&:hover': {
+          boxShadow: '0 6px 20px rgba(21, 101, 192, 0.4)',
+        },
+      }}
+    >
+      Create New
+    </Button>
   );
 
   if (loading) {
@@ -161,7 +92,7 @@ export function LibraryPage() {
           { label: 'Dashboard', to: '/exec-docs' },
           { label: 'Document Library' },
         ]}
-        actions={headerSummaryCards}
+        actions={headerActions}
       />
 
       <Grid container spacing={3}>
@@ -174,6 +105,7 @@ export function LibraryPage() {
             setFolders={setFolders}
             documents={documents}
             setDocuments={setDocuments}
+            triggerUpload={triggerUpload}
           />
         </Grid>
 

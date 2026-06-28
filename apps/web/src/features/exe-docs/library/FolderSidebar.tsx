@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -12,16 +12,16 @@ import {
   Checkbox,
   FormControlLabel,
   IconButton,
+  Fab,
 } from '@mui/material';
 import CreateNewFolderOutlinedIcon from '@mui/icons-material/CreateNewFolderOutlined';
-import NoteAddOutlinedIcon from '@mui/icons-material/NoteAddOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
-import { CreateFolderDialog } from './modal/CreateFolderDialog';
-import { UploadFileDialog } from './modal/UploadFileDialog';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import { AddNewContentDialog } from './modal/AddNewContentDialog';
 import { DocumentRowData } from './DocumentsTable';
 
 export interface SubfolderConfig {
@@ -41,6 +41,7 @@ interface FolderSidebarProps {
   setFolders: React.Dispatch<React.SetStateAction<FolderConfig[]>>;
   documents: Record<string, DocumentRowData[]>;
   setDocuments: React.Dispatch<React.SetStateAction<Record<string, DocumentRowData[]>>>;
+  triggerUpload?: number;
 }
 
 export function FolderSidebar({
@@ -50,6 +51,7 @@ export function FolderSidebar({
   setFolders,
   documents,
   setDocuments,
+  triggerUpload = 0,
 }: FolderSidebarProps) {
   
   // Collapsible State
@@ -61,7 +63,7 @@ export function FolderSidebar({
   });
 
   // Checkbox state for Document State
-  const [documentStates, setDocumentStates] = useState({
+  const [documentStates, setDocumentStates] = useState<Record<string, boolean>>({
     all: true,
     confidential: false,
     approved: false,
@@ -69,8 +71,8 @@ export function FolderSidebar({
   });
 
   // Modal State
-  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
-  const [fileDialogOpen, setFileDialogOpen] = useState(false);
+  const [contentDialogOpen, setContentDialogOpen] = useState(false);
+  const [dialogInitialTab, setDialogInitialTab] = useState(0);
 
   // Tracks which folder the dialog was triggered from (independent of sidebar selection)
   const [targetFolder, setTargetFolder] = useState<string>(selectedFolder);
@@ -81,6 +83,15 @@ export function FolderSidebar({
   // Drag and Drop State
   const [draggedFolder, setDraggedFolder] = useState<string | null>(null);
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
+
+  // Listen to external dialog trigger actions from header "Create New" button
+  useEffect(() => {
+    if (triggerUpload > 0) {
+      setTargetFolder(selectedFolder);
+      setDialogInitialTab(0);
+      setContentDialogOpen(true);
+    }
+  }, [triggerUpload, selectedFolder]);
 
   const toggleFolder = (folderName: string) => {
     setOpenFolders((prev) => ({
@@ -347,7 +358,7 @@ export function FolderSidebar({
       [folderName]: [],
     }));
 
-    setFolderDialogOpen(false);
+    setContentDialogOpen(false);
   };
 
   const handleUploadFileSubmit = (fileData: {
@@ -374,7 +385,37 @@ export function FolderSidebar({
       [targetFolder]: [...(prev[targetFolder] || []), newDoc],
     }));
 
-    setFileDialogOpen(false);
+    setContentDialogOpen(false);
+  };
+
+  const handleUploadFolderSubmit = (folderData: {
+    name: string;
+    accessLevel: string;
+    permissions: string[];
+    requireApproval: boolean;
+    filesCount: number;
+  }) => {
+    // 1. Create subfolder under current targetFolder
+    handleCreateFolderSubmit(folderData.name, folderData.accessLevel);
+
+    // 2. Add mock files inside that subfolder
+    const mockFiles: DocumentRowData[] = Array.from({ length: folderData.filesCount }).map((_, idx) => ({
+      id: `doc-${Date.now()}-${idx}`,
+      title: `${folderData.name.replace(/\s+/g, '_')}_Doc_${idx + 1}`,
+      type: 'PDF DOCUMENT',
+      access: folderData.permissions.length > 0 ? folderData.permissions : [folderData.accessLevel.toUpperCase()],
+      lastModified: 'Just now',
+      owner: 'Current User',
+      status: folderData.requireApproval ? 'Draft' : 'Approved',
+      iconType: 'contact',
+    }));
+
+    setDocuments((prev) => ({
+      ...prev,
+      [folderData.name]: mockFiles,
+    }));
+
+    setContentDialogOpen(false);
   };
 
   return (
@@ -391,7 +432,7 @@ export function FolderSidebar({
             <Box sx={{ display: 'flex', gap: 0.5 }}>
               <IconButton
                 size="small"
-                onClick={() => { setTargetFolder(selectedFolder); setFolderDialogOpen(true); }}
+                onClick={() => { setTargetFolder(selectedFolder); setDialogInitialTab(2); setContentDialogOpen(true); }}
                 sx={{
                   color: '#1565C0',
                   p: 0.5,
@@ -399,17 +440,6 @@ export function FolderSidebar({
                 }}
               >
                 <CreateNewFolderOutlinedIcon sx={{ fontSize: '1.25rem' }} />
-              </IconButton>
-              <IconButton
-                size="small"
-                onClick={() => { setTargetFolder(selectedFolder); setFileDialogOpen(true); }}
-                sx={{
-                  color: '#1565C0',
-                  p: 0.5,
-                  '&:hover': { bgcolor: 'action.hover' },
-                }}
-              >
-                <NoteAddOutlinedIcon sx={{ fontSize: '1.25rem' }} />
               </IconButton>
             </Box>
           </Box>
@@ -503,7 +533,8 @@ export function FolderSidebar({
                         onClick={(e) => {
                           e.stopPropagation();
                           setTargetFolder(folder.name);
-                          setFolderDialogOpen(true);
+                          setDialogInitialTab(2);
+                          setContentDialogOpen(true);
                         }}
                         sx={{
                           color: '#1565C0',
@@ -512,22 +543,6 @@ export function FolderSidebar({
                         }}
                       >
                         <CreateNewFolderOutlinedIcon sx={{ fontSize: '1rem' }} />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        title="Upload File"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setTargetFolder(folder.name);
-                          setFileDialogOpen(true);
-                        }}
-                        sx={{
-                          color: '#1565C0',
-                          p: 0.4,
-                          '&:hover': { bgcolor: 'rgba(21,101,192,0.1)' },
-                        }}
-                      >
-                        <NoteAddOutlinedIcon sx={{ fontSize: '1rem' }} />
                       </IconButton>
                     </Box>
 
@@ -607,7 +622,8 @@ export function FolderSidebar({
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setTargetFolder(sub.name);
-                                  setFolderDialogOpen(true);
+                                  setDialogInitialTab(2);
+                                  setContentDialogOpen(true);
                                 }}
                                 sx={{
                                   color: '#1565C0',
@@ -616,22 +632,6 @@ export function FolderSidebar({
                                 }}
                               >
                                 <CreateNewFolderOutlinedIcon sx={{ fontSize: '1rem' }} />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                title="Upload File"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTargetFolder(sub.name);
-                                  setFileDialogOpen(true);
-                                }}
-                                sx={{
-                                  color: '#1565C0',
-                                  p: 0.4,
-                                  '&:hover': { bgcolor: 'rgba(21,101,192,0.1)' },
-                                }}
-                              >
-                                <NoteAddOutlinedIcon sx={{ fontSize: '1rem' }} />
                               </IconButton>
                             </Box>
                           </ListItemButton>
@@ -726,21 +726,45 @@ export function FolderSidebar({
         </CardContent>
       </Card>
 
-      {/* External Custom Create Folder Dialog Component */}
-      <CreateFolderDialog
-        open={folderDialogOpen}
-        onClose={() => setFolderDialogOpen(false)}
-        onCreate={handleCreateFolderSubmit}
-        folderPath={getFolderPath(targetFolder)}
+      {/* Unified Add New Content Dialog Component */}
+      <AddNewContentDialog
+        open={contentDialogOpen}
+        onClose={() => setContentDialogOpen(false)}
+        onUploadFile={handleUploadFileSubmit}
+        onUploadFolder={handleUploadFolderSubmit}
+        onCreateFolder={handleCreateFolderSubmit}
+        selectedFolderPath={getFolderPath(targetFolder)}
+        initialTab={dialogInitialTab}
       />
 
-      {/* External Custom Upload File Dialog Component */}
-      <UploadFileDialog
-        open={fileDialogOpen}
-        onClose={() => setFileDialogOpen(false)}
-        onUpload={handleUploadFileSubmit}
-        selectedFolderPath={getFolderPath(targetFolder)}
-      />
+      {/* Floating Action Button for uploading files */}
+      <Fab
+        color="primary"
+        aria-label="upload file"
+        onClick={() => {
+          setTargetFolder(selectedFolder);
+          setDialogInitialTab(0);
+          setContentDialogOpen(true);
+        }}
+        sx={{
+          position: 'fixed',
+          bottom: 32,
+          right: 32,
+          bgcolor: '#0c1926',
+          color: '#ffffff',
+          width: 56,
+          height: 56,
+          boxShadow: '0 4px 20px rgba(12, 25, 38, 0.3)',
+          zIndex: 1200,
+          '&:hover': {
+            bgcolor: '#14283c',
+            transform: 'scale(1.08)',
+          },
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <CloudUploadIcon />
+      </Fab>
     </Box>
   );
 }
