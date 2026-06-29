@@ -12,7 +12,6 @@ import {
   Checkbox,
   FormControlLabel,
   IconButton,
-  Fab,
 } from '@mui/material';
 import CreateNewFolderOutlinedIcon from '@mui/icons-material/CreateNewFolderOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
@@ -20,7 +19,6 @@ import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { AddNewContentDialog } from './modal/AddNewContentDialog';
 import { DocumentRowData } from './DocumentsTable';
 
@@ -796,34 +794,6 @@ export function FolderSidebar({
         initialTab={dialogInitialTab}
       />
 
-      {/* Floating Action Button for uploading files */}
-      <Fab
-        color="primary"
-        aria-label="upload file"
-        onClick={() => {
-          setTargetFolder(selectedFolder);
-          setDialogInitialTab(0);
-          setContentDialogOpen(true);
-        }}
-        sx={{
-          position: 'fixed',
-          bottom: 32,
-          right: 32,
-          bgcolor: '#0c1926',
-          color: '#ffffff',
-          width: 56,
-          height: 56,
-          boxShadow: '0 4px 20px rgba(12, 25, 38, 0.3)',
-          zIndex: 1200,
-          '&:hover': {
-            bgcolor: '#14283c',
-            transform: 'scale(1.08)',
-          },
-          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
-        <CloudUploadIcon />
-      </Fab>
     </Box>
   );
 }
