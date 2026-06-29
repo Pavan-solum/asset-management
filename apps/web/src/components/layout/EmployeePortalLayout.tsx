@@ -10,15 +10,17 @@ import {
   MenuItem,
   ListItemIcon,
   Divider,
+  useTheme,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
-import DevicesIcon from '@mui/icons-material/Devices';
+import HomeIcon from '@mui/icons-material/Home';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { ThemeModeToggle } from '../ThemeModeToggle';
 import { useAppDispatch, useAuthUser, useTenant } from '../../hooks/storeHooks';
 import { logout } from '../../store/authSlice';
 import { APP_NAME } from '../../constants/brand';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
+import { ChatbotWidget } from '../ChatbotWidget';
 
 export function EmployeePortalLayout() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -26,9 +28,11 @@ export function EmployeePortalLayout() {
   const navigate = useNavigate();
   const user = useAuthUser();
   const tenant = useTenant();
+  const theme = useTheme();
 
   const initials = getUserInitials(user);
   const displayName = getUserDisplayName(user);
+  const isDarkMode = theme.palette.mode === 'dark';
 
   const handleLogout = () => {
     setAnchorEl(null);
@@ -49,11 +53,34 @@ export function EmployeePortalLayout() {
         }}
       >
         <Toolbar sx={{ maxWidth: 960, width: '100%', mx: 'auto' }}>
-          <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36, mr: 1.5 }}>
-            <DevicesIcon fontSize="small" />
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="subtitle1" fontWeight={700} noWrap>
+          <Box 
+            component="img"
+            src="/logo.png"
+            alt="Assetly Logo"
+            onClick={() => navigate('/')}
+            sx={{ 
+              height: 38, 
+              width: 38,
+              objectFit: 'contain', 
+              mr: 1.5, 
+              cursor: 'pointer', 
+              transition: 'opacity 0.2s',
+              mixBlendMode: isDarkMode ? 'screen' : 'multiply',
+              filter: isDarkMode ? 'invert(1) hue-rotate(180deg)' : 'none',
+              '&:hover': { opacity: 0.8 } 
+            }}
+          />
+          <Box 
+            onClick={() => navigate('/')}
+            sx={{ 
+              flex: 1, 
+              minWidth: 0, 
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              '&:hover': { opacity: 0.8 } 
+            }}
+          >
+            <Typography variant="h6" fontWeight={700} noWrap>
               {APP_NAME}
             </Typography>
             <Typography variant="caption" color="text.secondary" noWrap display="block">
@@ -76,6 +103,12 @@ export function EmployeePortalLayout() {
               </Typography>
             </Box>
             <Divider />
+            <MenuItem onClick={() => { setAnchorEl(null); navigate('/'); }}>
+              <ListItemIcon>
+                <HomeIcon fontSize="small" />
+              </ListItemIcon>
+              Corporate Portal
+            </MenuItem>
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>
                 <LogoutIcon fontSize="small" />
@@ -89,6 +122,7 @@ export function EmployeePortalLayout() {
       <Box component="main" sx={{ maxWidth: 960, width: '100%', mx: 'auto', px: { xs: 2, sm: 3 }, py: 3 }}>
         <Outlet />
       </Box>
+      <ChatbotWidget />
     </Box>
   );
 }

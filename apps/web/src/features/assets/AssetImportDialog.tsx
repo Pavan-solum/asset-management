@@ -262,6 +262,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
         purchaseDate: today,
         purchaseCost: 0,
         currentValue: 0,
+        repairCost: 0,
         location: row.location || 'HQ',
         vendorId: guessVendorId(manufacturer, vendors),
         assignedEmployeeId: row.assignedEmployeeId,

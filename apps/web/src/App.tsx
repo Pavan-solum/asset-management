@@ -25,9 +25,16 @@ import { NetworkDevicesPage } from './features/network/NetworkDevicesPage';
 import { NetworkDeviceDetailPage } from './features/network/NetworkDeviceDetailPage';
 import { DeviceRequestPage } from './features/portal/DeviceRequestPage';
 import { RequestsPage } from './features/requests/RequestsPage';
+import { EndpointsPage } from './features/endpoints/EndpointsPage';
+import { LifecyclePage } from './features/lifecycle/LifecyclePage';
+import { FinancePage } from './features/finance/FinancePage';
+import { SoftwarePage } from './features/software/SoftwarePage';
+import { MaintenancePage } from './features/maintenance/MaintenancePage';
+import { AnalyticsPage } from './features/analytics/AnalyticsPage';
+import { MobilePage } from './features/mobile/MobilePage';
 import { DashboardPage as ExeDocsDashboardPage } from './features/exe-docs/dashboard/DashboardPage';
 import { LibraryPage } from './features/exe-docs/library/LibraryPage';
-import { FinancePage } from './features/exe-docs/finance/FinancePage';
+import { FinancePage as ExecDocsFinancePage } from './features/exe-docs/finance/FinancePage';
 import { MeetingsPage } from './features/exe-docs/meetings/MeetingsPage';
 import { CompliancePage } from './features/exe-docs/compliance/CompliancePage';
 
@@ -94,8 +101,15 @@ export default function App() {
         <Route path="departments" element={<DepartmentsPage />} />
         <Route path="vendors" element={<VendorsPage />} />
         <Route path="requests" element={<RequestsPage />} />
+        <Route path="endpoints" element={<EndpointsPage />} />
         <Route path="audit" element={<AuditPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="lifecycle" element={<LifecyclePage />} />
+        <Route path="finance" element={<FinancePage />} />
+        <Route path="software" element={<SoftwarePage />} />
+        <Route path="maintenance" element={<MaintenancePage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="mobile" element={<MobilePage />} />
       </Route>
 
       <Route
@@ -110,7 +124,7 @@ export default function App() {
       >
         <Route index element={<ExeDocsDashboardPage />} />
         <Route path="library" element={<LibraryPage />} />
-        <Route path="finance" element={<FinancePage />} />
+        <Route path="finance" element={<ExecDocsFinancePage />} />
         <Route path="meetings" element={<MeetingsPage />} />
         <Route path="compliance" element={<CompliancePage />} />
       </Route>

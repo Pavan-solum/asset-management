@@ -13,7 +13,7 @@ interface ImportBody {
 }
 
 function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 export default async function handler(req: Request) {
@@ -80,14 +80,14 @@ export default async function handler(req: Request) {
       const rows = await sql`
         INSERT INTO assets (
           id, tenant_id, asset_tag, name, category, manufacturer, model, serial_number,
-          status, lifecycle_stage, purchase_date, purchase_cost, current_value, location,
+          status, lifecycle_stage, purchase_date, purchase_cost, current_value, repair_cost, location,
           department, specs, image_url, vendor_id, assigned_employee_id, warranty_expires_at,
           notes, qr_code_data
         ) VALUES (
           ${payload.id}, ${payload.tenantId},
           ${payload.assetTag}, ${payload.name}, ${payload.category}, ${payload.manufacturer},
           ${payload.model}, ${payload.serialNumber}, ${payload.status}, ${payload.lifecycleStage},
-          ${payload.purchaseDate}, ${payload.purchaseCost}, ${payload.currentValue},
+          ${payload.purchaseDate}, ${payload.purchaseCost}, ${payload.currentValue}, ${payload.repairCost},
           ${payload.location}, ${payload.department}, ${payload.specs}, ${payload.imageUrl},
           ${payload.vendorId}, ${payload.assignedEmployeeId}, ${payload.warrantyExpiresAt},
           ${payload.notes}, ${payload.qrCodeData}

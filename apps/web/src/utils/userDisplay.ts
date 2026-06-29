@@ -1,5 +1,6 @@
 import { DEMO_USERS } from '../data/demoData';
 import type { User, UserRole } from '../types';
+import { isApiEnabled } from '../services/api/config';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   tenant_admin: 'Tenant Admin',
@@ -17,7 +18,7 @@ export function resolveDemoUser(user: User): User {
     firstName: cred.user.firstName,
     lastName: cred.user.lastName,
     role: cred.user.role,
-    employeeId: cred.user.employeeId,
+    employeeId: isApiEnabled() ? (user.employeeId ?? cred.user.employeeId) : cred.user.employeeId,
   };
 }
 

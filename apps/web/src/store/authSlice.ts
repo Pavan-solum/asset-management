@@ -12,13 +12,16 @@ interface AuthState {
   error: string | null;
 }
 
-const initialState: AuthState = {
+const defaultState: AuthState = {
   isAuthenticated: false,
   user: null,
   tenant: null,
   token: null,
   error: null,
 };
+
+const savedAuth = sessionStorage.getItem('assetly_auth_state');
+const initialState: AuthState = savedAuth ? JSON.parse(savedAuth) : defaultState;
 
 const authSlice = createSlice({
   name: 'auth',
@@ -36,6 +39,7 @@ const authSlice = createSlice({
       state.tenant = DEMO_TENANT;
       state.token = null;
       state.error = null;
+      sessionStorage.setItem('assetly_auth_state', JSON.stringify(state));
     },
     setSession: (
       state,
@@ -47,6 +51,7 @@ const authSlice = createSlice({
       state.token = action.payload.token;
       state.error = null;
       storeToken(action.payload.token);
+      sessionStorage.setItem('assetly_auth_state', JSON.stringify(state));
     },
     logout: (state) => {
       state.isAuthenticated = false;
@@ -55,6 +60,7 @@ const authSlice = createSlice({
       state.token = null;
       state.error = null;
       storeToken(null);
+      sessionStorage.removeItem('assetly_auth_state');
     },
     clearError: (state) => {
       state.error = null;

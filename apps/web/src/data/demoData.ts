@@ -141,6 +141,7 @@ function generateItAssets(): Asset[] {
       purchaseDate: daysAgo(i * 30),
       purchaseCost,
       currentValue: Math.round(purchaseCost * 0.75),
+      repairCost: status === 'in_repair' ? 150 : (status === 'retired' ? 250 : (i % 7 === 0 ? 75 : 0)),
       location: `HQ Floor ${(i % 5) + 1}`,
       vendorId: vendorIds[i % 3],
       assignedEmployeeId: i <= 35 ? DEMO_EMPLOYEES[(i - 1) % DEMO_EMPLOYEES.length].id : undefined,
@@ -193,6 +194,7 @@ function generatePeripheralAssets(): Asset[] {
       purchaseDate: daysAgo(90 + i * 5),
       purchaseCost: item.cost,
       currentValue: Math.round(item.cost * 0.8),
+      repairCost: 0,
       location: `HQ Floor ${(i % 5) + 1}`,
       vendorId: item.vendorId,
       assignedEmployeeId: deployed ? DEMO_EMPLOYEES[i % DEMO_EMPLOYEES.length].id : undefined,
@@ -389,6 +391,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   headset: 'Headset',
   peripheral: 'Peripheral',
   network: 'Network',
+  software: 'Software',
   other: 'Other',
 };
 

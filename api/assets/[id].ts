@@ -5,7 +5,7 @@ import { requireAuth, insertAuditLog } from '../_lib/auth';
 export const config = { runtime: 'edge' };
 
 function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 export default async function handler(req: Request) {
@@ -53,6 +53,7 @@ export default async function handler(req: Request) {
           purchase_date = COALESCE(${body.purchaseDate != null ? String(body.purchaseDate) : null}, purchase_date),
           purchase_cost = COALESCE(${body.purchaseCost != null ? Number(body.purchaseCost) : null}, purchase_cost),
           current_value = COALESCE(${body.currentValue != null ? Number(body.currentValue) : null}, current_value),
+          repair_cost = COALESCE(${body.repairCost != null ? Number(body.repairCost) : null}, repair_cost),
           location = COALESCE(${body.location != null ? String(body.location) : null}, location),
           department = COALESCE(${body.department != null ? String(body.department) : null}, department),
           specs = COALESCE(${body.specs != null ? String(body.specs) : null}, specs),

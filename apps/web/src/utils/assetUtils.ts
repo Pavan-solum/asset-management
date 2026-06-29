@@ -12,6 +12,7 @@ export const ASSET_CATEGORIES: AssetCategory[] = [
   'headset',
   'peripheral',
   'network',
+  'software',
   'other',
 ];
 
@@ -106,11 +107,14 @@ export function createEmptyAssetForm() {
     purchaseDate: new Date().toISOString().split('T')[0],
     purchaseCost: '',
     currentValue: '',
+    repairCost: '',
     warrantyExpiresAt: defaultWarrantyDate(),
     location: '',
     department: '',
     assignedTo: '',
+    assignedAssetId: '',
     vendorId: 'vendor-dell',
+    activationKey: '',
     notes: '',
     imageUrl: '' as string | undefined,
   };

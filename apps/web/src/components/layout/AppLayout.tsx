@@ -22,6 +22,7 @@ import { ThemeModeToggle } from '../ThemeModeToggle';
 import { useAppDispatch, useAuthUser, useTenant } from '../../hooks/storeHooks';
 import { logout } from '../../store/authSlice';
 import { getRoleLabel, getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
+import { ChatbotWidget } from '../ChatbotWidget';
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -165,6 +166,7 @@ export function AppLayout() {
           <Outlet />
         </Box>
       </Box>
+      <ChatbotWidget />
     </Box>
   );
 }

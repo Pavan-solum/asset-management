@@ -18,6 +18,7 @@ import { reloadFromApi } from '../../components/DataBootstrap';
 import { isApiEnabled } from '../../services/api/config';
 import { patchAsset, deleteAsset as deleteAssetApi } from '../../services/api/assets';
 import { CATEGORY_LABELS, STATUS_LABELS } from '../../data/demoData';
+import { LIFECYCLE_LABELS } from '../../utils/assetUtils';
 import type { Asset } from '../../types';
 
 interface Props {
@@ -144,6 +145,13 @@ export function AssetEditDialog({ open, onClose, asset, onDeleted }: Props) {
             </TextField>
           </Grid>
           <Grid item xs={12} sm={6}>
+            <TextField select fullWidth label="Lifecycle Stage" value={form.lifecycleStage} onChange={(e) => set('lifecycleStage', e.target.value)}>
+              {Object.entries(LIFECYCLE_LABELS).map(([k, v]) => (
+                <MenuItem key={k} value={k}>{v}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
             <TextField fullWidth label="Manufacturer" value={form.manufacturer} onChange={(e) => set('manufacturer', e.target.value)} />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -163,7 +171,13 @@ export function AssetEditDialog({ open, onClose, asset, onDeleted }: Props) {
             </TextField>
           </Grid>
           <Grid item xs={12} sm={6}>
+            <TextField fullWidth type="number" label="Purchase Cost" value={form.purchaseCost} onChange={(e) => set('purchaseCost', Number(e.target.value))} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
             <TextField fullWidth type="number" label="Current Value" value={form.currentValue} onChange={(e) => set('currentValue', Number(e.target.value))} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField fullWidth type="number" label="Repair Charges" value={form.repairCost} onChange={(e) => set('repairCost', Number(e.target.value))} />
           </Grid>
           <Grid item xs={12}>
             <TextField fullWidth multiline rows={2} label="Notes" value={form.notes ?? ''} onChange={(e) => set('notes', e.target.value)} />
