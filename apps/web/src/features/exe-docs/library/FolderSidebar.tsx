@@ -787,6 +787,8 @@ export function FolderSidebar({
       <AddNewContentDialog
         open={contentDialogOpen}
         onClose={() => setContentDialogOpen(false)}
+        folders={folders}
+        onPathChange={setTargetFolder}
         onUploadFile={handleUploadFileSubmit}
         onUploadFolder={handleUploadFolderSubmit}
         onCreateFolder={handleCreateFolderSubmit}
