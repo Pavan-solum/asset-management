@@ -25,6 +25,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 export interface MeetingData {
   id: string;
@@ -45,9 +46,10 @@ interface MeetingCardProps {
   onViewAgenda: (meeting: MeetingData) => void;
   onDelete?: (id: string) => void;
   onEdit?: (meeting: MeetingData) => void;
+  onChangeStatus?: (id: string, newStatus: 'CONFIRMED' | 'TENTATIVE' | 'COMPLETED') => void;
 }
 
-export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit }: MeetingCardProps) {
+export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit, onChangeStatus }: MeetingCardProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -59,14 +61,22 @@ export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit }: Meeting
     setAnchorEl(null);
   };
 
-  const handleEditClick = () => {
+  const handleEditClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
     handleMenuClose();
     if (onEdit) onEdit(meeting);
   };
 
-  const handleDeleteClick = () => {
+  const handleDeleteClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
     handleMenuClose();
     if (onDelete) onDelete(meeting.id);
+  };
+
+  const handleChangeStatusClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    handleMenuClose();
+    onViewAgenda(meeting);
   };
 
   // Determine chip color
@@ -122,6 +132,7 @@ export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit }: Meeting
         flexDirection: 'column',
         borderRadius: 3,
         bgcolor: 'background.paper',
+        cursor: 'default',
         '&:hover': {
           boxShadow: (theme) =>
             theme.palette.mode === 'dark'
@@ -149,7 +160,10 @@ export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit }: Meeting
           />
           <IconButton
             size="small"
-            onClick={handleMenuOpen}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleMenuOpen(e);
+            }}
             aria-label="meeting actions"
             sx={{ color: 'text.secondary' }}
           >
@@ -188,6 +202,7 @@ export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit }: Meeting
             )}
             {meeting.link ? (
               <Link
+                onClick={(e) => e.stopPropagation()}
                 href={meeting.link.startsWith('http') ? meeting.link : `https://${meeting.link}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -288,11 +303,14 @@ export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit }: Meeting
             </AvatarGroup>
           </Box>
 
-          {/* Action Button: ALWAYS View Agenda */}
+          {/* Action Button: View Agenda */}
           <Button
             variant="outlined"
             color="primary"
-            onClick={() => onViewAgenda(meeting)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewAgenda(meeting);
+            }}
             sx={{
               borderRadius: '20px',
               px: 2.5,
@@ -339,6 +357,14 @@ export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit }: Meeting
               <EditOutlinedIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText primary="Edit Meeting" />
+          </MenuItem>
+        )}
+        {meeting.status !== 'COMPLETED' && onChangeStatus && (
+          <MenuItem onClick={handleChangeStatusClick}>
+            <ListItemIcon>
+              <SwapHorizIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Change Status" />
           </MenuItem>
         )}
         {onDelete && (

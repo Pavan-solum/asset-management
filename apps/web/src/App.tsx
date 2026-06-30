@@ -36,6 +36,7 @@ import { DashboardPage as ExeDocsDashboardPage } from './features/exe-docs/dashb
 import { LibraryPage } from './features/exe-docs/library/LibraryPage';
 import { FinancePage as ExecDocsFinancePage } from './features/exe-docs/finance/FinancePage';
 import { MeetingsPage } from './features/exe-docs/meetings/MeetingsPage';
+import { CompletedReportPage } from './features/exe-docs/meetings/CompletedReportPage';
 import { CompliancePage } from './features/exe-docs/compliance/CompliancePage';
 
 export default function App() {
@@ -126,6 +127,7 @@ export default function App() {
         <Route path="library" element={<LibraryPage />} />
         <Route path="finance" element={<ExecDocsFinancePage />} />
         <Route path="meetings" element={<MeetingsPage />} />
+        <Route path="meetings/details" element={<CompletedReportPage />} />
         <Route path="compliance" element={<CompliancePage />} />
       </Route>
 

@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Button, Grid, CircularProgress, Typography, alpha } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { PageHeader } from '../../../components/PageHeader';
 import { ExecutiveInsightsBanner } from './modal/ExecutiveInsightsBanner';
 import { MeetingCard, MeetingData } from './modal/MeetingCard';
 import { NewMeetingModal } from './modal/NewMeetingModal';
-import { ViewAgendaModal } from './modal/ViewAgendaModal';
+import { UpcomingMeetingDetailsModal } from './modal/UpcomingMeetingDetailsModal';
 import { ReadReportModal } from './modal/ReadReportModal';
 
 export function MeetingsPage() {
+  const navigate = useNavigate();
   const [meetings, setMeetings] = useState<MeetingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed'>('upcoming');
@@ -44,8 +46,12 @@ export function MeetingsPage() {
   };
 
   const handleOpenEditMeeting = (meeting: MeetingData) => {
-    setEditingMeeting(meeting);
-    setIsNewMeetingOpen(true);
+    if (meeting.status === 'COMPLETED') {
+      navigate('/exec-docs/meetings/details', { state: { meeting } });
+    } else {
+      setSelectedMeeting(meeting);
+      setIsAgendaOpen(true);
+    }
   };
 
   const handleSaveMeeting = (newMeeting: Omit<MeetingData, 'id'> & { id?: string }) => {
@@ -68,9 +74,19 @@ export function MeetingsPage() {
     setMeetings((prev) => prev.filter((m) => m.id !== id));
   };
 
+  const handleStatusChange = (id: string, newStatus: 'CONFIRMED' | 'TENTATIVE' | 'COMPLETED') => {
+    setMeetings((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, status: newStatus } : m))
+    );
+  };
+
   const handleViewAgenda = (meeting: MeetingData) => {
-    setSelectedMeeting(meeting);
-    setIsAgendaOpen(true);
+    if (meeting.status === 'COMPLETED') {
+      navigate('/exec-docs/meetings/details', { state: { meeting } });
+    } else {
+      setSelectedMeeting(meeting);
+      setIsAgendaOpen(true);
+    }
   };
 
   if (loading) {
@@ -252,6 +268,7 @@ export function MeetingsPage() {
               onViewAgenda={handleViewAgenda}
               onDelete={handleDeleteMeeting}
               onEdit={handleOpenEditMeeting}
+              onChangeStatus={handleStatusChange}
             />
           </Grid>
         ))}
@@ -285,10 +302,12 @@ export function MeetingsPage() {
         editMeeting={editingMeeting}
       />
 
-      <ViewAgendaModal
+      <UpcomingMeetingDetailsModal
         open={isAgendaOpen}
         onClose={() => setIsAgendaOpen(false)}
         meeting={selectedMeeting}
+        onSave={handleSaveMeeting}
+        onStatusChange={handleStatusChange}
       />
 
       <ReadReportModal open={isReportOpen} onClose={() => setIsReportOpen(false)} />
