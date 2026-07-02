@@ -21,6 +21,7 @@ Enterprise multi-tenant SaaS for IT asset lifecycle management, endpoint monitor
 | 9 | [SaaS Pricing Model](docs/09-pricing-model.md) | Plans, limits, MSP billing |
 | 10 | [Development Roadmap](docs/10-roadmap.md) | 7-phase product roadmap |
 | **→** | [**Phase 1 Demo Plan**](docs/11-phase1-demo-plan.md) | **Initial MVP scope, timeline, demo script** |
+| 14 | [Multi-Tenant Database Architecture](docs/14-multi-tenant-database-architecture.md) | Shared DB vs dedicated DB per org, Neon provisioning |
 
 ---
 

@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { Employee } from '../types';
+import { DEMO_TENANT } from '../data/demoData';
 
 const employeesSlice = createSlice({
   name: 'employees',
@@ -8,8 +9,12 @@ const employeesSlice = createSlice({
     replaceAllEmployees: (state, action: PayloadAction<Employee[]>) => {
       state.items = action.payload;
     },
-    addEmployee: (state, action: PayloadAction<Omit<Employee, 'id'>>) => {
-      state.items.push({ ...action.payload, id: `emp-${Date.now()}` });
+    addEmployee: (state, action: PayloadAction<Omit<Employee, 'id' | 'tenantId'>>) => {
+      state.items.push({ 
+        ...action.payload, 
+        id: `emp-${Date.now()}`,
+        tenantId: DEMO_TENANT.id
+      });
     },
     updateEmployee: (state, action: PayloadAction<Employee>) => {
       const idx = state.items.findIndex((e) => e.id === action.payload.id);

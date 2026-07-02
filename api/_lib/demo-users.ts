@@ -15,31 +15,41 @@ export const DEMO_USERS: Record<
     };
   }
 > = {
-  [`admin@${COMPANY_EMAIL_DOMAIN}`]: {
+  'sysadmin@assetly.com': {
+    password: 'Demo@123456',
+    user: {
+      id: 'user-sysadmin',
+      email: 'sysadmin@assetly.com',
+      firstName: 'Platform',
+      lastName: 'Admin',
+      role: 'platform_admin',
+    },
+  },
+  'admin@solumtechnologies.com': {
     password: 'Demo@123456',
     user: {
       id: 'user-admin',
-      email: `admin@${COMPANY_EMAIL_DOMAIN}`,
+      email: 'admin@solumtechnologies.com',
       firstName: 'Vasanth',
       lastName: '',
       role: 'tenant_admin',
     },
   },
-  [`itadmin@${COMPANY_EMAIL_DOMAIN}`]: {
+  'itadmin@solumtechnologies.com': {
     password: 'Demo@123456',
     user: {
       id: 'user-itadmin',
-      email: `itadmin@${COMPANY_EMAIL_DOMAIN}`,
+      email: 'itadmin@solumtechnologies.com',
       firstName: 'Pavan',
       lastName: '',
       role: 'it_admin',
     },
   },
-  [`viewer@${COMPANY_EMAIL_DOMAIN}`]: {
+  'viewer@solumtechnologies.com': {
     password: 'Demo@123456',
     user: {
       id: 'user-viewer',
-      email: `viewer@${COMPANY_EMAIL_DOMAIN}`,
+      email: 'viewer@solumtechnologies.com',
       firstName: 'Lisa',
       lastName: 'Viewer',
       role: 'viewer',

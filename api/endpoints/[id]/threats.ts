@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight, DEMO_TENANT_ID } from '../../_lib/db';
+import { getTenantSql, json, error, corsPreflight, DEMO_TENANT_ID } from '../../_lib/db';
 import { requireAuth } from '../../_lib/auth';
 
 export const config = { runtime: 'edge' };
@@ -19,7 +19,12 @@ export default async function handler(req: Request) {
     if (!id) return error('Endpoint ID is required', 400);
 
     const resolvedParam = url.searchParams.get('resolved');
-    const sql = getSql();
+    const sql = await getTenantSql(tenantId);
+    const tenantId = auth.tenantId || DEMO_TENANT_ID;
+
+    // Verify the endpoint belongs to this tenant
+    const [ep] = await sql`SELECT id FROM endpoints WHERE id = ${id} AND tenant_id = ${tenantId} LIMIT 1`;
+    if (!ep) return error('Endpoint not found', 404);
 
     let threats;
     if (resolvedParam === 'false') {

@@ -2,23 +2,31 @@ import { getSql, json, error, corsPreflight } from '../_lib/db';
 
 export const config = { runtime: 'edge' };
 
+function verifyAgentToken(req: Request): boolean {
+  const secret = process.env.AGENT_SECRET;
+  if (!secret) return true;
+  return req.headers.get('X-Agent-Token') === secret;
+}
+
 export default async function handler(req: Request) {
   if (req.method === 'OPTIONS') return corsPreflight();
   if (req.method !== 'POST') return error('Method not allowed', 405);
 
-  try {
-    const body = await req.json() as Record<string, any>;
-    const { endpoint_id, cpu_usage, memory_total, memory_used, running_processes, firewall_status, defender_status, antivirus_updated_at, active_ports, last_logged_user, uptime_seconds, last_reboot_at, agent_version, bitlocker_status, bitlocker_drive, threats, command_results } = body;
+  if (!verifyAgentToken(req)) return error('Unauthorized', 401);
 
-    if (!endpoint_id) {
+  try {
+    const body = await req.json() as Record<string, unknown>;
+    const { endpoint_id, cpu_usage, memory_total, memory_used, running_processes, firewall_status, defender_status, antivirus_updated_at, active_ports, last_logged_user, uptime_seconds, last_reboot_at, agent_version, bitlocker_status, bitlocker_drive, threats, command_results } = body as Record<string, any>;
+
+    if (!endpoint_id || typeof endpoint_id !== 'string') {
       return error('endpoint_id is required', 400);
     }
 
     const sql = getSql();
 
-    // Check if endpoint exists
+    // Verify endpoint exists (tenant isolation is enforced by endpoint ownership)
     const [existing] = await sql`
-      SELECT id FROM endpoints WHERE id = ${endpoint_id} LIMIT 1
+      SELECT id, tenant_id FROM endpoints WHERE id = ${endpoint_id} LIMIT 1
     `;
 
     if (!existing) {

@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
 import { mapAssetRequest, type DbAssetRequest } from '../_lib/mappers';
 import { requireAuth, canReviewRequests, insertAuditLog, type AuthUser } from '../_lib/auth';
 
@@ -9,7 +9,7 @@ function isUuid(value: string): boolean {
 }
 
 async function resolveEmployeeId(auth: AuthUser): Promise<string | Response> {
-  const sql = getSql();
+  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
 
   if (auth.employeeId && isUuid(auth.employeeId)) {
     return auth.employeeId;
@@ -18,7 +18,7 @@ async function resolveEmployeeId(auth: AuthUser): Promise<string | Response> {
   try {
     const rows = (await sql`
       SELECT id FROM employees
-      WHERE tenant_id = ${DEMO_TENANT_ID} AND lower(email) = ${auth.email.toLowerCase()}
+      WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND lower(email) = ${auth.email.toLowerCase()}
       LIMIT 1
     `) as { id: string }[];
 
@@ -30,8 +30,8 @@ async function resolveEmployeeId(auth: AuthUser): Promise<string | Response> {
   return error('Employee record not found for this account', 403);
 }
 
-async function fetchRequests(employeeId?: string): Promise<DbAssetRequest[]> {
-  const sql = getSql();
+async function fetchRequests(tenantId: string, employeeId?: string): Promise<DbAssetRequest[]> {
+  const sql = await getTenantSql(tenantId);
 
   if (employeeId) {
     return (await sql`
@@ -44,7 +44,7 @@ async function fetchRequests(employeeId?: string): Promise<DbAssetRequest[]> {
       FROM asset_requests r
       JOIN employees e ON e.id = r.employee_id
       LEFT JOIN departments d ON d.id = e.department_id
-      WHERE r.tenant_id = ${DEMO_TENANT_ID} AND r.employee_id = ${employeeId}
+      WHERE r.tenant_id = ${tenantId} AND r.employee_id = ${employeeId}
       ORDER BY r.created_at DESC
     `) as DbAssetRequest[];
   }
@@ -59,7 +59,7 @@ async function fetchRequests(employeeId?: string): Promise<DbAssetRequest[]> {
     FROM asset_requests r
     JOIN employees e ON e.id = r.employee_id
     LEFT JOIN departments d ON d.id = e.department_id
-    WHERE r.tenant_id = ${DEMO_TENANT_ID}
+    WHERE r.tenant_id = ${tenantId}
     ORDER BY r.created_at DESC
   `) as DbAssetRequest[];
 }
@@ -75,14 +75,14 @@ export default async function handler(req: Request) {
   try {
     if (req.method === 'GET') {
       if (canReviewRequests(auth.role)) {
-        const rows = await fetchRequests();
+        const rows = await fetchRequests(auth.tenantId || DEMO_TENANT_ID);
         return json(rows.map(mapAssetRequest));
       }
 
       if (auth.role === 'employee') {
         const employeeId = await resolveEmployeeId(auth);
         if (employeeId instanceof Response) return employeeId;
-        const rows = await fetchRequests(employeeId);
+        const rows = await fetchRequests(auth.tenantId || DEMO_TENANT_ID, employeeId);
         return json(rows.map(mapAssetRequest));
       }
 
@@ -95,9 +95,9 @@ export default async function handler(req: Request) {
       }
 
       const employeeId = await resolveEmployeeId(auth);
-      if (employeeId instanceof Response) return employeeId;
+        if (employeeId instanceof Response) return employeeId;
 
-      const body = await parseBody<Record<string, unknown>>(req);
+        const body = await parseBody<Record<string, unknown>>(req);
       const requestType = String(body.requestType ?? '').trim();
       const category = String(body.category ?? '').trim();
       const description = String(body.description ?? '').trim();
@@ -115,7 +115,7 @@ export default async function handler(req: Request) {
         INSERT INTO asset_requests (
           tenant_id, employee_id, request_type, category, description, needed_by
         ) VALUES (
-          ${DEMO_TENANT_ID}, ${employeeId}, ${requestType}, ${category}, ${description}, ${neededBy}
+          ${auth.tenantId || DEMO_TENANT_ID}, ${employeeId}, ${requestType}, ${category}, ${description}, ${neededBy}
         )
         RETURNING *
       `) as DbAssetRequest[];

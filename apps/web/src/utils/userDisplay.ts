@@ -3,6 +3,7 @@ import type { User, UserRole } from '../types';
 import { isApiEnabled } from '../services/api/config';
 
 const ROLE_LABELS: Record<UserRole, string> = {
+  platform_admin: 'Platform Admin',
   tenant_admin: 'Tenant Admin',
   it_admin: 'IT Admin',
   viewer: 'Viewer',

@@ -13,8 +13,9 @@ import { ThreatPanel } from './components/ThreatPanel';
 import { InstalledApps } from './components/InstalledApps';
 import { DeviceContext } from './components/DeviceContext';
 import { ActionsBar } from './components/ActionsBar';
+import type { Endpoint, ActivePort } from '../../types';
 
-function EndpointRow({ endpoint }: { endpoint: any }) {
+function EndpointRow({ endpoint }: { endpoint: Endpoint }) {
   const [open, setOpen] = useState(false);
   const [portTab, setPortTab] = useState('All');
 
@@ -159,8 +160,8 @@ function EndpointRow({ endpoint }: { endpoint: any }) {
                     
                     <Tabs value={portTab} onChange={(_, val) => setPortTab(val)} aria-label="network tabs" sx={{ minHeight: '36px', mb: 1 }}>
                       <Tab label={`All (${allPorts.length})`} value="All" sx={{ minHeight: '36px', py: 0.5 }} />
-                      <Tab label={`Listening (${allPorts.filter((p:any) => p.state?.toLowerCase() === 'listen').length})`} value="Listening" sx={{ minHeight: '36px', py: 0.5 }} />
-                      <Tab label={`Established (${allPorts.filter((p:any) => p.state?.toLowerCase() === 'established').length})`} value="Established" sx={{ minHeight: '36px', py: 0.5 }} />
+                      <Tab label={`Listening (${allPorts.filter((p: ActivePort) => p.state?.toLowerCase() === 'listen').length})`} value="Listening" sx={{ minHeight: '36px', py: 0.5 }} />
+                      <Tab label={`Established (${allPorts.filter((p: ActivePort) => p.state?.toLowerCase() === 'established').length})`} value="Established" sx={{ minHeight: '36px', py: 0.5 }} />
                       <Tab label="Other" value="Other" sx={{ minHeight: '36px', py: 0.5 }} />
                     </Tabs>
 
@@ -176,7 +177,7 @@ function EndpointRow({ endpoint }: { endpoint: any }) {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {filteredPorts.map((port: any, idx: number) => (
+                            {filteredPorts.map((port: ActivePort, idx: number) => (
                               <TableRow 
                                 key={idx} 
                                 sx={port.state?.toLowerCase() === 'established' ? { borderLeft: '4px solid #1976d2' } : {}}
@@ -209,18 +210,19 @@ function EndpointRow({ endpoint }: { endpoint: any }) {
 }
 
 export function EndpointsPage() {
-  const [endpoints, setEndpoints] = useState<any[]>([]);
+  const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchEndpoints() {
       try {
-        const data = await apiFetch<{ endpoints: any[] }>('/api/endpoints');
+        const data = await apiFetch<{ endpoints: Endpoint[] }>('/api/endpoints');
         setEndpoints(data.endpoints || []);
         setError(null);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown error occurred';
         console.error('Failed to fetch endpoints', err);
-        setError(err.message || 'Unknown error occurred');
+        setError(message);
       }
     }
     fetchEndpoints();
@@ -253,7 +255,7 @@ export function EndpointsPage() {
                 <TableCell colSpan={6} align="center">No endpoints registered yet.</TableCell>
               </TableRow>
             ) : (
-              endpoints.map((endpoint: any) => (
+              endpoints.map((endpoint: Endpoint) => (
                 <EndpointRow key={endpoint.id} endpoint={endpoint} />
               ))
             )}

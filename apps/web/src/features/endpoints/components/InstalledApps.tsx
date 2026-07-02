@@ -5,9 +5,10 @@ import {
   TableContainer, TableHead, TableRow, Collapse
 } from '@mui/material';
 import { apiFetch } from '../../../services/api/client';
+import type { InstalledApp } from '../../../types';
 
 export function InstalledApps({ endpointId }: { endpointId: string }) {
-  const [apps, setApps] = useState<any[]>([]);
+  const [apps, setApps] = useState<InstalledApp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [vulnerableOnly, setVulnerableOnly] = useState(false);
@@ -19,8 +20,8 @@ export function InstalledApps({ endpointId }: { endpointId: string }) {
     try {
       const data = await apiFetch<{ apps: any[] }>(`/api/endpoints/${endpointId}/installed-apps?vulnerable=${vulnerableOnly}`);
       setApps(data.apps || []);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch installed apps');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch installed apps');
     } finally {
       setLoading(false);
     }

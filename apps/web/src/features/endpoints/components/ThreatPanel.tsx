@@ -6,9 +6,10 @@ import {
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { apiFetch } from '../../../services/api/client';
+import type { EndpointThreat, ThreatSeverity } from '../../../types';
 
 export function ThreatPanel({ endpointId }: { endpointId: string }) {
-  const [threats, setThreats] = useState<any[]>([]);
+  const [threats, setThreats] = useState<EndpointThreat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
@@ -19,8 +20,8 @@ export function ThreatPanel({ endpointId }: { endpointId: string }) {
     try {
       const data = await apiFetch<{ threats: any[] }>(`/api/endpoints/${endpointId}/threats?resolved=${showResolved}`);
       setThreats(data.threats || []);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch threats');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch threats');
     } finally {
       setLoading(false);
     }
@@ -30,7 +31,7 @@ export function ThreatPanel({ endpointId }: { endpointId: string }) {
     fetchThreats();
   }, [endpointId, showResolved]);
 
-  const getSeverityColor = (severity: string) => {
+  const getSeverityColor = (severity: ThreatSeverity | string) => {
     switch (severity?.toLowerCase()) {
       case 'critical': return 'error';
       case 'high': return 'warning';

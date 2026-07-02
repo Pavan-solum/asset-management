@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { Asset, AssetAssignment, OwnershipEvent } from '../types';
+import { DEMO_TENANT } from '../data/demoData';
 
 interface AssetsState {
   items: Asset[];
@@ -19,12 +20,13 @@ const assetsSlice = createSlice({
       reducer(state, action: PayloadAction<Asset>) {
         state.items.unshift(action.payload);
       },
-      prepare(asset: Omit<Asset, 'id' | 'createdAt'>) {
+      prepare(asset: Omit<Asset, 'id' | 'createdAt' | 'tenantId'>) {
         const id = `asset-${Date.now()}`;
         return {
           payload: {
             ...asset,
             id,
+            tenantId: DEMO_TENANT.id,
             createdAt: new Date().toISOString(),
           },
         };
@@ -58,6 +60,7 @@ const assetsSlice = createSlice({
 
       state.assignments.push({
         id: `assign-${Date.now()}`,
+        tenantId: DEMO_TENANT.id,
         assetId,
         employeeId,
         assignedAt: new Date().toISOString(),
@@ -70,6 +73,7 @@ const assetsSlice = createSlice({
 
       state.ownershipHistory.unshift({
         id: `hist-${Date.now()}`,
+        tenantId: DEMO_TENANT.id,
         assetId,
         eventType: 'ASSIGNED',
         description: 'Asset assigned to employee',
@@ -93,7 +97,7 @@ const assetsSlice = createSlice({
       state,
       action: PayloadAction<
         {
-          asset: Omit<Asset, 'id' | 'createdAt'>;
+          asset: Omit<Asset, 'id' | 'createdAt' | 'tenantId'>;
           assignedBy?: string;
         }[]
       >,
@@ -103,12 +107,14 @@ const assetsSlice = createSlice({
         state.items.unshift({
           ...asset,
           id,
+          tenantId: DEMO_TENANT.id,
           createdAt: new Date().toISOString(),
         });
 
         if (asset.assignedEmployeeId && assignedBy) {
           state.assignments.push({
             id: `assign-${id}`,
+            tenantId: DEMO_TENANT.id,
             assetId: id,
             employeeId: asset.assignedEmployeeId,
             assignedAt: new Date().toISOString(),
@@ -117,6 +123,7 @@ const assetsSlice = createSlice({
           });
           state.ownershipHistory.unshift({
             id: `hist-${id}`,
+            tenantId: DEMO_TENANT.id,
             assetId: id,
             eventType: 'ASSIGNED',
             description: 'Assigned during Excel import',
@@ -149,6 +156,7 @@ const assetsSlice = createSlice({
 
       state.ownershipHistory.unshift({
         id: `hist-${Date.now()}`,
+        tenantId: DEMO_TENANT.id,
         assetId,
         eventType: 'RETURNED',
         description: returnCondition ? `Returned — ${returnCondition}` : 'Asset returned',

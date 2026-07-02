@@ -1,13 +1,13 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { Vendor } from '../types';
-import { DEMO_VENDORS } from '../data/demoData';
+import { DEMO_TENANT, DEMO_VENDORS } from '../data/demoData';
 
 const vendorsSlice = createSlice({
   name: 'vendors',
-  initialState: { items: DEMO_VENDORS },
+  initialState: { items: [] as Vendor[] },
   reducers: {
-    addVendor: (state, action: PayloadAction<Omit<Vendor, 'id'>>) => {
-      state.items.push({ ...action.payload, id: `vendor-${Date.now()}` });
+    addVendor: (state, action: PayloadAction<Omit<Vendor, 'id' | 'tenantId'>>) => {
+      state.items.push({ ...action.payload, id: `vendor-${Date.now()}`, tenantId: DEMO_TENANT.id });
     },
     updateVendor: (state, action: PayloadAction<Vendor>) => {
       const idx = state.items.findIndex((v) => v.id === action.payload.id);

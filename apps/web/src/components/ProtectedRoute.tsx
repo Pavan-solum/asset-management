@@ -40,3 +40,9 @@ export function EmployeeRoute({ children }: { children: React.ReactNode }) {
   if (!isEmployeeRole(role)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
+
+export function SystemAdminRoute({ children }: { children: React.ReactNode }) {
+  const role = useAppSelector((s) => s.auth.user?.role);
+  if (role !== 'platform_admin') return <Navigate to="/" replace />;
+  return <>{children}</>;
+}

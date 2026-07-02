@@ -32,7 +32,7 @@ import { addAuditLog } from '../../store/auditSlice';
 import { reloadFromApi } from '../../components/DataBootstrap';
 import { isApiEnabled } from '../../services/api/config';
 import { importInventory as importInventoryApi } from '../../services/api/assets';
-import { CATEGORY_LABELS } from '../../data/demoData';
+import { CATEGORY_LABELS, DEMO_TENANT } from '../../data/demoData';
 import type { AssetCategory, AssetStatus } from '../../types';
 import {
   buildImportRows,
@@ -251,6 +251,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
       const manufacturer = row.manufacturer || guessManufacturer(row.assetName);
       return {
         id,
+        tenantId: DEMO_TENANT.id,
         assetTag: row.assetTag,
         name: row.assetName,
         category: row.category,
@@ -276,6 +277,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
       if (!row?.assignedEmployeeId) return [];
       return [{
         id: `assign-import-${Date.now()}-${i}`,
+        tenantId: DEMO_TENANT.id,
         assetId: item.id,
         employeeId: row.assignedEmployeeId,
         assignedAt: now,
@@ -286,6 +288,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
 
     const ownershipHistory = fixedAssignments.map((a, i) => ({
       id: `hist-import-${Date.now()}-${i}`,
+      tenantId: DEMO_TENANT.id,
       assetId: a.assetId,
       eventType: 'ASSIGNED',
       description: 'Assigned during Excel import',

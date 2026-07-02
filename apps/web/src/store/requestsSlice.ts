@@ -4,7 +4,7 @@ import { DEMO_ASSET_REQUESTS } from '../data/demoData';
 
 const requestsSlice = createSlice({
   name: 'requests',
-  initialState: { items: DEMO_ASSET_REQUESTS as AssetRequest[] },
+  initialState: { items: [] as AssetRequest[] },
   reducers: {
     replaceAllRequests: (state, action: PayloadAction<AssetRequest[]>) => {
       state.items = action.payload;

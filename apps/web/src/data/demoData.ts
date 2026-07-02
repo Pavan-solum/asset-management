@@ -15,37 +15,51 @@ import { COMPANY_EMAIL_DOMAIN, COMPANY_NAME, COMPANY_SLUG } from '../constants/b
 
 export const DEMO_TENANT: Tenant = {
   id: 'tenant-solum',
-  name: COMPANY_NAME,
-  slug: COMPANY_SLUG,
+  name: 'Solum Technologies',
+  slug: 'solum-technologies',
   plan: 'Professional',
 };
 
 export const DEMO_USERS: Record<string, { password: string; user: User }> = {
-  [`admin@${COMPANY_EMAIL_DOMAIN}`]: {
+  'sysadmin@assetly.com': {
+    password: 'Demo@123456',
+    user: {
+      id: 'user-sysadmin',
+      tenantId: 'system',
+      email: 'sysadmin@assetly.com',
+      firstName: 'Platform',
+      lastName: 'Admin',
+      role: 'platform_admin',
+    },
+  },
+  'admin@solumtechnologies.com': {
     password: 'Demo@123456',
     user: {
       id: 'user-admin',
-      email: `admin@${COMPANY_EMAIL_DOMAIN}`,
+      tenantId: 'tenant-solum',
+      email: 'admin@solumtechnologies.com',
       firstName: 'Vasanth',
       lastName: '',
       role: 'tenant_admin',
     },
   },
-  [`itadmin@${COMPANY_EMAIL_DOMAIN}`]: {
+  'itadmin@solumtechnologies.com': {
     password: 'Demo@123456',
     user: {
       id: 'user-itadmin',
-      email: `itadmin@${COMPANY_EMAIL_DOMAIN}`,
+      tenantId: 'tenant-solum',
+      email: 'itadmin@solumtechnologies.com',
       firstName: 'Pavan',
       lastName: '',
       role: 'it_admin',
     },
   },
-  [`viewer@${COMPANY_EMAIL_DOMAIN}`]: {
+  'viewer@solumtechnologies.com': {
     password: 'Demo@123456',
     user: {
       id: 'user-viewer',
-      email: `viewer@${COMPANY_EMAIL_DOMAIN}`,
+      tenantId: 'tenant-solum',
+      email: 'viewer@solumtechnologies.com',
       firstName: 'Lisa',
       lastName: 'Viewer',
       role: 'viewer',
@@ -55,6 +69,7 @@ export const DEMO_USERS: Record<string, { password: string; user: User }> = {
     password: 'Demo@123456',
     user: {
       id: 'user-employee-sarah',
+      tenantId: 'tenant-solum',
       email: 'sarah.chen@solumtechnologies.com',
       firstName: 'Sarah',
       lastName: 'Chen',
@@ -65,25 +80,25 @@ export const DEMO_USERS: Record<string, { password: string; user: User }> = {
 };
 
 export const DEMO_DEPARTMENTS: Department[] = [
-  { id: 'dept-eng', name: 'Engineering', costCenter: 'CC-100' },
-  { id: 'dept-hr', name: 'Human Resources', costCenter: 'CC-200' },
-  { id: 'dept-sales', name: 'Sales', costCenter: 'CC-300' },
-  { id: 'dept-fin', name: 'Finance', costCenter: 'CC-400' },
-  { id: 'dept-ops', name: 'Operations', costCenter: 'CC-500' },
+  { id: 'dept-eng', tenantId: 'tenant-solum', name: 'Engineering', costCenter: 'CC-100' },
+  { id: 'dept-hr', tenantId: 'tenant-solum', name: 'Human Resources', costCenter: 'CC-200' },
+  { id: 'dept-sales', tenantId: 'tenant-solum', name: 'Sales', costCenter: 'CC-300' },
+  { id: 'dept-fin', tenantId: 'tenant-solum', name: 'Finance', costCenter: 'CC-400' },
+  { id: 'dept-ops', tenantId: 'tenant-solum', name: 'Operations', costCenter: 'CC-500' },
 ];
 
 export const DEMO_VENDORS: Vendor[] = [
-  { id: 'vendor-dell', name: 'Dell Technologies', contactEmail: 'sales@dell.com', website: 'https://dell.com' },
-  { id: 'vendor-apple', name: 'Apple Inc', contactEmail: 'enterprise@apple.com', website: 'https://apple.com' },
-  { id: 'vendor-hp', name: 'HP Inc', contactEmail: 'business@hp.com', website: 'https://hp.com' },
-  { id: 'vendor-logitech', name: 'Logitech', contactEmail: 'business@logitech.com', website: 'https://logitech.com' },
-  { id: 'vendor-cisco', name: 'Cisco Systems', contactEmail: 'sales@cisco.com', website: 'https://cisco.com' },
-  { id: 'vendor-ubiquiti', name: 'Ubiquiti', contactEmail: 'sales@ubnt.com', website: 'https://ui.com' },
-  { id: 'vendor-hikvision', name: 'Hikvision', contactEmail: 'sales@hikvision.com', website: 'https://hikvision.com' },
+  { id: 'vendor-dell', tenantId: 'tenant-solum', name: 'Dell Technologies', contactEmail: 'sales@dell.com', website: 'https://dell.com' },
+  { id: 'vendor-apple', tenantId: 'tenant-solum', name: 'Apple Inc', contactEmail: 'enterprise@apple.com', website: 'https://apple.com' },
+  { id: 'vendor-hp', tenantId: 'tenant-solum', name: 'HP Inc', contactEmail: 'business@hp.com', website: 'https://hp.com' },
+  { id: 'vendor-logitech', tenantId: 'tenant-solum', name: 'Logitech', contactEmail: 'business@logitech.com', website: 'https://logitech.com' },
+  { id: 'vendor-cisco', tenantId: 'tenant-solum', name: 'Cisco Systems', contactEmail: 'sales@cisco.com', website: 'https://cisco.com' },
+  { id: 'vendor-ubiquiti', tenantId: 'tenant-solum', name: 'Ubiquiti', contactEmail: 'sales@ubnt.com', website: 'https://ui.com' },
+  { id: 'vendor-hikvision', tenantId: 'tenant-solum', name: 'Hikvision', contactEmail: 'sales@hikvision.com', website: 'https://hikvision.com' },
 ];
 
-const employeeData: Omit<Employee, 'id'>[] = [
-  { employeeNumber: 'EMP-001', firstName: 'Sarah', lastName: 'Chen', email: 'sarah.chen@solumtechnologies.com', jobTitle: 'Senior Engineer', departmentId: 'dept-eng', status: 'active', hireDate: '2024-01-15' },
+const employeeData: Omit<Employee, 'id' | 'tenantId'>[] = [
+  { employeeNumber: 'EMP-001', firstName: 'Sarah', lastName: 'Chen', email: 'sarah.chen@solumtechnologies.com', jobTitle: 'Senior Software Engineer', departmentId: 'dept-eng', status: 'active', hireDate: daysAgo(1100) },
   { employeeNumber: 'EMP-002', firstName: 'Mike', lastName: 'Johnson', email: 'mike.johnson@solumtechnologies.com', jobTitle: 'DevOps Engineer', departmentId: 'dept-eng', status: 'active', hireDate: '2023-06-01' },
   { employeeNumber: 'EMP-003', firstName: 'Emily', lastName: 'Davis', email: 'emily.davis@solumtechnologies.com', jobTitle: 'HR Manager', departmentId: 'dept-hr', status: 'active', hireDate: '2022-03-10' },
   { employeeNumber: 'EMP-004', firstName: 'James', lastName: 'Wilson', email: 'james.wilson@solumtechnologies.com', jobTitle: 'Sales Director', departmentId: 'dept-sales', status: 'active', hireDate: '2021-08-20' },
@@ -98,6 +113,7 @@ const employeeData: Omit<Employee, 'id'>[] = [
 export const DEMO_EMPLOYEES: Employee[] = employeeData.map((e, i) => ({
   ...e,
   id: `emp-${String(i + 1).padStart(3, '0')}`,
+  tenantId: 'tenant-solum',
 }));
 
 const assetNames = ['Dell Latitude 5540', 'MacBook Pro 14', 'HP EliteBook 840', 'Dell OptiPlex 7090', 'iPhone 15 Pro'];
@@ -130,6 +146,7 @@ function generateItAssets(): Asset[] {
     const purchaseCost = 800 + i * 50;
     assets.push({
       id: `asset-${String(i).padStart(3, '0')}`,
+      tenantId: 'tenant-solum',
       assetTag: `AST-${String(i).padStart(3, '0')}`,
       name: assetNames[idx],
       category: categories[idx],
@@ -182,6 +199,7 @@ function generatePeripheralAssets(): Asset[] {
     const deployed = i < 12;
     return {
       id: `asset-${String(num).padStart(3, '0')}`,
+      tenantId: 'tenant-solum',
       assetTag: `DEV-${String(i + 1).padStart(3, '0')}`,
       name: item.name,
       category: item.category,
@@ -203,7 +221,7 @@ function generatePeripheralAssets(): Asset[] {
 }
 
 export function generateDemoNetworkDevices(): NetworkDevice[] {
-  const catalog: Omit<NetworkDevice, 'id' | 'deviceTag'>[] = [
+  const catalog: Omit<NetworkDevice, 'id' | 'deviceTag' | 'tenantId'>[] = [
     { name: 'Lobby CCTV — Main Entrance', type: 'cctv', manufacturer: 'Hikvision', model: 'DS-2CD2143G2', serialNumber: 'HK-CCTV-001', ipAddress: '10.0.10.101', macAddress: '00:18:AE:01:01:01', location: 'HQ Lobby', status: 'online', firmwareVersion: '5.7.3', lastSeenAt: new Date().toISOString(), uptimePercent: 99.8, vlan: 'VLAN-100' },
     { name: 'Parking Lot Camera A', type: 'cctv', manufacturer: 'Hikvision', model: 'DS-2CD2387G2', serialNumber: 'HK-CCTV-002', ipAddress: '10.0.10.102', macAddress: '00:18:AE:01:01:02', location: 'Parking Lot A', status: 'online', firmwareVersion: '5.7.3', lastSeenAt: new Date().toISOString(), uptimePercent: 98.5, vlan: 'VLAN-100' },
     { name: 'Server Room CCTV', type: 'cctv', manufacturer: 'Hikvision', model: 'DS-2CD2183G2', serialNumber: 'HK-CCTV-003', ipAddress: '10.0.10.103', macAddress: '00:18:AE:01:01:03', location: 'Server Room', status: 'warning', firmwareVersion: '5.6.1', lastSeenAt: daysAgo(0) + 'T08:00:00.000Z', uptimePercent: 92.0, notes: 'Firmware update pending' },
@@ -229,6 +247,7 @@ export function generateDemoNetworkDevices(): NetworkDevice[] {
   return catalog.map((item, i) => ({
     ...item,
     id: `net-${String(i + 1).padStart(3, '0')}`,
+    tenantId: 'tenant-solum',
     deviceTag: `NET-${String(i + 1).padStart(3, '0')}`,
   }));
 }
@@ -238,6 +257,7 @@ export function generateDemoAssignments(assets: Asset[]): AssetAssignment[] {
     .filter((a) => a.status === 'deployed' && a.assignedEmployeeId)
     .map((a) => ({
       id: `assign-${a.id}`,
+      tenantId: 'tenant-solum',
       assetId: a.id,
       employeeId: a.assignedEmployeeId!,
       assignedAt: daysAgo(60) + 'T10:00:00.000Z',
@@ -251,6 +271,7 @@ export function generateDemoOwnershipHistory(assets: Asset[]): OwnershipEvent[] 
     .filter((a) => a.assignedEmployeeId)
     .map((a) => ({
       id: `hist-${a.id}`,
+      tenantId: 'tenant-solum',
       assetId: a.id,
       eventType: 'ASSIGNED',
       description: `Assigned to employee`,
@@ -262,6 +283,7 @@ export function generateDemoOwnershipHistory(assets: Asset[]): OwnershipEvent[] 
 export const DEMO_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'audit-1',
+    tenantId: 'tenant-solum',
     userId: 'user-admin',
     userName: 'Vasanth',
     action: 'LOGIN',
@@ -273,6 +295,7 @@ export const DEMO_AUDIT_LOGS: AuditLog[] = [
   },
   {
     id: 'audit-2',
+    tenantId: 'tenant-solum',
     userId: 'user-itadmin',
     userName: 'Pavan',
     action: 'ASSIGN',
@@ -284,6 +307,7 @@ export const DEMO_AUDIT_LOGS: AuditLog[] = [
   },
   {
     id: 'audit-3',
+    tenantId: 'tenant-solum',
     userId: 'user-itadmin',
     userName: 'Pavan',
     action: 'RETURN',
@@ -295,6 +319,7 @@ export const DEMO_AUDIT_LOGS: AuditLog[] = [
   },
   {
     id: 'audit-4',
+    tenantId: 'tenant-solum',
     userId: 'user-admin',
     userName: 'Vasanth',
     action: 'CREATE',
@@ -306,6 +331,7 @@ export const DEMO_AUDIT_LOGS: AuditLog[] = [
   },
   {
     id: 'audit-5',
+    tenantId: 'tenant-solum',
     userId: 'user-admin',
     userName: 'Vasanth',
     action: 'UPDATE',
@@ -320,6 +346,7 @@ export const DEMO_AUDIT_LOGS: AuditLog[] = [
 export const DEMO_ASSET_REQUESTS: AssetRequest[] = [
   {
     id: 'req-001',
+    tenantId: 'tenant-solum',
     employeeId: 'emp-001',
     requestType: 'accessory',
     category: 'monitor',
@@ -333,6 +360,7 @@ export const DEMO_ASSET_REQUESTS: AssetRequest[] = [
   },
   {
     id: 'req-002',
+    tenantId: 'tenant-solum',
     employeeId: 'emp-006',
     requestType: 'replacement',
     category: 'laptop',

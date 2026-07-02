@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type React from 'react';
 import { Button, Paper, Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import SecurityIcon from '@mui/icons-material/Security';
 import SyncIcon from '@mui/icons-material/Sync';
@@ -29,14 +30,20 @@ export function ActionsBar({ endpointId, isOffline }: { endpointId: string, isOf
       if (action === 'isolate') {
         setIsolated(true);
       }
-    } catch (err: any) {
-      setToastMsg(`Failed: ${err.message}`);
+    } catch (err: unknown) {
+      setToastMsg(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setLoadingAction(null);
     }
   };
 
-  const ActionButton = ({ action, label, icon: Icon, color = "primary", variant = "outlined" }: any) => {
+  const ActionButton = ({ action, label, icon: Icon, color = "primary", variant = "outlined" }: {
+    action: string;
+    label: string;
+    icon: React.ElementType;
+    color?: 'primary' | 'error' | 'success' | 'warning' | 'info';
+    variant?: 'outlined' | 'contained' | 'text';
+  }) => {
     const btn = (
       <Button
         variant={variant}

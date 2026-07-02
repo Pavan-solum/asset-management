@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
 import { requireAuth, type AuthUser } from '../_lib/auth';
 
 export const config = { runtime: 'edge' };
@@ -8,7 +8,7 @@ function isUuid(value: string): boolean {
 }
 
 async function resolveEmployeeId(auth: AuthUser): Promise<string | null> {
-  const sql = getSql();
+  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
 
   if (auth.employeeId && isUuid(auth.employeeId)) {
     return auth.employeeId;
@@ -17,7 +17,7 @@ async function resolveEmployeeId(auth: AuthUser): Promise<string | null> {
   try {
     const rows = (await sql`
       SELECT id FROM employees
-      WHERE tenant_id = ${DEMO_TENANT_ID} AND lower(email) = ${auth.email.toLowerCase()}
+      WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND lower(email) = ${auth.email.toLowerCase()}
       LIMIT 1
     `) as { id: string }[];
 
@@ -30,57 +30,57 @@ async function resolveEmployeeId(auth: AuthUser): Promise<string | null> {
 }
 
 // Database Tool Helpers
-async function listMyRequests(employeeId: string) {
-  const sql = getSql();
+async function listMyRequests(employeeId: string, tenantId: string) {
+  const sql = await getTenantSql(tenantId);
   const rows = await sql`
     SELECT id, request_type as "requestType", category, description, needed_by as "neededBy", status, created_at as "createdAt"
     FROM asset_requests
-    WHERE tenant_id = ${DEMO_TENANT_ID} AND employee_id = ${employeeId}
+    WHERE tenant_id = ${tenantId} AND employee_id = ${employeeId}
     ORDER BY created_at DESC
   `;
   return { requests: rows };
 }
 
-async function listMyAssets(employeeId: string) {
-  const sql = getSql();
+async function listMyAssets(employeeId: string, tenantId: string) {
+  const sql = await getTenantSql(tenantId);
   const rows = await sql`
     SELECT id, name, asset_tag as "assetTag", category, status, serial_number as "serialNumber"
     FROM assets
-    WHERE tenant_id = ${DEMO_TENANT_ID} AND assigned_employee_id = ${employeeId}
+    WHERE tenant_id = ${tenantId} AND assigned_employee_id = ${employeeId}
   `;
   return { assets: rows };
 }
 
-async function submitDeviceRequest(employeeId: string, args: { requestType: string; category: string; description: string; neededBy?: string }) {
-  const sql = getSql();
+async function submitDeviceRequest(employeeId: string, tenantId: string, args: { requestType: string; category: string; description: string; neededBy?: string }) {
+  const sql = await getTenantSql(tenantId);
   const neededBy = args.neededBy || null;
   const rows = (await sql`
     INSERT INTO asset_requests (
       tenant_id, employee_id, request_type, category, description, needed_by, status
     ) VALUES (
-      ${DEMO_TENANT_ID}, ${employeeId}, ${args.requestType}, ${args.category}, ${args.description}, ${neededBy}, 'submitted'
+      ${tenantId}, ${employeeId}, ${args.requestType}, ${args.category}, ${args.description}, ${neededBy}, 'submitted'
     )
     RETURNING id, request_type as "requestType", category, description, needed_by as "neededBy", status, created_at as "createdAt"
   `) as any[];
   return { success: true, request: rows[0] };
 }
 
-async function listAllRequests() {
-  const sql = getSql();
+async function listAllRequests(tenantId: string) {
+  const sql = await getTenantSql(tenantId);
   const rows = await sql`
     SELECT r.id, r.request_type as "requestType", r.category, r.description, r.needed_by as "neededBy", r.status, r.created_at as "createdAt",
            e.first_name || ' ' || e.last_name as "employeeName", e.email as "employeeEmail"
     FROM asset_requests r
     JOIN employees e ON e.id = r.employee_id
-    WHERE r.tenant_id = ${DEMO_TENANT_ID}
+    WHERE r.tenant_id = ${tenantId}
     ORDER BY r.created_at DESC
     LIMIT 20
   `;
   return { requests: rows };
 }
 
-async function searchAssets(args: { query?: string; category?: string; status?: string }) {
-  const sql = getSql();
+async function searchAssets(tenantId: string, args: { query?: string; category?: string; status?: string }) {
+  const sql = await getTenantSql(tenantId);
   let rows;
   const category = args.category || null;
   const status = args.status || null;
@@ -90,7 +90,7 @@ async function searchAssets(args: { query?: string; category?: string; status?: 
     rows = await sql`
       SELECT id, name, asset_tag as "assetTag", category, status, serial_number as "serialNumber"
       FROM assets
-      WHERE tenant_id = ${DEMO_TENANT_ID} AND category = ${category} AND status = ${status}
+      WHERE tenant_id = ${tenantId} AND category = ${category} AND status = ${status}
         AND (name ILIKE ${textQuery} OR asset_tag ILIKE ${textQuery} OR serial_number ILIKE ${textQuery})
       LIMIT 15
     `;
@@ -98,14 +98,14 @@ async function searchAssets(args: { query?: string; category?: string; status?: 
     rows = await sql`
       SELECT id, name, asset_tag as "assetTag", category, status, serial_number as "serialNumber"
       FROM assets
-      WHERE tenant_id = ${DEMO_TENANT_ID} AND category = ${category} AND status = ${status}
+      WHERE tenant_id = ${tenantId} AND category = ${category} AND status = ${status}
       LIMIT 15
     `;
   } else if (textQuery) {
     rows = await sql`
       SELECT id, name, asset_tag as "assetTag", category, status, serial_number as "serialNumber"
       FROM assets
-      WHERE tenant_id = ${DEMO_TENANT_ID} 
+      WHERE tenant_id = ${tenantId} 
         AND (name ILIKE ${textQuery} OR asset_tag ILIKE ${textQuery} OR serial_number ILIKE ${textQuery})
       LIMIT 15
     `;
@@ -113,34 +113,34 @@ async function searchAssets(args: { query?: string; category?: string; status?: 
     rows = await sql`
       SELECT id, name, asset_tag as "assetTag", category, status, serial_number as "serialNumber"
       FROM assets
-      WHERE tenant_id = ${DEMO_TENANT_ID}
+      WHERE tenant_id = ${tenantId}
       LIMIT 15
     `;
   }
   return { assets: rows };
 }
 
-async function executeTool(name: string, args: any, role: string, employeeId: string | null) {
+async function executeTool(name: string, args: any, role: string, employeeId: string | null, tenantId: string) {
   try {
     if (name === 'list_my_requests') {
       if (!employeeId) return { error: 'No employee record found.' };
-      return await listMyRequests(employeeId);
+      return await listMyRequests(employeeId, tenantId);
     }
     if (name === 'list_my_assets') {
       if (!employeeId) return { error: 'No employee record found.' };
-      return await listMyAssets(employeeId);
+      return await listMyAssets(employeeId, tenantId);
     }
     if (name === 'submit_device_request') {
       if (!employeeId) return { error: 'No employee record found.' };
-      return await submitDeviceRequest(employeeId, args);
+      return await submitDeviceRequest(employeeId, tenantId, args);
     }
     if (name === 'list_all_requests') {
       if (role === 'employee') return { error: 'Unauthorized' };
-      return await listAllRequests();
+      return await listAllRequests(tenantId);
     }
     if (name === 'search_assets') {
       if (role === 'employee') return { error: 'Unauthorized' };
-      return await searchAssets(args);
+      return await searchAssets(tenantId, args);
     }
     return { error: `Tool ${name} not found.` };
   } catch (err: any) {
@@ -298,7 +298,7 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
       const partWithFunctionCall = modelContent.parts?.find((p: any) => p.functionCall);
       if (partWithFunctionCall && partWithFunctionCall.functionCall) {
         const { name, args } = partWithFunctionCall.functionCall;
-        const toolResult = await executeTool(name, args, auth.role, employeeId);
+        const toolResult = await executeTool(name, args, auth.role, employeeId, auth.tenantId || DEMO_TENANT_ID);
 
         currentContents.push({
           role: 'function',

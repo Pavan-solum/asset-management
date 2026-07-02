@@ -27,7 +27,7 @@ import { isApiEnabled } from '../../services/api/config';
 import { createAsset as createAssetApi } from '../../services/api/assets';
 import { uploadImage } from '../../services/api/entities';
 import { EmployeeFormDialog } from '../employees/EmployeeFormDialog';
-import { CATEGORY_LABELS } from '../../data/demoData';
+import { CATEGORY_LABELS, STATUS_LABELS, DEMO_TENANT } from '../../data/demoData';
 import {
   ASSET_CATEGORIES,
   ASSET_STATUSES,
@@ -39,7 +39,6 @@ import {
   readImageAsDataUrl,
   type AssetFormState,
 } from '../../utils/assetUtils';
-import { STATUS_LABELS } from '../../data/demoData';
 import type { AssetStatus } from '../../types';
 
 interface CreatedAsset {
@@ -140,6 +139,7 @@ export function NewAssetPage() {
         }
         const created = await createAssetApi({
           id: crypto.randomUUID(),
+          tenantId: DEMO_TENANT.id,
           assetTag: form.assetTag.trim(),
           name: form.name.trim(),
           category: form.category,

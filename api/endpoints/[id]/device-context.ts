@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight, DEMO_TENANT_ID } from '../../_lib/db';
+import { getTenantSql, json, error, corsPreflight, DEMO_TENANT_ID } from '../../_lib/db';
 import { requireAuth } from '../../_lib/auth';
 
 export const config = { runtime: 'edge' };
@@ -17,11 +17,11 @@ export default async function handler(req: Request) {
 
     if (!id) return error('Endpoint ID is required', 400);
 
-    const sql = getSql();
+    const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
     const result = await sql`
       SELECT last_logged_user, uptime_seconds, last_reboot_at, agent_version, bitlocker_status, bitlocker_drive
       FROM endpoints
-      WHERE id = ${id} AND tenant_id = ${DEMO_TENANT_ID}
+      WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
     `;
 
     if (result.length === 0) {

@@ -1,13 +1,13 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { Department } from '../types';
-import { DEMO_DEPARTMENTS } from '../data/demoData';
+import { DEMO_TENANT, DEMO_DEPARTMENTS } from '../data/demoData';
 
 const departmentsSlice = createSlice({
   name: 'departments',
-  initialState: { items: DEMO_DEPARTMENTS },
+  initialState: { items: [] as Department[] },
   reducers: {
-    addDepartment: (state, action: PayloadAction<Omit<Department, 'id'>>) => {
-      state.items.push({ ...action.payload, id: `dept-${Date.now()}` });
+    addDepartment: (state, action: PayloadAction<Omit<Department, 'id' | 'tenantId'>>) => {
+      state.items.push({ ...action.payload, id: `dept-${Date.now()}`, tenantId: DEMO_TENANT.id });
     },
     updateDepartment: (state, action: PayloadAction<Department>) => {
       const idx = state.items.findIndex((d) => d.id === action.payload.id);

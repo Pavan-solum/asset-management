@@ -10,6 +10,8 @@ import auditReducer from './auditSlice';
 import networkDevicesReducer from './networkDevicesSlice';
 import uiReducer from './uiSlice';
 import requestsReducer from './requestsSlice';
+import tenantsReducer from './tenantsSlice';
+import usersReducer from './usersSlice';
 
 export const store = configureStore({
   reducer: {
@@ -23,6 +25,8 @@ export const store = configureStore({
     networkDevices: networkDevicesReducer,
     ui: uiReducer,
     requests: requestsReducer,
+    tenants: tenantsReducer,
+    users: usersReducer,
   },
 });
 
