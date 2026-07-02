@@ -39,7 +39,6 @@ import { EditOrganizationPage } from './features/system-admin/EditOrganizationPa
 import { SystemAdminUsersPage } from './features/system-admin/SystemAdminUsersPage';
 import { CreateUserPage } from './features/system-admin/CreateUserPage';
 import { EditUserPage } from './features/system-admin/EditUserPage';
-=======
 import { DashboardPage as ExeDocsDashboardPage } from './features/exe-docs/dashboard/DashboardPage';
 import { LibraryPage } from './features/exe-docs/library/LibraryPage';
 import { FinancePage as ExecDocsFinancePage } from './features/exe-docs/finance/FinancePage';
@@ -136,7 +135,9 @@ export default function App() {
         <Route path="users" element={<SystemAdminUsersPage />} />
         <Route path="users/new" element={<CreateUserPage />} />
         <Route path="users/:id/edit" element={<EditUserPage />} />
-=======
+      </Route>
+
+      <Route
         path="/exec-docs"
         element={
           <ProtectedRoute>
