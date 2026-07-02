@@ -14,7 +14,7 @@ import type {
 import { COMPANY_EMAIL_DOMAIN, COMPANY_NAME, COMPANY_SLUG } from '../constants/brand';
 
 export const DEMO_TENANT: Tenant = {
-  id: 'tenant-solum',
+  id: '11111111-1111-1111-1111-111111111111',
   name: 'Solum Technologies',
   slug: 'solum-technologies',
   plan: 'Professional',
@@ -36,7 +36,7 @@ export const DEMO_USERS: Record<string, { password: string; user: User }> = {
     password: 'Demo@123456',
     user: {
       id: 'user-admin',
-      tenantId: 'tenant-solum',
+      tenantId: '11111111-1111-1111-1111-111111111111',
       email: 'admin@solumtechnologies.com',
       firstName: 'Vasanth',
       lastName: '',
@@ -47,7 +47,7 @@ export const DEMO_USERS: Record<string, { password: string; user: User }> = {
     password: 'Demo@123456',
     user: {
       id: 'user-itadmin',
-      tenantId: 'tenant-solum',
+      tenantId: '11111111-1111-1111-1111-111111111111',
       email: 'itadmin@solumtechnologies.com',
       firstName: 'Pavan',
       lastName: '',
@@ -58,7 +58,7 @@ export const DEMO_USERS: Record<string, { password: string; user: User }> = {
     password: 'Demo@123456',
     user: {
       id: 'user-viewer',
-      tenantId: 'tenant-solum',
+      tenantId: '11111111-1111-1111-1111-111111111111',
       email: 'viewer@solumtechnologies.com',
       firstName: 'Lisa',
       lastName: 'Viewer',
@@ -69,7 +69,7 @@ export const DEMO_USERS: Record<string, { password: string; user: User }> = {
     password: 'Demo@123456',
     user: {
       id: 'user-employee-sarah',
-      tenantId: 'tenant-solum',
+      tenantId: '11111111-1111-1111-1111-111111111111',
       email: 'sarah.chen@solumtechnologies.com',
       firstName: 'Sarah',
       lastName: 'Chen',
@@ -80,46 +80,46 @@ export const DEMO_USERS: Record<string, { password: string; user: User }> = {
 };
 
 export const DEMO_DEPARTMENTS: Department[] = [
-  { id: 'dept-eng', tenantId: 'tenant-solum', name: 'Engineering', costCenter: 'CC-100' },
-  { id: 'dept-hr', tenantId: 'tenant-solum', name: 'Human Resources', costCenter: 'CC-200' },
-  { id: 'dept-sales', tenantId: 'tenant-solum', name: 'Sales', costCenter: 'CC-300' },
-  { id: 'dept-fin', tenantId: 'tenant-solum', name: 'Finance', costCenter: 'CC-400' },
-  { id: 'dept-ops', tenantId: 'tenant-solum', name: 'Operations', costCenter: 'CC-500' },
+  { id: '22222222-2222-2222-2222-222222222201', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Engineering',     costCenter: 'CC-100' },
+  { id: '22222222-2222-2222-2222-222222222202', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Human Resources',  costCenter: 'CC-200' },
+  { id: '22222222-2222-2222-2222-222222222203', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Sales',            costCenter: 'CC-300' },
+  { id: '22222222-2222-2222-2222-222222222204', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Finance',          costCenter: 'CC-400' },
+  { id: '22222222-2222-2222-2222-222222222205', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Operations',       costCenter: 'CC-500' },
 ];
 
 export const DEMO_VENDORS: Vendor[] = [
-  { id: 'vendor-dell', tenantId: 'tenant-solum', name: 'Dell Technologies', contactEmail: 'sales@dell.com', website: 'https://dell.com' },
-  { id: 'vendor-apple', tenantId: 'tenant-solum', name: 'Apple Inc', contactEmail: 'enterprise@apple.com', website: 'https://apple.com' },
-  { id: 'vendor-hp', tenantId: 'tenant-solum', name: 'HP Inc', contactEmail: 'business@hp.com', website: 'https://hp.com' },
-  { id: 'vendor-logitech', tenantId: 'tenant-solum', name: 'Logitech', contactEmail: 'business@logitech.com', website: 'https://logitech.com' },
-  { id: 'vendor-cisco', tenantId: 'tenant-solum', name: 'Cisco Systems', contactEmail: 'sales@cisco.com', website: 'https://cisco.com' },
-  { id: 'vendor-ubiquiti', tenantId: 'tenant-solum', name: 'Ubiquiti', contactEmail: 'sales@ubnt.com', website: 'https://ui.com' },
-  { id: 'vendor-hikvision', tenantId: 'tenant-solum', name: 'Hikvision', contactEmail: 'sales@hikvision.com', website: 'https://hikvision.com' },
+  { id: '33333333-3333-3333-3333-333333333301', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Dell Technologies', contactEmail: 'sales@dell.com',        website: 'https://dell.com' },
+  { id: '33333333-3333-3333-3333-333333333302', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Apple Inc',         contactEmail: 'enterprise@apple.com',  website: 'https://apple.com' },
+  { id: '33333333-3333-3333-3333-333333333303', tenantId: '11111111-1111-1111-1111-111111111111', name: 'HP Inc',            contactEmail: 'business@hp.com',       website: 'https://hp.com' },
+  { id: '33333333-3333-3333-3333-333333333304', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Logitech',          contactEmail: 'business@logitech.com', website: 'https://logitech.com' },
+  { id: '33333333-3333-3333-3333-333333333305', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Cisco Systems',     contactEmail: 'sales@cisco.com',       website: 'https://cisco.com' },
+  { id: '33333333-3333-3333-3333-333333333306', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Ubiquiti',          contactEmail: 'sales@ubnt.com',        website: 'https://ui.com' },
+  { id: '33333333-3333-3333-3333-333333333307', tenantId: '11111111-1111-1111-1111-111111111111', name: 'Hikvision',         contactEmail: 'sales@hikvision.com',   website: 'https://hikvision.com' },
 ];
 
 const employeeData: Omit<Employee, 'id' | 'tenantId'>[] = [
-  { employeeNumber: 'EMP-001', firstName: 'Sarah', lastName: 'Chen', email: 'sarah.chen@solumtechnologies.com', jobTitle: 'Senior Software Engineer', departmentId: 'dept-eng', status: 'active', hireDate: daysAgo(1100) },
-  { employeeNumber: 'EMP-002', firstName: 'Mike', lastName: 'Johnson', email: 'mike.johnson@solumtechnologies.com', jobTitle: 'DevOps Engineer', departmentId: 'dept-eng', status: 'active', hireDate: '2023-06-01' },
-  { employeeNumber: 'EMP-003', firstName: 'Emily', lastName: 'Davis', email: 'emily.davis@solumtechnologies.com', jobTitle: 'HR Manager', departmentId: 'dept-hr', status: 'active', hireDate: '2022-03-10' },
-  { employeeNumber: 'EMP-004', firstName: 'James', lastName: 'Wilson', email: 'james.wilson@solumtechnologies.com', jobTitle: 'Sales Director', departmentId: 'dept-sales', status: 'active', hireDate: '2021-08-20' },
-  { employeeNumber: 'EMP-005', firstName: 'Priya', lastName: 'Patel', email: 'priya.patel@solumtechnologies.com', jobTitle: 'Financial Analyst', departmentId: 'dept-fin', status: 'active', hireDate: '2024-02-01' },
-  { employeeNumber: 'EMP-006', firstName: 'David', lastName: 'Brown', email: 'david.brown@solumtechnologies.com', jobTitle: 'Backend Developer', departmentId: 'dept-eng', status: 'active', hireDate: '2023-11-15' },
-  { employeeNumber: 'EMP-007', firstName: 'Anna', lastName: 'Martinez', email: 'anna.martinez@solumtechnologies.com', jobTitle: 'Frontend Developer', departmentId: 'dept-eng', status: 'active', hireDate: '2024-04-01' },
-  { employeeNumber: 'EMP-008', firstName: 'Robert', lastName: 'Taylor', email: 'robert.taylor@solumtechnologies.com', jobTitle: 'Account Executive', departmentId: 'dept-sales', status: 'active', hireDate: '2023-01-10' },
-  { employeeNumber: 'EMP-009', firstName: 'Jennifer', lastName: 'Lee', email: 'jennifer.lee@solumtechnologies.com', jobTitle: 'Operations Manager', departmentId: 'dept-ops', status: 'active', hireDate: '2022-07-01' },
-  { employeeNumber: 'EMP-010', firstName: 'Chris', lastName: 'Anderson', email: 'chris.anderson@solumtechnologies.com', jobTitle: 'QA Engineer', departmentId: 'dept-eng', status: 'active', hireDate: '2024-06-15' },
+  { employeeNumber: 'EMP-001', firstName: 'Sarah',    lastName: 'Chen',     email: 'sarah.chen@solumtechnologies.com',    jobTitle: 'Senior Software Engineer', departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2023-07-24' },
+  { employeeNumber: 'EMP-002', firstName: 'Mike',     lastName: 'Johnson',  email: 'mike.johnson@solumtechnologies.com',   jobTitle: 'DevOps Engineer',          departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2023-06-01' },
+  { employeeNumber: 'EMP-003', firstName: 'Emily',    lastName: 'Davis',    email: 'emily.davis@solumtechnologies.com',    jobTitle: 'HR Manager',               departmentId: '22222222-2222-2222-2222-222222222202', status: 'active', hireDate: '2022-03-10' },
+  { employeeNumber: 'EMP-004', firstName: 'James',    lastName: 'Wilson',   email: 'james.wilson@solumtechnologies.com',   jobTitle: 'Sales Director',           departmentId: '22222222-2222-2222-2222-222222222203', status: 'active', hireDate: '2021-08-20' },
+  { employeeNumber: 'EMP-005', firstName: 'Priya',    lastName: 'Patel',    email: 'priya.patel@solumtechnologies.com',    jobTitle: 'Financial Analyst',        departmentId: '22222222-2222-2222-2222-222222222204', status: 'active', hireDate: '2024-02-01' },
+  { employeeNumber: 'EMP-006', firstName: 'David',    lastName: 'Brown',    email: 'david.brown@solumtechnologies.com',    jobTitle: 'Backend Developer',        departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2023-11-15' },
+  { employeeNumber: 'EMP-007', firstName: 'Anna',     lastName: 'Martinez', email: 'anna.martinez@solumtechnologies.com',  jobTitle: 'Frontend Developer',       departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2024-04-01' },
+  { employeeNumber: 'EMP-008', firstName: 'Robert',   lastName: 'Taylor',   email: 'robert.taylor@solumtechnologies.com',  jobTitle: 'Account Executive',        departmentId: '22222222-2222-2222-2222-222222222203', status: 'active', hireDate: '2023-01-10' },
+  { employeeNumber: 'EMP-009', firstName: 'Jennifer', lastName: 'Lee',      email: 'jennifer.lee@solumtechnologies.com',   jobTitle: 'Operations Manager',       departmentId: '22222222-2222-2222-2222-222222222205', status: 'active', hireDate: '2022-07-01' },
+  { employeeNumber: 'EMP-010', firstName: 'Chris',    lastName: 'Anderson', email: 'chris.anderson@solumtechnologies.com', jobTitle: 'QA Engineer',              departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2024-06-15' },
 ];
 
 export const DEMO_EMPLOYEES: Employee[] = employeeData.map((e, i) => ({
   ...e,
-  id: `emp-${String(i + 1).padStart(3, '0')}`,
-  tenantId: 'tenant-solum',
+  id: `44444444-4444-4444-4444-4444444444${String(i + 1).padStart(2, '0')}`,
+  tenantId: '11111111-1111-1111-1111-111111111111',
 }));
 
 const assetNames = ['Dell Latitude 5540', 'MacBook Pro 14', 'HP EliteBook 840', 'Dell OptiPlex 7090', 'iPhone 15 Pro'];
 const categories: Asset['category'][] = ['laptop', 'laptop', 'laptop', 'desktop', 'mobile'];
 const manufacturers = ['Dell', 'Apple', 'HP'];
-const vendorIds = ['vendor-dell', 'vendor-apple', 'vendor-hp'];
+const vendorIds = ['33333333-3333-3333-3333-333333333301', '33333333-3333-3333-3333-333333333302', '33333333-3333-3333-3333-333333333303'];
 
 function daysFromNow(days: number): string {
   const d = new Date();
@@ -145,8 +145,8 @@ function generateItAssets(): Asset[] {
       i <= 35 ? 'deployed' : i <= 45 ? 'in_stock' : i <= 48 ? 'in_repair' : 'retired';
     const purchaseCost = 800 + i * 50;
     assets.push({
-      id: `asset-${String(i).padStart(3, '0')}`,
-      tenantId: 'tenant-solum',
+      id: `55555555-5555-5555-5555-${String(i).padStart(12, '0')}`,
+      tenantId: '11111111-1111-1111-1111-111111111111',
       assetTag: `AST-${String(i).padStart(3, '0')}`,
       name: assetNames[idx],
       category: categories[idx],
@@ -176,22 +176,22 @@ const peripheralCatalog: {
   vendorId: string;
   cost: number;
 }[] = [
-  { category: 'monitor', name: 'Dell UltraSharp 27" U2723QE', manufacturer: 'Dell', vendorId: 'vendor-dell', cost: 549 },
-  { category: 'monitor', name: 'LG 27UK850-W 4K', manufacturer: 'LG', vendorId: 'vendor-dell', cost: 399 },
-  { category: 'monitor', name: 'Samsung Odyssey G5 32"', manufacturer: 'Samsung', vendorId: 'vendor-hp', cost: 329 },
-  { category: 'monitor', name: 'HP E24 G5', manufacturer: 'HP', vendorId: 'vendor-hp', cost: 219 },
-  { category: 'monitor', name: 'Apple Studio Display', manufacturer: 'Apple', vendorId: 'vendor-apple', cost: 1599 },
-  { category: 'keyboard', name: 'Logitech MX Keys', manufacturer: 'Logitech', vendorId: 'vendor-logitech', cost: 119 },
-  { category: 'keyboard', name: 'Dell KB216 Wired', manufacturer: 'Dell', vendorId: 'vendor-dell', cost: 25 },
-  { category: 'keyboard', name: 'Apple Magic Keyboard', manufacturer: 'Apple', vendorId: 'vendor-apple', cost: 149 },
-  { category: 'keyboard', name: 'Logitech K780 Multi-Device', manufacturer: 'Logitech', vendorId: 'vendor-logitech', cost: 79 },
-  { category: 'mouse', name: 'Logitech MX Master 3S', manufacturer: 'Logitech', vendorId: 'vendor-logitech', cost: 99 },
-  { category: 'mouse', name: 'Dell MS116 Optical', manufacturer: 'Dell', vendorId: 'vendor-dell', cost: 15 },
-  { category: 'mouse', name: 'Apple Magic Mouse', manufacturer: 'Apple', vendorId: 'vendor-apple', cost: 79 },
-  { category: 'mouse', name: 'Logitech M720 Triathlon', manufacturer: 'Logitech', vendorId: 'vendor-logitech', cost: 49 },
-  { category: 'webcam', name: 'Logitech C920 HD Pro', manufacturer: 'Logitech', vendorId: 'vendor-logitech', cost: 79 },
-  { category: 'headset', name: 'Logitech Zone Wired 2', manufacturer: 'Logitech', vendorId: 'vendor-logitech', cost: 129 },
-  { category: 'headset', name: 'Jabra Evolve2 65', manufacturer: 'Jabra', vendorId: 'vendor-logitech', cost: 249 },
+  { category: 'monitor',  name: 'Dell UltraSharp 27" U2723QE',  manufacturer: 'Dell',     vendorId: '33333333-3333-3333-3333-333333333301', cost: 549 },
+  { category: 'monitor',  name: 'LG 27UK850-W 4K',              manufacturer: 'LG',       vendorId: '33333333-3333-3333-3333-333333333301', cost: 399 },
+  { category: 'monitor',  name: 'Samsung Odyssey G5 32"',        manufacturer: 'Samsung',  vendorId: '33333333-3333-3333-3333-333333333303', cost: 329 },
+  { category: 'monitor',  name: 'HP E24 G5',                     manufacturer: 'HP',       vendorId: '33333333-3333-3333-3333-333333333303', cost: 219 },
+  { category: 'monitor',  name: 'Apple Studio Display',          manufacturer: 'Apple',    vendorId: '33333333-3333-3333-3333-333333333302', cost: 1599 },
+  { category: 'keyboard', name: 'Logitech MX Keys',              manufacturer: 'Logitech', vendorId: '33333333-3333-3333-3333-333333333304', cost: 119 },
+  { category: 'keyboard', name: 'Dell KB216 Wired',              manufacturer: 'Dell',     vendorId: '33333333-3333-3333-3333-333333333301', cost: 25 },
+  { category: 'keyboard', name: 'Apple Magic Keyboard',          manufacturer: 'Apple',    vendorId: '33333333-3333-3333-3333-333333333302', cost: 149 },
+  { category: 'keyboard', name: 'Logitech K780 Multi-Device',    manufacturer: 'Logitech', vendorId: '33333333-3333-3333-3333-333333333304', cost: 79 },
+  { category: 'mouse',    name: 'Logitech MX Master 3S',         manufacturer: 'Logitech', vendorId: '33333333-3333-3333-3333-333333333304', cost: 99 },
+  { category: 'mouse',    name: 'Dell MS116 Optical',            manufacturer: 'Dell',     vendorId: '33333333-3333-3333-3333-333333333301', cost: 15 },
+  { category: 'mouse',    name: 'Apple Magic Mouse',             manufacturer: 'Apple',    vendorId: '33333333-3333-3333-3333-333333333302', cost: 79 },
+  { category: 'mouse',    name: 'Logitech M720 Triathlon',       manufacturer: 'Logitech', vendorId: '33333333-3333-3333-3333-333333333304', cost: 49 },
+  { category: 'webcam',   name: 'Logitech C920 HD Pro',          manufacturer: 'Logitech', vendorId: '33333333-3333-3333-3333-333333333304', cost: 79 },
+  { category: 'headset',  name: 'Logitech Zone Wired 2',         manufacturer: 'Logitech', vendorId: '33333333-3333-3333-3333-333333333304', cost: 129 },
+  { category: 'headset',  name: 'Jabra Evolve2 65',              manufacturer: 'Jabra',    vendorId: '33333333-3333-3333-3333-333333333304', cost: 249 },
 ];
 
 function generatePeripheralAssets(): Asset[] {
@@ -199,8 +199,8 @@ function generatePeripheralAssets(): Asset[] {
     const num = 51 + i;
     const deployed = i < 12;
     return {
-      id: `asset-${String(num).padStart(3, '0')}`,
-      tenantId: 'tenant-solum',
+      id: `55555555-5555-5555-5556-${String(i + 1).padStart(12, '0')}`,
+      tenantId: '11111111-1111-1111-1111-111111111111',
       assetTag: `DEV-${String(i + 1).padStart(3, '0')}`,
       name: item.name,
       category: item.category,
@@ -248,8 +248,8 @@ export function generateDemoNetworkDevices(): NetworkDevice[] {
 
   return catalog.map((item, i) => ({
     ...item,
-    id: `net-${String(i + 1).padStart(3, '0')}`,
-    tenantId: 'tenant-solum',
+    id: `55555555-5555-5555-5556-${String(i + 1).padStart(12, '0')}`,
+    tenantId: '11111111-1111-1111-1111-111111111111',
     deviceTag: `NET-${String(i + 1).padStart(3, '0')}`,
   }));
 }
@@ -258,8 +258,8 @@ export function generateDemoAssignments(assets: Asset[]): AssetAssignment[] {
   return assets
     .filter((a) => a.status === 'deployed' && a.assignedEmployeeId)
     .map((a) => ({
-      id: `assign-${a.id}`,
-      tenantId: 'tenant-solum',
+      id: `66666666-6666-6666-${a.id.slice(-4)}-${a.id.slice(-12)}`,
+      tenantId: '11111111-1111-1111-1111-111111111111',
       assetId: a.id,
       employeeId: a.assignedEmployeeId!,
       assignedAt: daysAgo(60) + 'T10:00:00.000Z',
@@ -272,8 +272,8 @@ export function generateDemoOwnershipHistory(assets: Asset[]): OwnershipEvent[] 
   return assets
     .filter((a) => a.assignedEmployeeId)
     .map((a) => ({
-      id: `hist-${a.id}`,
-      tenantId: 'tenant-solum',
+      id: `77777777-7777-7777-${a.id.slice(-4)}-${a.id.slice(-12)}`,
+      tenantId: '11111111-1111-1111-1111-111111111111',
       assetId: a.id,
       eventType: 'ASSIGNED',
       description: `Assigned to employee`,
