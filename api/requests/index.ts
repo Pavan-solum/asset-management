@@ -109,6 +109,7 @@ export default async function handler(req: Request) {
         return error('Invalid requestType', 400);
       }
 
+      const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
       const rows = (await sql`
         INSERT INTO asset_requests (
           tenant_id, employee_id, request_type, category, description, needed_by

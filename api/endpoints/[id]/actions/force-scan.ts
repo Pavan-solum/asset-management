@@ -24,11 +24,12 @@ export default async function handler(req: Request) {
     const [ep] = await sql`SELECT id FROM endpoints WHERE id = ${id} AND tenant_id = ${tenantId} LIMIT 1`;
     if (!ep) return error('Endpoint not found', 404);
 
-    const [inserted] = await sql`
+    const result = await sql`
       INSERT INTO endpoint_commands (endpoint_id, command, status)
       VALUES (${id}, 'force-scan', 'pending')
       RETURNING id, created_at
-    `;
+    ` as { id: number; created_at: string }[];
+    const inserted = result[0];
 
     return json({
       job_id: inserted.id,

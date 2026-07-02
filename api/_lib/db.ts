@@ -32,7 +32,10 @@ const tenantSqlCache = new Map<string, any>();
  *
  * Result is cached per tenant per edge instance.
  */
-export async function getTenantSql(tenantId: string): Promise<ReturnType<typeof neon>> {
+// Return as any to sidestep NeonQueryFunction<false,false> vs <boolean,boolean>
+// generic variance strictness in TypeScript 5.9+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getTenantSql(tenantId: string): Promise<any> {
   const cached = tenantSqlCache.get(tenantId) as ReturnType<typeof neon> | undefined;
   if (cached) return cached;
 

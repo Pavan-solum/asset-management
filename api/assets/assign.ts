@@ -74,8 +74,8 @@ export default async function handler(req: Request) {
 
     const rows = await sql`
       SELECT * FROM assets WHERE id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
-    `;
-    return json(mapAsset(rows[0] as any));
+    ` as DbAsset[];
+    return json(mapAsset(rows[0]));
   } catch (e) {
     return error(e instanceof Error ? e.message : 'Assign failed', 500);
   }
