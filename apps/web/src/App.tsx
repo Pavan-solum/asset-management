@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { HRLayout } from './components/layout/HRLayout';
+import { ExecDocsLayout } from './components/layout/ExecDocsLayout';
 import { EmployeePortalLayout } from './components/layout/EmployeePortalLayout';
 import { DataBootstrap } from './components/DataBootstrap';
 import { GlobalLoadingBar } from './components/Loader';
@@ -38,6 +39,12 @@ import { EditOrganizationPage } from './features/system-admin/EditOrganizationPa
 import { SystemAdminUsersPage } from './features/system-admin/SystemAdminUsersPage';
 import { CreateUserPage } from './features/system-admin/CreateUserPage';
 import { EditUserPage } from './features/system-admin/EditUserPage';
+=======
+import { DashboardPage as ExeDocsDashboardPage } from './features/exe-docs/dashboard/DashboardPage';
+import { LibraryPage } from './features/exe-docs/library/LibraryPage';
+import { FinancePage as ExecDocsFinancePage } from './features/exe-docs/finance/FinancePage';
+import { MeetingsPage } from './features/exe-docs/meetings/MeetingsPage';
+import { CompliancePage } from './features/exe-docs/compliance/CompliancePage';
 
 export default function App() {
   return (
@@ -129,6 +136,21 @@ export default function App() {
         <Route path="users" element={<SystemAdminUsersPage />} />
         <Route path="users/new" element={<CreateUserPage />} />
         <Route path="users/:id/edit" element={<EditUserPage />} />
+=======
+        path="/exec-docs"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <ExecDocsLayout />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<ExeDocsDashboardPage />} />
+        <Route path="library" element={<LibraryPage />} />
+        <Route path="finance" element={<ExecDocsFinancePage />} />
+        <Route path="meetings" element={<MeetingsPage />} />
+        <Route path="compliance" element={<CompliancePage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

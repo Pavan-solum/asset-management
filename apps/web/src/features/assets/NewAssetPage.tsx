@@ -126,6 +126,7 @@ export function NewAssetPage() {
       const assignedAssetId = !isHardware && form.assignedAssetId ? form.assignedAssetId : undefined;
       const purchaseCost = Number(form.purchaseCost) || 0;
       const currentValue = Number(form.currentValue) || purchaseCost;
+      const repairCost = Number(form.repairCost) || 0;
       const status: AssetStatus = assignedEmployeeId || assignedAssetId ? 'deployed' : (form.status as AssetStatus);
 
       const notes = [form.specs && `Specs: ${form.specs}`, form.notes].filter(Boolean).join('\n\n') || undefined;
@@ -152,6 +153,7 @@ export function NewAssetPage() {
           purchaseDate: form.purchaseDate || new Date().toISOString().split('T')[0],
           purchaseCost,
           currentValue,
+          repairCost,
           location: form.location.trim() || 'HQ',
           vendorId: form.vendorId,
           warrantyExpiresAt: form.warrantyExpiresAt || createEmptyAssetForm().warrantyExpiresAt,
@@ -192,6 +194,7 @@ export function NewAssetPage() {
           purchaseDate: form.purchaseDate || new Date().toISOString().split('T')[0],
           purchaseCost,
           currentValue,
+          repairCost,
           location: form.location.trim() || 'HQ',
           vendorId: form.vendorId,
           warrantyExpiresAt: form.warrantyExpiresAt || createEmptyAssetForm().warrantyExpiresAt,
@@ -507,6 +510,19 @@ export function NewAssetPage() {
                   placeholder="65000"
                   value={form.currentValue}
                   onChange={(e) => set('currentValue', e.target.value)}
+                  inputProps={{ min: 0 }}
+                />
+              </Grid>
+            )}
+            {form.category !== 'software' && (
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Repair Charges"
+                  placeholder="0"
+                  value={form.repairCost}
+                  onChange={(e) => set('repairCost', e.target.value)}
                   inputProps={{ min: 0 }}
                 />
               </Grid>

@@ -55,6 +55,7 @@ export default async function handler(req: Request) {
           purchase_date = COALESCE(${body.purchaseDate != null ? String(body.purchaseDate) : null}, purchase_date),
           purchase_cost = COALESCE(${body.purchaseCost != null ? Number(body.purchaseCost) : null}, purchase_cost),
           current_value = COALESCE(${body.currentValue != null ? Number(body.currentValue) : null}, current_value),
+          repair_cost = COALESCE(${body.repairCost != null ? Number(body.repairCost) : null}, repair_cost),
           location = COALESCE(${body.location != null ? String(body.location) : null}, location),
           department = COALESCE(${body.department != null ? String(body.department) : null}, department),
           specs = COALESCE(${body.specs != null ? String(body.specs) : null}, specs),

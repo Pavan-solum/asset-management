@@ -176,6 +176,9 @@ export function AssetEditDialog({ open, onClose, asset, onDeleted }: Props) {
           <Grid item xs={12} sm={6}>
             <TextField fullWidth type="number" label="Current Value" value={form.currentValue} onChange={(e) => set('currentValue', Number(e.target.value))} />
           </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField fullWidth type="number" label="Repair Charges" value={form.repairCost} onChange={(e) => set('repairCost', Number(e.target.value))} />
+          </Grid>
           <Grid item xs={12}>
             <TextField fullWidth multiline rows={2} label="Notes" value={form.notes ?? ''} onChange={(e) => set('notes', e.target.value)} />
           </Grid>

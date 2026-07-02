@@ -198,9 +198,10 @@ export function AssetDetailPage() {
               <DetailRow label="Purchase Date" value={formatDate(asset.purchaseDate)} />
               <DetailRow label="Purchase Cost" value={formatCurrency(asset.purchaseCost)} />
               <DetailRow label="Current Value" value={formatCurrency(asset.currentValue)} />
+              <DetailRow label="Repair Charges" value={formatCurrency(asset.repairCost ?? 0)} />
               <DetailRow
                 label="Depreciation"
-                value={`${Math.round((1 - asset.currentValue / asset.purchaseCost) * 100)}%`}
+                value={asset.purchaseCost > 0 ? `${Math.round((1 - asset.currentValue / asset.purchaseCost) * 100)}%` : '—'}
               />
             </CardContent>
           </Card>

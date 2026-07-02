@@ -159,8 +159,8 @@ export function AnalyticsPage() {
                 <ResponsiveContainer width="100%" height="90%">
                   <BarChart data={valueByCategory} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tickFormatter={(val) => `$${val}`} />
-                    <Tooltip formatter={(val: number) => `$${val.toLocaleString()}`} />
+                    <YAxis tickFormatter={(val) => `₹${val}`} />
+                    <Tooltip formatter={(val: number) => `₹${val.toLocaleString()}`} />
                     <Bar dataKey="value" fill="#8E24AA" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

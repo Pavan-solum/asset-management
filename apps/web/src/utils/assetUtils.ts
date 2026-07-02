@@ -107,6 +107,7 @@ export function createEmptyAssetForm() {
     purchaseDate: new Date().toISOString().split('T')[0],
     purchaseCost: '',
     currentValue: '',
+    repairCost: '',
     warrantyExpiresAt: defaultWarrantyDate(),
     location: '',
     department: '',
