@@ -2,6 +2,9 @@ import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { getSql, error, DEMO_TENANT_ID } from './db';
 import { DEMO_USERS } from './demo-users';
 
+const PBKDF2_ITERATIONS = 100_000;
+const PBKDF2_PREFIX = 'pbkdf2v1:';
+
 const secret = () =>
   new TextEncoder().encode(process.env.JWT_SECRET ?? 'assetly-dev-secret-change-in-production');
 
@@ -11,10 +14,61 @@ export interface AuthUser extends JWTPayload {
   role: string;
   firstName: string;
   lastName: string;
+  tenantId?: string;
   employeeId?: string;
 }
 
 export async function hashPassword(password: string): Promise<string> {
+  const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = Array.from(saltBytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: saltBytes, iterations: PBKDF2_ITERATIONS },
+    keyMaterial,
+    256,
+  );
+  const hashHex = Array.from(new Uint8Array(bits))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  return `${PBKDF2_PREFIX}${saltHex}:${hashHex}`;
+}
+
+async function verifyPbkdf2Hash(password: string, stored: string): Promise<boolean> {
+  const inner = stored.slice(PBKDF2_PREFIX.length);
+  const colonIdx = inner.indexOf(':');
+  if (colonIdx === -1) return false;
+  const saltHex = inner.slice(0, colonIdx);
+  const expectedHex = inner.slice(colonIdx + 1);
+  const saltBytes = new Uint8Array(
+    (saltHex.match(/.{2}/g) ?? []).map(b => parseInt(b, 16)),
+  );
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: saltBytes, iterations: PBKDF2_ITERATIONS },
+    keyMaterial,
+    256,
+  );
+  const hashHex = Array.from(new Uint8Array(bits))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  return hashHex === expectedHex;
+}
+
+async function legacySha256Hash(password: string): Promise<string> {
   const pepper = process.env.JWT_SECRET ?? 'assetly-dev-secret-change-in-production';
   const data = new TextEncoder().encode(`${password}:${pepper}`);
   const hash = await crypto.subtle.digest('SHA-256', data);
@@ -30,7 +84,12 @@ export async function verifyPassword(email: string, password: string): Promise<b
     ` as { password_hash: string }[];
 
     if (rows.length > 0) {
-      return (await hashPassword(password)) === rows[0].password_hash;
+      const stored = rows[0].password_hash;
+      if (stored.startsWith(PBKDF2_PREFIX)) {
+        return verifyPbkdf2Hash(password, stored);
+      }
+      // Legacy SHA-256 hash — auto-upgrade on next password change
+      return (await legacySha256Hash(password)) === stored;
     }
   } catch {
     /* user_passwords table may not exist yet — fall back to demo credentials */
@@ -46,6 +105,7 @@ export async function signAuthToken(user: {
   role: string;
   firstName: string;
   lastName: string;
+  tenantId?: string;
   employeeId?: string;
 }): Promise<string> {
   return new SignJWT({
@@ -53,6 +113,7 @@ export async function signAuthToken(user: {
     role: user.role,
     firstName: user.firstName,
     lastName: user.lastName,
+    ...(user.tenantId ? { tenantId: user.tenantId } : {}),
     ...(user.employeeId ? { employeeId: user.employeeId } : {}),
   })
     .setProtectedHeader({ alg: 'HS256' })
@@ -95,6 +156,7 @@ export function isPublicApiRoute(pathname: string, method: string): boolean {
 
 export async function insertAuditLog(
   audit: {
+    tenantId?: string;
     userId?: string;
     userName?: string;
     action: string;
@@ -105,10 +167,11 @@ export async function insertAuditLog(
   },
 ): Promise<void> {
   const sql = getSql();
+  const tenantId = audit.tenantId ?? DEMO_TENANT_ID;
   await sql`
     INSERT INTO audit_logs (tenant_id, user_id, user_name, action, entity_type, entity_id, entity_label, details)
     VALUES (
-      ${DEMO_TENANT_ID},
+      ${tenantId},
       ${audit.userId ?? null},
       ${audit.userName ?? null},
       ${audit.action},

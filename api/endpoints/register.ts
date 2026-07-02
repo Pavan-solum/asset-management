@@ -2,9 +2,18 @@ import { getSql, json, error, corsPreflight } from '../_lib/db';
 
 export const config = { runtime: 'edge' };
 
+/** Validate agent registration requests using a shared secret set via AGENT_SECRET env var. */
+function verifyAgentToken(req: Request): boolean {
+  const secret = process.env.AGENT_SECRET;
+  if (!secret) return true; // Not configured — allow in dev, set AGENT_SECRET in prod
+  return req.headers.get('X-Agent-Token') === secret;
+}
+
 export default async function handler(req: Request) {
   if (req.method === 'OPTIONS') return corsPreflight();
   if (req.method !== 'POST') return error('Method not allowed', 405);
+
+  if (!verifyAgentToken(req)) return error('Unauthorized', 401);
 
   try {
     const body = await req.json() as any;

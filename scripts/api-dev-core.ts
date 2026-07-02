@@ -22,6 +22,10 @@ import vendorsIndex from '../api/vendors/index';
 import vendorsById from '../api/vendors/[id]';
 import requestsIndex from '../api/requests/index';
 import requestsById from '../api/requests/[id]';
+import tenantsIndex from '../api/tenants/index';
+import tenantsById from '../api/tenants/[id]';
+import usersIndex from '../api/users/index';
+import usersById from '../api/users/[id]';
 import endpointsIndex from '../api/endpoints/index';
 import endpointsRegister from '../api/endpoints/register';
 import endpointsTelemetry from '../api/endpoints/telemetry';
@@ -85,6 +89,11 @@ function resolveHandler(pathname: string): ApiHandler | null {
   if (/^\/api\/departments\/[^/]+$/.test(pathname)) return departmentsById;
   if (/^\/api\/vendors\/[^/]+$/.test(pathname)) return vendorsById;
   if (/^\/api\/requests\/[^/]+$/.test(pathname)) return requestsById;
+
+  if (pathname === '/api/tenants') return tenantsIndex;
+  if (/^\/api\/tenants\/[^/]+$/.test(pathname)) return tenantsById;
+  if (pathname === '/api/users') return usersIndex;
+  if (/^\/api\/users\/[^/]+$/.test(pathname)) return usersById;
 
   // New endpoint API routes
   if (/^\/api\/endpoints\/[^/]+\/threats$/.test(pathname)) return endpointsThreats;

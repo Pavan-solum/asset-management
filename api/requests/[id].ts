@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
 import { mapAssetRequest, type DbAssetRequest } from '../_lib/mappers';
 import { requireAuth, canReviewRequests, insertAuditLog } from '../_lib/auth';
 
@@ -19,7 +19,7 @@ export default async function handler(req: Request) {
   const id = parts[parts.length - 1];
   if (!id || id === 'requests') return error('Request id is required', 400);
 
-  const sql = getSql();
+  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
 
   try {
     if (req.method === 'PATCH') {
@@ -41,7 +41,7 @@ export default async function handler(req: Request) {
         FROM asset_requests r
         JOIN employees e ON e.id = r.employee_id
         LEFT JOIN departments d ON d.id = e.department_id
-        WHERE r.tenant_id = ${DEMO_TENANT_ID} AND r.id = ${id}
+        WHERE r.tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND r.id = ${id}
       `) as DbAssetRequest[];
 
       if (existing.length === 0) return error('Request not found', 404);
@@ -62,7 +62,7 @@ export default async function handler(req: Request) {
           review_notes = ${reviewNotes},
           reviewed_by = ${reviewer},
           reviewed_at = NOW()
-        WHERE tenant_id = ${DEMO_TENANT_ID} AND id = ${id}
+        WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND id = ${id}
         RETURNING *
       `) as DbAssetRequest[];
 

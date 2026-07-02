@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
 import { mapEmployee, type DbEmployee } from '../_lib/mappers';
 import { requireAuth, insertAuditLog } from '../_lib/auth';
 
@@ -14,12 +14,12 @@ export default async function handler(req: Request) {
   const id = url.pathname.split('/').filter(Boolean).pop();
   if (!id || id === 'employees') return error('Employee id required', 400);
 
-  const sql = getSql();
+  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
 
   try {
     if (req.method === 'GET') {
       const rows = await sql`
-        SELECT * FROM employees WHERE id = ${id} AND tenant_id = ${DEMO_TENANT_ID}
+        SELECT * FROM employees WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
       ` as DbEmployee[];
       if (rows.length === 0) return error('Employee not found', 404);
       return json(mapEmployee(rows[0]));
@@ -43,7 +43,7 @@ export default async function handler(req: Request) {
           }, department_id),
           status = COALESCE(${body.status ? String(body.status) : null}, status),
           hire_date = COALESCE(${body.hireDate != null ? String(body.hireDate) : null}, hire_date)
-        WHERE id = ${id} AND tenant_id = ${DEMO_TENANT_ID}
+        WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
         RETURNING *
       ` as DbEmployee[];
       if (rows.length === 0) return error('Employee not found', 404);
@@ -62,7 +62,7 @@ export default async function handler(req: Request) {
     }
 
     if (req.method === 'DELETE') {
-      await sql`DELETE FROM employees WHERE id = ${id} AND tenant_id = ${DEMO_TENANT_ID}`;
+      await sql`DELETE FROM employees WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
       await insertAuditLog({
         userId: auth.sub,
         userName: `${auth.firstName} ${auth.lastName}`,

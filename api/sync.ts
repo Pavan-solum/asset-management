@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight, DEMO_TENANT_ID } from './_lib/db';
+import { getTenantSql, json, error, corsPreflight, DEMO_TENANT_ID } from './_lib/db';
 import {
   mapAsset,
   mapEmployee,
@@ -27,17 +27,17 @@ export default async function handler(req: Request) {
   if (auth instanceof Response) return auth;
 
   try {
-    const sql = getSql();
+    const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
 
     const [assets, employees, departments, vendors, assignments, ownershipHistory, auditLogs] =
       (await Promise.all([
-        sql`SELECT * FROM assets WHERE tenant_id = ${DEMO_TENANT_ID} ORDER BY created_at DESC`,
-        sql`SELECT * FROM employees WHERE tenant_id = ${DEMO_TENANT_ID} ORDER BY created_at DESC`,
-        sql`SELECT * FROM departments WHERE tenant_id = ${DEMO_TENANT_ID} ORDER BY name ASC`,
-        sql`SELECT * FROM vendors WHERE tenant_id = ${DEMO_TENANT_ID} ORDER BY name ASC`,
-        sql`SELECT * FROM asset_assignments WHERE tenant_id = ${DEMO_TENANT_ID} ORDER BY assigned_at DESC`,
-        sql`SELECT * FROM ownership_history WHERE tenant_id = ${DEMO_TENANT_ID} ORDER BY created_at DESC`,
-        sql`SELECT * FROM audit_logs WHERE tenant_id = ${DEMO_TENANT_ID} ORDER BY created_at DESC LIMIT 200`,
+        sql`SELECT * FROM assets WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} ORDER BY created_at DESC`,
+        sql`SELECT * FROM employees WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} ORDER BY created_at DESC`,
+        sql`SELECT * FROM departments WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} ORDER BY name ASC`,
+        sql`SELECT * FROM vendors WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} ORDER BY name ASC`,
+        sql`SELECT * FROM asset_assignments WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} ORDER BY assigned_at DESC`,
+        sql`SELECT * FROM ownership_history WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} ORDER BY created_at DESC`,
+        sql`SELECT * FROM audit_logs WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} ORDER BY created_at DESC LIMIT 200`,
       ])) as [
         DbAsset[],
         DbEmployee[],

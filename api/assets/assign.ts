@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
 import { mapAsset } from '../_lib/mappers';
 import { requireAuth, insertAuditLog } from '../_lib/auth';
 
@@ -26,22 +26,22 @@ export default async function handler(req: Request) {
 
     if (!assetId || !employeeId) return error('assetId and employeeId are required', 400);
 
-    const sql = getSql();
+    const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
 
     const existing = await sql`
-      SELECT id FROM assets WHERE id = ${assetId} AND tenant_id = ${DEMO_TENANT_ID}
-    `;
+      SELECT id FROM assets WHERE id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+    ` as { id: string }[];
     if (existing.length === 0) return error('Asset not found', 404);
 
     await sql`
       UPDATE asset_assignments SET returned_at = NOW()
-      WHERE asset_id = ${assetId} AND tenant_id = ${DEMO_TENANT_ID} AND returned_at IS NULL
+      WHERE asset_id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND returned_at IS NULL
     `;
 
     await sql`
       INSERT INTO asset_assignments (tenant_id, asset_id, employee_id, assigned_by, notes)
       VALUES (
-        ${DEMO_TENANT_ID}, ${assetId}, ${employeeId}, ${assignedBy},
+        ${auth.tenantId || DEMO_TENANT_ID}, ${assetId}, ${employeeId}, ${assignedBy},
         ${body.notes ? String(body.notes) : null}
       )
     `;
@@ -51,13 +51,13 @@ export default async function handler(req: Request) {
         status = 'deployed',
         assigned_employee_id = ${employeeId},
         updated_at = NOW()
-      WHERE id = ${assetId} AND tenant_id = ${DEMO_TENANT_ID}
+      WHERE id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
     `;
 
     await sql`
       INSERT INTO ownership_history (tenant_id, asset_id, event_type, description, performed_by)
       VALUES (
-        ${DEMO_TENANT_ID}, ${assetId}, 'ASSIGNED', 'Asset assigned to employee', ${assignedBy}
+        ${auth.tenantId || DEMO_TENANT_ID}, ${assetId}, 'ASSIGNED', 'Asset assigned to employee', ${assignedBy}
       )
     `;
 
@@ -73,9 +73,9 @@ export default async function handler(req: Request) {
     });
 
     const rows = await sql`
-      SELECT * FROM assets WHERE id = ${assetId} AND tenant_id = ${DEMO_TENANT_ID}
-    `;
-    return json(mapAsset(rows[0] as any));
+      SELECT * FROM assets WHERE id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+    ` as DbAsset[];
+    return json(mapAsset(rows[0]));
   } catch (e) {
     return error(e instanceof Error ? e.message : 'Assign failed', 500);
   }

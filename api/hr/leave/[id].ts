@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../../_lib/db';
 import { requireAuth, insertAuditLog } from '../../_lib/auth';
 
 export const config = { runtime: 'edge' };
@@ -14,7 +14,7 @@ export default async function handler(req: Request) {
   const id = segments[segments.length - 1];
   if (!id || id === 'leave') return error('ID required', 400);
 
-  const sql = getSql();
+  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
 
   try {
     if (req.method === 'PUT') {
@@ -28,9 +28,9 @@ export default async function handler(req: Request) {
       const rows = await sql`
         UPDATE hr_leave_requests
         SET status = ${status}, approved_by = ${auth.sub}, updated_at = NOW()
-        WHERE id = ${id} AND tenant_id = ${DEMO_TENANT_ID}
+        WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
         RETURNING *
-      `;
+      ` as Record<string, any>[];
 
       if (rows.length === 0) return error('Not found', 404);
 
@@ -63,9 +63,9 @@ export default async function handler(req: Request) {
       const rows = await sql`
         UPDATE hr_leave_requests
         SET deleted_at = NOW(), updated_at = NOW()
-        WHERE id = ${id} AND tenant_id = ${DEMO_TENANT_ID}
+        WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
         RETURNING *
-      `;
+      ` as Record<string, any>[];
 
       if (rows.length === 0) return error('Not found', 404);
 

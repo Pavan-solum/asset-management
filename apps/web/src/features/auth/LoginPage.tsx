@@ -35,9 +35,10 @@ import { ApiError, checkApiHealth, loginErrorMessage } from '../../services/api/
 import { getHomeRouteForRole } from '../../utils/routing';
 
 const demoAccounts = [
-  { email: `admin@${COMPANY_EMAIL_DOMAIN}`, role: 'Tenant Admin', desc: 'Full access' },
-  { email: `itadmin@${COMPANY_EMAIL_DOMAIN}`, role: 'IT Admin', desc: 'Review device requests' },
-  { email: `viewer@${COMPANY_EMAIL_DOMAIN}`, role: 'Viewer', desc: 'Read-only' },
+  { email: `sysadmin@${COMPANY_EMAIL_DOMAIN}`, role: 'Platform Admin', desc: 'System-wide control' },
+  { email: 'admin@solumtechnologies.com', role: 'Tenant Admin', desc: 'Full access' },
+  { email: 'itadmin@solumtechnologies.com', role: 'IT Admin', desc: 'Review device requests' },
+  { email: 'viewer@solumtechnologies.com', role: 'Viewer', desc: 'Read-only' },
   { email: 'sarah.chen@solumtechnologies.com', role: 'Employee', desc: 'Device request portal only' },
 ];
 
@@ -48,7 +49,7 @@ const features = [
 ];
 
 export function LoginPage() {
-  const [email, setEmail] = useState(`admin@${COMPANY_EMAIL_DOMAIN}`);
+  const [email, setEmail] = useState('sysadmin@assetly.com');
   const [password, setPassword] = useState('Demo@123456');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);

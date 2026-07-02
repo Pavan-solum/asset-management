@@ -1,10 +1,10 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { AuditLog, AuditAction } from '../types';
-import { DEMO_AUDIT_LOGS } from '../data/demoData';
+import { DEMO_AUDIT_LOGS, DEMO_TENANT } from '../data/demoData';
 
 const auditSlice = createSlice({
   name: 'audit',
-  initialState: { items: DEMO_AUDIT_LOGS as AuditLog[] },
+  initialState: { items: [] as AuditLog[] },
   reducers: {
     addAuditLog: (
       state,
@@ -21,6 +21,7 @@ const auditSlice = createSlice({
       state.items.unshift({
         ...action.payload,
         id: `audit-${Date.now()}`,
+        tenantId: DEMO_TENANT.id,
         createdAt: new Date().toISOString(),
       });
     },

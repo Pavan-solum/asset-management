@@ -1,5 +1,4 @@
 import { getSql, json, error, corsPreflight, parseBody } from '../_lib/db';
-import { DEMO_USERS } from '../_lib/demo-users';
 import { requireAuth, hashPassword, verifyPassword, insertAuditLog } from '../_lib/auth';
 
 export const config = { runtime: 'edge' };
@@ -24,8 +23,6 @@ export default async function handler(req: Request) {
     }
 
     const email = String(auth.email ?? '').toLowerCase();
-    const cred = DEMO_USERS[email];
-    if (!cred) return error('User not found', 404);
 
     const valid = await verifyPassword(email, currentPassword);
     if (!valid) return error('Current password is incorrect', 401);
@@ -50,6 +47,7 @@ export default async function handler(req: Request) {
     }
 
     await insertAuditLog({
+      tenantId: auth.tenantId,
       userId: auth.sub,
       userName: `${auth.firstName} ${auth.lastName}`,
       action: 'UPDATE',

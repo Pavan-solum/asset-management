@@ -4,6 +4,28 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
+export interface DbTenant {
+  id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  domain: string | null;
+  infrastructure_strategy: string | null;
+  admin_email: string | null;
+  admin_name: string | null;
+  created_at: string;
+}
+
+export interface DbUser {
+  id: string;
+  tenant_id: string;
+  email: string;
+  first_name: string;
+  last_name: string | null;
+  role: string;
+  created_at: string;
+}
+
 export interface DbAsset {
   id: string;
   tenant_id: string;
@@ -140,6 +162,32 @@ export function mapAsset(row: DbAsset) {
     assignedEmployeeId: row.assigned_employee_id ?? undefined,
     warrantyExpiresAt: row.warranty_expires_at ?? '',
     notes: row.notes ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
+export function mapTenant(row: DbTenant) {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    plan: row.plan,
+    domain: row.domain ?? undefined,
+    infrastructureStrategy: row.infrastructure_strategy ?? 'shared',
+    adminEmail: row.admin_email ?? undefined,
+    adminName: row.admin_name ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
+export function mapUser(row: DbUser) {
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    email: row.email,
+    firstName: row.first_name,
+    lastName: row.last_name ?? undefined,
+    role: row.role as any,
     createdAt: row.created_at,
   };
 }

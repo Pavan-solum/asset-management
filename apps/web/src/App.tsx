@@ -5,7 +5,7 @@ import { ExecDocsLayout } from './components/layout/ExecDocsLayout';
 import { EmployeePortalLayout } from './components/layout/EmployeePortalLayout';
 import { DataBootstrap } from './components/DataBootstrap';
 import { GlobalLoadingBar } from './components/Loader';
-import { ProtectedRoute, PublicRoute, AdminRoute, EmployeeRoute } from './components/ProtectedRoute';
+import { ProtectedRoute, PublicRoute, AdminRoute, EmployeeRoute, SystemAdminRoute } from './components/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { HRPage } from './features/hr/HRPage';
@@ -32,6 +32,14 @@ import { SoftwarePage } from './features/software/SoftwarePage';
 import { MaintenancePage } from './features/maintenance/MaintenancePage';
 import { AnalyticsPage } from './features/analytics/AnalyticsPage';
 import { MobilePage } from './features/mobile/MobilePage';
+import { SystemAdminLayout } from './components/layout/SystemAdminLayout';
+import { OrganizationsPage } from './features/system-admin/OrganizationsPage';
+import { CreateOrganizationPage } from './features/system-admin/CreateOrganizationPage';
+import { EditOrganizationPage } from './features/system-admin/EditOrganizationPage';
+import { SystemAdminUsersPage } from './features/system-admin/SystemAdminUsersPage';
+import { CreateUserPage } from './features/system-admin/CreateUserPage';
+import { EditUserPage } from './features/system-admin/EditUserPage';
+=======
 import { DashboardPage as ExeDocsDashboardPage } from './features/exe-docs/dashboard/DashboardPage';
 import { LibraryPage } from './features/exe-docs/library/LibraryPage';
 import { FinancePage as ExecDocsFinancePage } from './features/exe-docs/finance/FinancePage';
@@ -113,6 +121,22 @@ export default function App() {
       </Route>
 
       <Route
+        path="/system-admin"
+        element={
+          <ProtectedRoute>
+            <SystemAdminRoute>
+              <SystemAdminLayout />
+            </SystemAdminRoute>
+          </ProtectedRoute>
+        }
+      >
+        <Route path="organizations" element={<OrganizationsPage />} />
+        <Route path="organizations/new" element={<CreateOrganizationPage />} />
+        <Route path="organizations/:id/edit" element={<EditOrganizationPage />} />
+        <Route path="users" element={<SystemAdminUsersPage />} />
+        <Route path="users/new" element={<CreateUserPage />} />
+        <Route path="users/:id/edit" element={<EditUserPage />} />
+=======
         path="/exec-docs"
         element={
           <ProtectedRoute>

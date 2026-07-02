@@ -20,7 +20,7 @@ export async function uploadImage(dataUrl: string, filename: string): Promise<{ 
 }
 
 // Employees
-export async function createEmployee(employee: Omit<Employee, 'id'> & { id?: string }): Promise<Employee> {
+export async function createEmployee(employee: Omit<Employee, 'id' | 'tenantId'> & { id?: string }): Promise<Employee> {
   return apiFetch('/api/employees', { method: 'POST', body: JSON.stringify(employee) });
 }
 
@@ -33,7 +33,7 @@ export async function deleteEmployee(id: string): Promise<void> {
 }
 
 // Departments
-export async function createDepartment(dept: Omit<Department, 'id'> & { id?: string }): Promise<Department> {
+export async function createDepartment(dept: Omit<Department, 'id' | 'tenantId'> & { id?: string }): Promise<Department> {
   return apiFetch('/api/departments', { method: 'POST', body: JSON.stringify(dept) });
 }
 
@@ -46,7 +46,7 @@ export async function deleteDepartment(id: string): Promise<void> {
 }
 
 // Vendors
-export async function createVendor(vendor: Omit<Vendor, 'id'> & { id?: string }): Promise<Vendor> {
+export async function createVendor(vendor: Omit<Vendor, 'id' | 'tenantId'> & { id?: string }): Promise<Vendor> {
   return apiFetch('/api/vendors', { method: 'POST', body: JSON.stringify(vendor) });
 }
 

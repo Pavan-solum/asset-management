@@ -1,4 +1,4 @@
-import { getSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
 import { mapVendor, type DbVendor } from '../_lib/mappers';
 import { requireAuth, insertAuditLog } from '../_lib/auth';
 
@@ -10,12 +10,12 @@ export default async function handler(req: Request) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
 
-  const sql = getSql();
+  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
 
   try {
     if (req.method === 'GET') {
       const rows = await sql`
-        SELECT * FROM vendors WHERE tenant_id = ${DEMO_TENANT_ID} ORDER BY name ASC
+        SELECT * FROM vendors WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} ORDER BY name ASC
       ` as DbVendor[];
       return json(rows.map(mapVendor));
     }
@@ -29,7 +29,7 @@ export default async function handler(req: Request) {
       const rows = await sql`
         INSERT INTO vendors (id, tenant_id, name, contact_email, website)
         VALUES (
-          ${id}, ${DEMO_TENANT_ID}, ${name},
+          ${id}, ${auth.tenantId || DEMO_TENANT_ID}, ${name},
           ${body.contactEmail ? String(body.contactEmail) : null},
           ${body.website ? String(body.website) : null}
         )

@@ -28,6 +28,7 @@ import {
   CATEGORY_LABELS,
   DEMO_DEPARTMENTS,
   DEMO_EMPLOYEES,
+  DEMO_TENANT,
   REQUEST_STATUS_COLORS,
   REQUEST_STATUS_LABELS,
   REQUEST_TYPE_LABELS,
@@ -115,6 +116,7 @@ export function DeviceRequestPage() {
         dispatch(
           addRequest({
             id: `req-${Date.now()}`,
+            tenantId: DEMO_TENANT.id,
             employeeId: user?.employeeId ?? employeeProfile?.id ?? 'unknown',
             requestType,
             category,

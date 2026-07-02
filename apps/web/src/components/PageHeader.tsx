@@ -1,4 +1,5 @@
-import { Box, Breadcrumbs, Link, Typography } from '@mui/material';
+import { Box, Breadcrumbs, Link, Typography, IconButton } from '@mui/material';
+import { ArrowBack } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
 
 export interface BreadcrumbItem {
@@ -11,9 +12,11 @@ interface PageHeaderProps {
   subtitle?: string;
   breadcrumbs?: BreadcrumbItem[];
   actions?: React.ReactNode;
+  showBack?: boolean;
+  onBack?: () => void;
 }
 
-export function PageHeader({ title, subtitle, breadcrumbs, actions }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, breadcrumbs, actions, showBack, onBack }: PageHeaderProps) {
   return (
     <Box
       sx={{
@@ -25,11 +28,17 @@ export function PageHeader({ title, subtitle, breadcrumbs, actions }: PageHeader
         gap: 2,
       }}
     >
-      <Box sx={{ minWidth: 0 }}>
-        {breadcrumbs && breadcrumbs.length > 0 && (
-          <Breadcrumbs sx={{ mb: 1 }}>
-            {breadcrumbs.map((item, index) => {
-              const isLast = index === breadcrumbs.length - 1;
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+        {showBack && (
+          <IconButton onClick={onBack} sx={{ mt: breadcrumbs && breadcrumbs.length > 0 ? 3.5 : -0.5 }}>
+            <ArrowBack />
+          </IconButton>
+        )}
+        <Box sx={{ minWidth: 0 }}>
+          {breadcrumbs && breadcrumbs.length > 0 && (
+            <Breadcrumbs sx={{ mb: 1 }}>
+              {breadcrumbs.map((item, index) => {
+                const isLast = index === breadcrumbs.length - 1;
               if (isLast || !item.to) {
                 return (
                   <Typography key={item.label} variant="body2" color="text.secondary">
@@ -60,6 +69,7 @@ export function PageHeader({ title, subtitle, breadcrumbs, actions }: PageHeader
             {subtitle}
           </Typography>
         )}
+        </Box>
       </Box>
       {actions && (
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>

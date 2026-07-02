@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Chip, CircularProgress, Button, Grid } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import { apiFetch } from '../../../services/api/client';
+import type { DeviceContextData } from '../../../types';
 
 export function DeviceContext({ endpointId }: { endpointId: string }) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DeviceContextData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,8 +15,8 @@ export function DeviceContext({ endpointId }: { endpointId: string }) {
     try {
       const res = await apiFetch<any>(`/api/endpoints/${endpointId}/device-context`);
       setData(res);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch device context');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch device context');
     } finally {
       setLoading(false);
     }

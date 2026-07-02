@@ -1,0 +1,149 @@
+import { useState } from 'react';
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  TextField,
+  MenuItem,
+  Stack,
+  Alert,
+} from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
+import { createUser } from '../../store/usersSlice';
+import { PageHeader } from '../../components/PageHeader';
+import type { User, UserRole } from '../../types';
+
+const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
+  { value: 'platform_admin', label: 'Platform Admin (Assetly)' },
+  { value: 'tenant_admin', label: 'Tenant Admin' },
+  { value: 'it_admin', label: 'IT Admin' },
+  { value: 'viewer', label: 'Viewer' },
+  { value: 'employee', label: 'Employee' },
+];
+
+export function CreateUserPage() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const tenants = useAppSelector((s) => s.tenants.items);
+
+  const [form, setForm] = useState<Partial<User>>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    role: 'tenant_admin',
+    tenantId: '',
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.firstName || !form.email || !form.tenantId || !form.role) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await dispatch(
+        createUser({
+          firstName: form.firstName,
+          lastName: form.lastName || '',
+          email: form.email,
+          role: form.role,
+          tenantId: form.tenantId,
+        })
+      ).unwrap();
+      navigate('/system-admin/users');
+    } catch (err) {
+      setError('Failed to create user');
+    }
+  };
+
+  return (
+    <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
+      <PageHeader
+        title="Provision New User"
+        subtitle="Create a new user across any tenant environment"
+        showBack
+        onBack={() => navigate('/system-admin/users')}
+      />
+
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <Stack spacing={3}>
+              {error && <Alert severity="error">{error}</Alert>}
+              
+              <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+                <TextField
+                  required
+                  fullWidth
+                  label="First Name"
+                  value={form.firstName}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                />
+                
+                <TextField
+                  fullWidth
+                  label="Last Name"
+                  value={form.lastName}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                />
+              </Stack>
+
+              <TextField
+                required
+                fullWidth
+                label="Email Address"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+
+              <TextField
+                select
+                required
+                fullWidth
+                label="Organization (Tenant)"
+                value={form.tenantId}
+                onChange={(e) => setForm({ ...form, tenantId: e.target.value })}
+              >
+                <MenuItem value="system">System (Assetly Internal)</MenuItem>
+                {tenants.map((t) => (
+                  <MenuItem key={t.id} value={t.id}>
+                    {t.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                required
+                fullWidth
+                label="Role"
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <MenuItem key={r.value} value={r.value}>
+                    {r.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+                <Button onClick={() => navigate('/system-admin/users')} size="large">
+                  Cancel
+                </Button>
+                <Button type="submit" variant="contained" size="large">
+                  Create User
+                </Button>
+              </Box>
+            </Stack>
+          </form>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+}

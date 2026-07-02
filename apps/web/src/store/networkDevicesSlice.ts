@@ -1,17 +1,18 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { NetworkDevice } from '../types';
-import { generateDemoNetworkDevices } from '../data/demoData';
+import { DEMO_TENANT, generateDemoNetworkDevices } from '../data/demoData';
 
 const networkDevicesSlice = createSlice({
   name: 'networkDevices',
-  initialState: { items: generateDemoNetworkDevices() },
+  initialState: { items: [] as NetworkDevice[] },
   reducers: {
-    addNetworkDevice: (state, action: PayloadAction<Omit<NetworkDevice, 'id' | 'deviceTag'>>) => {
-      const num = state.items.length + 1;
+    addNetworkDevice: (state, action: PayloadAction<Omit<NetworkDevice, 'id' | 'deviceTag' | 'tenantId'>>) => {
+      const id = `net-${Date.now()}`;
       state.items.push({
         ...action.payload,
-        id: `net-${Date.now()}`,
-        deviceTag: `NET-${String(num).padStart(3, '0')}`,
+        id,
+        tenantId: DEMO_TENANT.id,
+        deviceTag: `NET-${Date.now().toString().slice(-4)}`,
       });
     },
     updateNetworkDevice: (state, action: PayloadAction<NetworkDevice>) => {

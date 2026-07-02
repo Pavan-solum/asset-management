@@ -44,6 +44,7 @@ type NavItem = {
   label: string;
   icon: React.ReactNode;
   permission?: Permission;
+  role?: string;
 };
 
 const navGroups: { label: string; items: NavItem[] }[] = [
@@ -176,7 +177,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             </Typography>
             <List disablePadding>
               {group.items
-                .filter((item) => !item.permission || can(item.permission))
+                .filter((item) => (!item.permission || can(item.permission)) && (!item.role || item.role === user?.role))
                 .map((item) => {
                 const active = isNavActive(location.pathname, item.to);
                 return (

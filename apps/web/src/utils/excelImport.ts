@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { COMPANY_EMAIL_DOMAIN } from '../constants/brand';
+import { DEMO_TENANT } from '../data/demoData';
 import type { AssetCategory, AssetStatus, Employee, Vendor } from '../types';
 
 export type ImportFieldKey = 'assetName' | 'serialNumber' | 'category' | 'assetTag' | 'user';
@@ -374,6 +375,7 @@ export class ImportEmployeeRegistry {
 
     const employee: Employee = {
       id: `emp-import-${String(this.created.size + 1).padStart(3, '0')}`,
+      tenantId: DEMO_TENANT.id,
       employeeNumber: `EMP-IMP-${String(this.created.size + 1).padStart(3, '0')}`,
       firstName: parsed.firstName,
       lastName: parsed.lastName,
