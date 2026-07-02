@@ -12,7 +12,7 @@ export function InstalledApps({ endpointId }: { endpointId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [vulnerableOnly, setVulnerableOnly] = useState(false);
-  const [expandedCve, setExpandedCve] = useState<number | null>(null);
+  const [expandedCve, setExpandedCve] = useState<string | null>(null);
 
   const fetchApps = async () => {
     setLoading(true);
