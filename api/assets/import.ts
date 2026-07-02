@@ -10,6 +10,8 @@ interface ImportBody {
   assignedBy?: string;
   audit?: Record<string, string>;
   qrOrigin?: string;
+  /** When true, deletes all existing assets/employees before importing. Default: false (additive import). */
+  replaceAll?: boolean;
 }
 
 function isUuid(value: string): boolean {
@@ -31,11 +33,13 @@ export default async function handler(req: Request) {
 
     if (items.length === 0) return error('No assets to import', 400);
 
-    // Replace inventory for demo tenant
-    await sql`DELETE FROM ownership_history WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
-    await sql`DELETE FROM asset_assignments WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
-    await sql`DELETE FROM assets WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
-    await sql`DELETE FROM employees WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
+    // Only wipe existing data when the caller explicitly requests a full replace
+    if (body.replaceAll === true) {
+      await sql`DELETE FROM ownership_history WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
+      await sql`DELETE FROM asset_assignments WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
+      await sql`DELETE FROM assets WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
+      await sql`DELETE FROM employees WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
+    }
 
     const empIdMap = new Map<string, string>();
 

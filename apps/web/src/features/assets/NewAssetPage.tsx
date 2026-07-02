@@ -140,7 +140,7 @@ export function NewAssetPage() {
         }
         const created = await createAssetApi({
           id: crypto.randomUUID(),
-          tenantId: DEMO_TENANT.id,
+          tenantId: user.tenantId || DEMO_TENANT.id,
           assetTag: form.assetTag.trim(),
           name: form.name.trim(),
           category: form.category,
