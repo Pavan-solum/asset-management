@@ -36,7 +36,7 @@ const tenantSqlCache = new Map<string, any>();
 // generic variance strictness in TypeScript 5.9+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getTenantSql(tenantId: string): Promise<any> {
-  const cached = tenantSqlCache.get(tenantId) as ReturnType<typeof neon> | undefined;
+  const cached = tenantSqlCache.get(tenantId);
   if (cached) return cached;
 
   const mainSql = getSql();
