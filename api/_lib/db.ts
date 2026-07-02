@@ -19,7 +19,9 @@ export function getSql() {
  * Vercel edge instances are long-lived, so this persists across requests on
  * the same instance and avoids repeated main-DB lookups.
  */
-const tenantSqlCache = new Map<string, ReturnType<typeof neon>>();
+// Store as any to avoid generic variance issues across TypeScript versions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tenantSqlCache = new Map<string, any>();
 
 /**
  * Returns a SQL client scoped to the tenant's database.
@@ -31,7 +33,7 @@ const tenantSqlCache = new Map<string, ReturnType<typeof neon>>();
  * Result is cached per tenant per edge instance.
  */
 export async function getTenantSql(tenantId: string): Promise<ReturnType<typeof neon>> {
-  const cached = tenantSqlCache.get(tenantId);
+  const cached = tenantSqlCache.get(tenantId) as ReturnType<typeof neon> | undefined;
   if (cached) return cached;
 
   const mainSql = getSql();

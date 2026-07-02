@@ -271,9 +271,12 @@ export async function provisionTenantDatabase(tenantSlug: string): Promise<strin
   }
 
   // 2. Run the tenant schema on the new DB
+  // neon's HTTP driver has no .unsafe() — use the tagged-template workaround
+  // for raw SQL strings: pass the string as if it were a template literal.
   const sql = neon(connectionString);
   for (const stmt of TENANT_SCHEMA_STATEMENTS) {
-    await sql.unsafe(stmt);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (sql as any)(Object.assign([stmt], { raw: [stmt] }));
   }
 
   return connectionString;

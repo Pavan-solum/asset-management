@@ -70,8 +70,6 @@ export default async function handler(req: Request) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
 
-  const sql = getSql();
-
   try {
     if (req.method === 'GET') {
       if (canReviewRequests(auth.role)) {

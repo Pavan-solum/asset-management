@@ -22,7 +22,7 @@ export default async function handler(req: Request) {
       SELECT last_logged_user, uptime_seconds, last_reboot_at, agent_version, bitlocker_status, bitlocker_drive
       FROM endpoints
       WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
-    `;
+    ` as Record<string, unknown>[];
 
     if (result.length === 0) {
       return error('Endpoint not found', 404);

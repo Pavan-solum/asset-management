@@ -284,7 +284,8 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
         throw new Error(`Gemini API error: ${errText}`);
       }
 
-      const responseData = await res.json();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const responseData = (await res.json()) as any;
       const candidate = responseData.candidates?.[0];
       const modelContent = candidate?.content;
 
@@ -302,12 +303,13 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
 
         currentContents.push({
           role: 'function',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           parts: [{
             functionResponse: {
               name,
               response: toolResult
             }
-          }]
+          }] as any,
         });
       } else {
         const textPart = modelContent.parts?.find((p: any) => p.text);
@@ -330,20 +332,20 @@ async function handleMockMode(message: string, auth: AuthUser, employeeId: strin
   
   if (text.includes('status') || text.includes('request')) {
     if (auth.role === 'employee' && employeeId) {
-      const data = await listMyRequests(employeeId);
-      if (data.requests.length === 0) {
+      const data = await listMyRequests(employeeId, auth.tenantId || DEMO_TENANT_ID);
+      if ((data.requests as any[]).length === 0) {
         textResponse = `You don't have any submitted device requests at the moment. You can submit one in the Request form above!`;
       } else {
         textResponse = `Here are your recent device requests:\n\n\`\`\`json\n${JSON.stringify({ type: 'requests', items: data.requests })}\n\`\`\``;
       }
     } else {
-      const data = await listAllRequests();
+      const data = await listAllRequests(auth.tenantId || DEMO_TENANT_ID);
       textResponse = `Here are the organization's device requests (IT Admin view):\n\n\`\`\`json\n${JSON.stringify({ type: 'requests', items: data.requests })}\n\`\`\``;
     }
   } else if (text.includes('asset') || text.includes('device') || text.includes('laptop') || text.includes('hardware')) {
     if (auth.role === 'employee' && employeeId) {
-      const data = await listMyAssets(employeeId);
-      if (data.assets.length === 0) {
+      const data = await listMyAssets(employeeId, auth.tenantId || DEMO_TENANT_ID);
+      if ((data.assets as any[]).length === 0) {
         textResponse = `You don't have any corporate hardware assets assigned to you at the moment.`;
       } else {
         textResponse = `Here are the corporate assets assigned to you:\n\n\`\`\`json\n${JSON.stringify({ type: 'assets', items: data.assets })}\n\`\`\ lock`;

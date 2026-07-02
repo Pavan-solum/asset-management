@@ -19,8 +19,8 @@ export default async function handler(req: Request) {
     if (!id) return error('Endpoint ID is required', 400);
 
     const resolvedParam = url.searchParams.get('resolved');
-    const sql = await getTenantSql(tenantId);
     const tenantId = auth.tenantId || DEMO_TENANT_ID;
+    const sql = await getTenantSql(tenantId);
 
     // Verify the endpoint belongs to this tenant
     const [ep] = await sql`SELECT id FROM endpoints WHERE id = ${id} AND tenant_id = ${tenantId} LIMIT 1`;

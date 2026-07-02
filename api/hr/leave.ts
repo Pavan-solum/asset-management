@@ -22,16 +22,16 @@ export default async function handler(req: Request) {
           SELECT * FROM hr_leave_requests 
           WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND employee_id = ${employeeId} AND deleted_at IS NULL
           ORDER BY created_at DESC
-        `;
+        ` as Record<string, any>[];
       } else {
         rows = await sql`
           SELECT * FROM hr_leave_requests 
           WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND deleted_at IS NULL
           ORDER BY created_at DESC
-        `;
+        ` as Record<string, any>[];
       }
 
-      return json(rows.map((row: any) => ({
+      return json(rows.map((row) => ({
         id: row.id,
         employeeId: row.employee_id,
         leaveType: row.leave_type,
@@ -66,7 +66,7 @@ export default async function handler(req: Request) {
           ${id}, ${auth.tenantId || DEMO_TENANT_ID}, ${employeeId}, ${leaveType}, ${startDate}, ${endDate}, ${daysCount}, ${reason}, 'pending'
         )
         RETURNING *
-      `;
+      ` as Record<string, any>[];
 
       await insertAuditLog({
         userId: auth.sub,

@@ -29,7 +29,7 @@ export default async function handler(req: Request) {
 
     const existing = await sql`
       SELECT id FROM assets WHERE id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
-    `;
+    ` as { id: string }[];
     if (existing.length === 0) return error('Asset not found', 404);
 
     await sql`
@@ -68,8 +68,8 @@ export default async function handler(req: Request) {
 
     const rows = await sql`
       SELECT * FROM assets WHERE id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
-    `;
-    return json(mapAsset(rows[0] as any));
+    ` as DbAsset[];
+    return json(mapAsset(rows[0]));
   } catch (e) {
     return error(e instanceof Error ? e.message : 'Return failed', 500);
   }

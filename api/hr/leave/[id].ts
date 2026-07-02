@@ -30,7 +30,7 @@ export default async function handler(req: Request) {
         SET status = ${status}, approved_by = ${auth.sub}, updated_at = NOW()
         WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
         RETURNING *
-      `;
+      ` as Record<string, any>[];
 
       if (rows.length === 0) return error('Not found', 404);
 
@@ -65,7 +65,7 @@ export default async function handler(req: Request) {
         SET deleted_at = NOW(), updated_at = NOW()
         WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
         RETURNING *
-      `;
+      ` as Record<string, any>[];
 
       if (rows.length === 0) return error('Not found', 404);
 

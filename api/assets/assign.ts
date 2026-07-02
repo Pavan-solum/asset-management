@@ -30,7 +30,7 @@ export default async function handler(req: Request) {
 
     const existing = await sql`
       SELECT id FROM assets WHERE id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
-    `;
+    ` as { id: string }[];
     if (existing.length === 0) return error('Asset not found', 404);
 
     await sql`
