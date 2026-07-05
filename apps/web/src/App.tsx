@@ -5,10 +5,15 @@ import { ExecDocsLayout } from './components/layout/ExecDocsLayout';
 import { EmployeePortalLayout } from './components/layout/EmployeePortalLayout';
 import { DataBootstrap } from './components/DataBootstrap';
 import { GlobalLoadingBar } from './components/Loader';
-import { ProtectedRoute, PublicRoute, AdminRoute, EmployeeRoute, SystemAdminRoute } from './components/ProtectedRoute';
+import { ProtectedRoute, PublicRoute, AdminRoute, EmployeeRoute, SystemAdminRoute, ModuleRoute } from './components/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { HRPage } from './features/hr/HRPage';
+import { LeavesPage } from './features/hr/leaves/LeavesPage';
+import { AttendancePage } from './features/hr/attendance/AttendancePage';
+import { OnboardingPage } from './features/hr/onboarding/OnboardingPage';
+import { PerformancePage } from './features/hr/performance/PerformancePage';
+import { HRPoliciesPage } from './features/hr/policies/HRPoliciesPage';
 import { LandingPage } from './features/portal/LandingPage';
 import { AssetsPage } from './features/assets/AssetsPage';
 import { AssetDetailPage } from './features/assets/AssetDetailPage';
@@ -76,7 +81,9 @@ export default function App() {
         element={
           <ProtectedRoute>
             <AdminRoute>
-              <HRLayout />
+              <ModuleRoute module="module:hr">
+                <HRLayout />
+              </ModuleRoute>
             </AdminRoute>
           </ProtectedRoute>
         }
@@ -85,6 +92,11 @@ export default function App() {
         <Route path="employees" element={<EmployeesPage />} />
         <Route path="employees/:id" element={<EmployeeDetailPage />} />
         <Route path="departments" element={<DepartmentsPage />} />
+        <Route path="leaves" element={<LeavesPage />} />
+        <Route path="attendance" element={<AttendancePage />} />
+        <Route path="onboarding" element={<OnboardingPage />} />
+        <Route path="performance" element={<PerformancePage />} />
+        <Route path="policies" element={<HRPoliciesPage />} />
       </Route>
 
       <Route
@@ -97,26 +109,32 @@ export default function App() {
         }
       >
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="assets" element={<AssetsPage />} />
-        <Route path="assets/new" element={<NewAssetPage />} />
-        <Route path="assets/:id" element={<AssetDetailPage />} />
-        <Route path="devices" element={<DevicesPage />} />
-        <Route path="network-devices" element={<NetworkDevicesPage />} />
-        <Route path="network-devices/:id" element={<NetworkDeviceDetailPage />} />
+        
+        {/* Assets & IT Module */}
+        <Route path="assets" element={<ModuleRoute module="module:assets"><AssetsPage /></ModuleRoute>} />
+        <Route path="assets/new" element={<ModuleRoute module="module:assets"><NewAssetPage /></ModuleRoute>} />
+        <Route path="assets/:id" element={<ModuleRoute module="module:assets"><AssetDetailPage /></ModuleRoute>} />
+        <Route path="devices" element={<ModuleRoute module="module:assets"><DevicesPage /></ModuleRoute>} />
+        <Route path="network-devices" element={<ModuleRoute module="module:assets"><NetworkDevicesPage /></ModuleRoute>} />
+        <Route path="network-devices/:id" element={<ModuleRoute module="module:assets"><NetworkDeviceDetailPage /></ModuleRoute>} />
+        <Route path="endpoints" element={<ModuleRoute module="module:assets"><EndpointsPage /></ModuleRoute>} />
+        <Route path="software" element={<ModuleRoute module="module:assets"><SoftwarePage /></ModuleRoute>} />
+        <Route path="lifecycle" element={<ModuleRoute module="module:assets"><LifecyclePage /></ModuleRoute>} />
+        <Route path="maintenance" element={<ModuleRoute module="module:assets"><MaintenancePage /></ModuleRoute>} />
+        <Route path="mobile" element={<ModuleRoute module="module:assets"><MobilePage /></ModuleRoute>} />
+
+        {/* Finance Module */}
+        <Route path="finance" element={<ModuleRoute module="module:finance"><FinancePage /></ModuleRoute>} />
+
+        {/* Shared / General admin routes (visible to multiple admins depending on permissions) */}
         <Route path="employees" element={<EmployeesPage />} />
         <Route path="employees/:id" element={<EmployeeDetailPage />} />
         <Route path="departments" element={<DepartmentsPage />} />
         <Route path="vendors" element={<VendorsPage />} />
         <Route path="requests" element={<RequestsPage />} />
-        <Route path="endpoints" element={<EndpointsPage />} />
         <Route path="audit" element={<AuditPage />} />
         <Route path="settings" element={<SettingsPage />} />
-        <Route path="lifecycle" element={<LifecyclePage />} />
-        <Route path="finance" element={<FinancePage />} />
-        <Route path="software" element={<SoftwarePage />} />
-        <Route path="maintenance" element={<MaintenancePage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="mobile" element={<MobilePage />} />
       </Route>
 
       <Route
@@ -142,7 +160,9 @@ export default function App() {
         element={
           <ProtectedRoute>
             <AdminRoute>
-              <ExecDocsLayout />
+              <ModuleRoute module="module:docs">
+                <ExecDocsLayout />
+              </ModuleRoute>
             </AdminRoute>
           </ProtectedRoute>
         }

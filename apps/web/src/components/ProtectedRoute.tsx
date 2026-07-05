@@ -1,8 +1,9 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAppSelector } from '../hooks/storeHooks';
+import { useAppSelector, usePermissions } from '../hooks/storeHooks';
 import { isApiEnabled } from '../services/api/config';
 import { getHomeRouteForRole, isEmployeeRole } from '../utils/routing';
 import { PageLoader } from './Loader';
+import type { Permission } from '../types';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
@@ -13,6 +14,15 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   if (isApiEnabled() && !bootstrapReady && !isEmployeeRole(role)) {
     return <PageLoader message="Loading your workspace…" />;
+  }
+  return <>{children}</>;
+}
+
+export function ModuleRoute({ children, module }: { children: React.ReactNode; module: Permission }) {
+  const { can } = usePermissions();
+  if (!can(module)) {
+    // Redirect to home if they don't have access to this module
+    return <Navigate to="/" replace />;
   }
   return <>{children}</>;
 }

@@ -17,7 +17,9 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { ExecDocsSidebar, DRAWER_WIDTH } from './ExecDocsSidebar';
+import { GlobalSearch } from '../GlobalSearch';
 import { ThemeModeToggle } from '../ThemeModeToggle';
+import { ChatbotWidget } from '../ChatbotWidget';
 import { useAppDispatch, useAuthUser, useTenant } from '../../hooks/storeHooks';
 import { logout } from '../../store/authSlice';
 import { getRoleLabel, getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
@@ -65,9 +67,13 @@ export function ExecDocsLayout() {
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0, display: { xs: 'none', md: 'block' } }}>
+            <GlobalSearch />
+          </Box>
+
+          <Box sx={{ flex: { xs: 1, md: 0 }, minWidth: 0, display: { md: 'none' } }}>
             <Typography variant="subtitle1" fontWeight={700} noWrap>
-              Executive Documents · {tenant?.name}
+              {tenant?.name}
             </Typography>
           </Box>
 
@@ -160,6 +166,7 @@ export function ExecDocsLayout() {
           <Outlet />
         </Box>
       </Box>
+      <ChatbotWidget />
     </Box>
   );
 }

@@ -50,6 +50,7 @@ export function EmployeePortalLayout() {
           color: 'text.primary',
           borderBottom: '1px solid',
           borderColor: 'divider',
+          backdropFilter: 'blur(8px)',
         }}
       >
         <Toolbar sx={{ maxWidth: 960, width: '100%', mx: 'auto' }}>

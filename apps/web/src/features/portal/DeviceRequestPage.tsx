@@ -18,8 +18,14 @@ import {
   TableRow,
   TextField,
   Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 import { useAppDispatch, useAppSelector, useAuthUser } from '../../hooks/storeHooks';
 import { isApiEnabled } from '../../services/api/config';
 import { createAssetRequest, fetchAssetRequests } from '../../services/api/requests';
@@ -45,6 +51,7 @@ export function DeviceRequestPage() {
   const allRequests = useAppSelector((s) => s.requests.items);
   const departments = useAppSelector((s) => s.departments.items);
   const employees = useAppSelector((s) => s.employees.items);
+  const assets = useAppSelector((s) => s.assets.items);
 
   const [requestType, setRequestType] = useState<AssetRequestType>('new');
   const [category, setCategory] = useState(REQUEST_CATEGORIES[0]);
@@ -55,9 +62,15 @@ export function DeviceRequestPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Return dialog state
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [assetsToReturn, setAssetsToReturn] = useState<typeof assets>([]);
+  const [returnFeedback, setReturnFeedback] = useState('');
+  const [returnSubmitting, setReturnSubmitting] = useState(false);
+
   const employeeProfile = useMemo(() => {
     if (!user?.employeeId) {
-      return employees.find((e) => e.email.toLowerCase() === user?.email.toLowerCase());
+      return employees.find((e) => e.email?.toLowerCase() === user?.email?.toLowerCase());
     }
     return employees.find((e) => e.id === user.employeeId) ?? DEMO_EMPLOYEES.find((e) => e.id === user.employeeId);
   }, [employees, user]);
@@ -72,6 +85,12 @@ export function DeviceRequestPage() {
     if (!employeeId) return allRequests.filter((r) => r.employeeEmail === user?.email);
     return allRequests.filter((r) => r.employeeId === employeeId);
   }, [allRequests, user, employeeProfile]);
+
+  const myAssets = useMemo(() => {
+    const employeeId = user?.employeeId ?? employeeProfile?.id;
+    if (!employeeId) return [];
+    return assets.filter((a) => a.assignedEmployeeId === employeeId);
+  }, [assets, user, employeeProfile]);
 
   const loadRequests = useCallback(async () => {
     if (!isApiEnabled()) return;
@@ -141,6 +160,58 @@ export function DeviceRequestPage() {
     }
   };
 
+  const handleOpenReturnDialog = (assetsToRet: typeof assets) => {
+    setAssetsToReturn(assetsToRet);
+    setReturnFeedback('');
+    setReturnDialogOpen(true);
+  };
+
+  const handleReturnSubmit = async () => {
+    if (!returnFeedback.trim()) {
+      setError('Please provide feedback or a reason for the return.');
+      return;
+    }
+
+    setReturnSubmitting(true);
+    try {
+      const payload = {
+        requestType: 'return' as const,
+        category: assetsToReturn.length === 1 ? assetsToReturn[0].category : 'other',
+        description: returnFeedback.trim(),
+        assetIds: assetsToReturn.map(a => a.id),
+      };
+
+      if (isApiEnabled()) {
+        const created = await createAssetRequest(payload);
+        dispatch(addRequest(created));
+      } else {
+        dispatch(
+          addRequest({
+            id: `req-${Date.now()}`,
+            tenantId: DEMO_TENANT.id,
+            employeeId: user?.employeeId ?? employeeProfile?.id ?? 'unknown',
+            requestType: 'return',
+            category: assetsToReturn.length === 1 ? assetsToReturn[0].category : 'other',
+            description: returnFeedback.trim(),
+            assetIds: assetsToReturn.map(a => a.id),
+            status: 'submitted',
+            createdAt: new Date().toISOString(),
+            employeeName: user ? `${user.firstName} ${user.lastName}` : undefined,
+            employeeEmail: user?.email,
+            departmentName: employeeProfile ? deptMap[employeeProfile.departmentId] : undefined,
+          }),
+        );
+      }
+
+      setSuccess(`Return request submitted for ${assetsToReturn.length} asset(s).`);
+      setReturnDialogOpen(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to submit return request');
+    } finally {
+      setReturnSubmitting(false);
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h4" fontWeight={700} gutterBottom>
@@ -171,6 +242,11 @@ export function DeviceRequestPage() {
               <Typography variant="body2" fontWeight={600}>
                 {user?.email}
               </Typography>
+              {user?.role !== 'employee' && (
+                <Typography variant="caption" color="warning.main" display="block" sx={{ mt: 0.5 }}>
+                  (You are viewing this as {user?.role}. Log in as the employee to see their specific portal.)
+                </Typography>
+              )}
             </Box>
             <Box>
               <Typography variant="caption" color="text.secondary">
@@ -269,6 +345,70 @@ export function DeviceRequestPage() {
         My requests
       </Typography>
 
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, mt: 4 }}>
+        <Typography variant="h6" fontWeight={700}>
+          My Assigned Devices
+        </Typography>
+        {myAssets.length > 0 && (
+          <Button 
+            variant="outlined" 
+            color="warning" 
+            size="small" 
+            startIcon={<AssignmentReturnIcon />}
+            onClick={() => handleOpenReturnDialog(myAssets)}
+          >
+            Return All
+          </Button>
+        )}
+      </Box>
+
+      <Card sx={{ mb: 4 }}>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Asset Tag</TableCell>
+                <TableCell>Category</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {myAssets.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                    No devices currently assigned to you.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                myAssets.map((asset) => (
+                  <TableRow key={asset.id} hover>
+                    <TableCell sx={{ fontWeight: 500 }}>{asset.name}</TableCell>
+                    <TableCell>
+                      <Chip label={asset.assetTag} size="small" variant="outlined" />
+                    </TableCell>
+                    <TableCell>{CATEGORY_LABELS[asset.category] ?? asset.category}</TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        color="primary"
+                        onClick={() => handleOpenReturnDialog([asset])}
+                      >
+                        Return
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+
+      <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>
+        My requests
+      </Typography>
+
       <Card>
         <TableContainer>
           <Table size="small">
@@ -321,6 +461,41 @@ export function DeviceRequestPage() {
           </Table>
         </TableContainer>
       </Card>
+
+      <Dialog open={returnDialogOpen} onClose={() => setReturnDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Return Asset(s)</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            You are initiating a return request for the following asset(s):
+          </Typography>
+          <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3 }}>
+            {assetsToReturn.map(a => (
+              <Chip key={a.id} label={`${a.name} (${a.assetTag})`} size="small" color="primary" variant="outlined" />
+            ))}
+          </Stack>
+          <TextField
+            fullWidth
+            required
+            label="Feedback / Reason for Return"
+            placeholder="e.g. Leaving company, device broken, upgrading..."
+            multiline
+            minRows={3}
+            value={returnFeedback}
+            onChange={(e) => setReturnFeedback(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setReturnDialogOpen(false)} disabled={returnSubmitting}>Cancel</Button>
+          <LoadingButton 
+            variant="contained" 
+            color="primary" 
+            onClick={handleReturnSubmit} 
+            loading={returnSubmitting}
+          >
+            Submit Return Request
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -26,7 +26,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DevicesIcon from '@mui/icons-material/Devices';
-import { useAppDispatch, useAuthUser } from '../../hooks/storeHooks';
+import { useAppDispatch, useAuthUser, usePermissions } from '../../hooks/storeHooks';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { logout } from '../../store/authSlice';
 import { ThemeModeToggle } from '../../components/ThemeModeToggle';
@@ -82,6 +82,7 @@ export function LandingPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
+  const { can } = usePermissions();
   const isDarkMode = theme.palette.mode === 'dark';
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -111,26 +112,30 @@ export function LandingPage() {
       description: 'Track hardware, software, procurement, and asset lifecycle.',
       icon: <InventoryIcon sx={{ fontSize: 48 }} />,
       path: '/dashboard',
+      permission: 'module:assets' as const,
     },
     {
       title: 'HR Policy & Management',
       description: 'Streamline payroll, attendance, leave policies, and employee management.',
       icon: <PeopleIcon sx={{ fontSize: 48 }} />,
       path: '/hr',
+      permission: 'module:hr' as const,
     },
     {
       title: 'Employee Doc Management',
       description: 'Securely manage employee documents, onboarding checklists, and verification.',
       icon: <FolderIcon sx={{ fontSize: 48 }} />,
       path: '/exec-docs',
+      permission: 'module:docs' as const,
     },
     {
       title: 'Finance & Expenses',
       description: 'Automate expense tracking, approvals, and payroll records.',
       icon: <AccountBalanceIcon sx={{ fontSize: 48 }} />,
       path: '/finance',
+      permission: 'module:finance' as const,
     }
-  ];
+  ].filter(m => !m.permission || can(m.permission));
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>

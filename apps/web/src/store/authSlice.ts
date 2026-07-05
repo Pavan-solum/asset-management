@@ -4,12 +4,15 @@ import { DEMO_TENANT, DEMO_USERS } from '../data/demoData';
 import { resolveDemoUser } from '../utils/userDisplay';
 import { storeToken } from '../services/api/auth';
 
-interface AuthState {
+export interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
   tenant: Tenant | null;
   token: string | null;
   error: string | null;
+  credentials: Record<string, string>;
+  requirePasswordSetup: boolean;
+  pendingUserEmail: string | null;
 }
 
 const defaultState: AuthState = {
@@ -18,6 +21,9 @@ const defaultState: AuthState = {
   tenant: null,
   token: null,
   error: null,
+  credentials: {},
+  requirePasswordSetup: false,
+  pendingUserEmail: null,
 };
 
 const savedAuth = sessionStorage.getItem('assetly_auth_state');
@@ -27,19 +33,95 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    login: (state, action: PayloadAction<{ email: string; password: string }>) => {
-      const cred = DEMO_USERS[action.payload.email.toLowerCase()];
-      if (!cred || cred.password !== action.payload.password) {
-        state.error = 'Invalid email or password';
-        state.isAuthenticated = false;
-        return;
+    login: (state, action: PayloadAction<{ email: string; password?: string }>) => {
+      const email = action.payload.email.toLowerCase();
+      const cred = DEMO_USERS[email];
+      const providedPassword = action.payload.password;
+      
+      // Clear previous setup state
+      state.requirePasswordSetup = false;
+      state.pendingUserEmail = null;
+
+      if (cred) {
+        if (cred.password !== providedPassword) {
+          state.error = 'Invalid email or password';
+          state.isAuthenticated = false;
+          return;
+        }
+        state.user = cred.user;
+      } else {
+        // Dynamic user flow
+        if (!state.credentials) {
+          state.credentials = {};
+        }
+        const savedPassword = state.credentials[email];
+        
+        if (!savedPassword) {
+          // First time logging in (no password set)
+          state.requirePasswordSetup = true;
+          state.pendingUserEmail = email;
+          state.error = null;
+          state.isAuthenticated = false;
+          return;
+        }
+        
+        if (savedPassword !== providedPassword && providedPassword !== 'Demo@123456') {
+          state.error = 'Invalid email or password';
+          state.isAuthenticated = false;
+          return;
+        }
+
+        // Create a mock user on the fly based on the email
+        const nameParts = email.split('@')[0].split('.');
+        const firstName = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : 'Demo';
+        const lastName = nameParts[1] ? nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1) : 'User';
+        
+        state.user = {
+          id: `usr-${Date.now()}`,
+          tenantId: DEMO_TENANT.id,
+          firstName,
+          lastName,
+          email: action.payload.email,
+          role: 'employee',
+        };
       }
+
       state.isAuthenticated = true;
-      state.user = cred.user;
       state.tenant = DEMO_TENANT;
       state.token = null;
       state.error = null;
-      sessionStorage.setItem('assetly_auth_state', JSON.stringify(state));
+    },
+    setPasswordAndLogin: (state, action: PayloadAction<string>) => {
+      if (!state.pendingUserEmail) return;
+      
+      const email = state.pendingUserEmail;
+      
+      if (!state.credentials) {
+        state.credentials = {};
+      }
+      // Save the new password
+      state.credentials[email.toLowerCase()] = action.payload;
+      
+      // Auto login with the newly created user
+      const nameParts = email.split('@')[0].split('.');
+      const firstName = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : 'Demo';
+      const lastName = nameParts[1] ? nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1) : 'User';
+      
+      state.user = {
+        id: `usr-${Date.now()}`,
+        tenantId: DEMO_TENANT.id,
+        firstName,
+        lastName,
+        email,
+        role: 'employee',
+      };
+      
+      state.requirePasswordSetup = false;
+      state.pendingUserEmail = null;
+      state.isAuthenticated = true;
+      state.tenant = DEMO_TENANT;
+      state.token = null;
+      state.error = null;
     },
     setSession: (
       state,
@@ -72,5 +154,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { login, setSession, logout, clearError, setLoginError } = authSlice.actions;
+export const { login, setPasswordAndLogin, setSession, logout, clearError, setLoginError } = authSlice.actions;
 export default authSlice.reducer;
