@@ -9,6 +9,7 @@ import {
   type DbOwnershipEvent,
 } from '../_lib/mappers';
 import { requireAuth } from '../_lib/auth';
+import { checkAssetLimit } from '../_lib/subscription';
 
 export const config = { runtime: 'edge' };
 
@@ -48,6 +49,10 @@ export default async function handler(req: Request) {
     }
 
     if (req.method === 'POST') {
+      const tenantId = auth.tenantId || DEMO_TENANT_ID;
+      const limitCheck = await checkAssetLimit(tenantId);
+      if (!limitCheck.allowed) return error(limitCheck.message ?? 'Plan limit reached', 402);
+
       const body = await parseBody<Record<string, unknown>>(req);
       const payload = assetInsertPayload(body, (auth.tenantId || DEMO_TENANT_ID));
 

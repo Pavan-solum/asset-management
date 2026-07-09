@@ -35,6 +35,11 @@ import endpointsDeviceContext from '../api/endpoints/[id]/device-context';
 import endpointsActionsForceScan from '../api/endpoints/[id]/actions/force-scan';
 import endpointsActionsIsolate from '../api/endpoints/[id]/actions/isolate';
 import endpointsActionsSync from '../api/endpoints/[id]/actions/sync';
+import billingSubscription from '../api/billing/subscription';
+import billingCheckout from '../api/billing/checkout';
+import billingPortal from '../api/billing/portal';
+import billingWebhooks from '../api/billing/webhooks';
+import billingWebhooksRazorpay from '../api/billing/webhooks-razorpay';
 
 type ApiHandler = (req: Request) => Promise<Response>;
 
@@ -94,6 +99,12 @@ function resolveHandler(pathname: string): ApiHandler | null {
   if (/^\/api\/tenants\/[^/]+$/.test(pathname)) return tenantsById;
   if (pathname === '/api/users') return usersIndex;
   if (/^\/api\/users\/[^/]+$/.test(pathname)) return usersById;
+
+  if (pathname === '/api/billing/subscription') return billingSubscription;
+  if (pathname === '/api/billing/checkout') return billingCheckout;
+  if (pathname === '/api/billing/portal') return billingPortal;
+  if (pathname === '/api/billing/webhooks') return billingWebhooks;
+  if (pathname === '/api/billing/webhooks-razorpay') return billingWebhooksRazorpay;
 
   // New endpoint API routes
   if (/^\/api\/endpoints\/[^/]+\/threats$/.test(pathname)) return endpointsThreats;

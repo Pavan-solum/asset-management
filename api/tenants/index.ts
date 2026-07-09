@@ -31,6 +31,7 @@ export default async function handler(req: Request) {
       const name = String(body.name ?? '').trim();
       const slug = String(body.slug ?? '').trim();
       const plan = String(body.plan ?? 'Professional').trim();
+      const billingRegion = String(body.billingRegion ?? 'IN').toUpperCase() === 'GLOBAL' ? 'GLOBAL' : 'IN';
 
       if (!name || !slug) {
         return error('name and slug are required', 400);
@@ -53,14 +54,15 @@ export default async function handler(req: Request) {
 
       const rows = await sql`
         INSERT INTO tenants (
-          id, name, slug, plan, domain, infrastructure_strategy, admin_email, admin_name, database_url
+          id, name, slug, plan, domain, infrastructure_strategy, admin_email, admin_name, database_url, billing_region
         ) VALUES (
           ${id}, ${name}, ${slug}, ${plan},
           ${body.domain ? String(body.domain) : null},
           ${strategy},
           ${body.adminEmail ? String(body.adminEmail) : null},
           ${body.adminName ? String(body.adminName) : null},
-          ${dedicatedDbUrl}
+          ${dedicatedDbUrl},
+          ${billingRegion}
         )
         RETURNING *
       ` as DbTenant[];

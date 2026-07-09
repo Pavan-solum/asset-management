@@ -32,6 +32,9 @@ import { ApiError } from '../../services/api/client';
 import { LoadingButton } from '../../components/Loader';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
+import { BillingCard } from './BillingCard';
+import { useDispatch } from 'react-redux';
+import { updateTenantPlan } from '../../store/authSlice';
 
 const demoUsers = [
   { name: 'Vasanth', email: `admin@${COMPANY_EMAIL_DOMAIN}`, role: 'Tenant Admin' },
@@ -42,16 +45,18 @@ const demoUsers = [
 const roadmapFeatures = [
   'SSO / SAML / LDAP / Entra ID',
   'MSP parent-child tenant hierarchy',
-  'Stripe billing integration',
+  'Per-endpoint usage metering (Stripe)',
   'Email notification preferences',
   'Custom roles & permissions',
   'White-label branding',
 ];
 
 export function SettingsPage() {
+  const dispatch = useDispatch();
   const tenant = useTenant();
   const user = useAuthUser();
-  const { can } = usePermissions();
+  const { can, role } = usePermissions();
+  const canViewBilling = isApiEnabled() && (can('settings:write') || role === 'platform_admin');
   const { mode, toggleMode } = useThemeMode();
   const isDark = mode === 'dark';
   const [dbConnected, setDbConnected] = useState<boolean | null>(null);
@@ -77,6 +82,27 @@ export function SettingsPage() {
       />
 
       <Grid container spacing={2}>
+        {canViewBilling && (
+          <Grid item xs={12}>
+            {role === 'platform_admin' && (
+              <Alert severity="info" sx={{ mb: 0 }}>
+                Viewing subscription for <strong>{tenant?.name ?? 'demo tenant'}</strong>. Tenant admins manage
+                billing for their own organization from this page.
+              </Alert>
+            )}
+          </Grid>
+        )}
+
+        {canViewBilling && (
+          <Grid item xs={12}>
+            <BillingCard
+              onPlanChanged={(planName) => {
+                dispatch(updateTenantPlan({ plan: planName, subscriptionStatus: 'active' }));
+              }}
+            />
+          </Grid>
+        )}
+
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>

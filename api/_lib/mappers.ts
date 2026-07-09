@@ -13,6 +13,13 @@ export interface DbTenant {
   infrastructure_strategy: string | null;
   admin_email: string | null;
   admin_name: string | null;
+  subscription_status?: string | null;
+  subscription_plan_id?: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  razorpay_subscription_id?: string | null;
+  billing_region?: string | null;
+  trial_ends_at?: string | null;
   created_at: string;
 }
 
@@ -176,6 +183,11 @@ export function mapTenant(row: DbTenant) {
     infrastructureStrategy: row.infrastructure_strategy ?? 'shared',
     adminEmail: row.admin_email ?? undefined,
     adminName: row.admin_name ?? undefined,
+    subscriptionStatus: row.subscription_status ?? undefined,
+    trialEndsAt: row.trial_ends_at ?? undefined,
+    billingRegion: row.billing_region === 'GLOBAL' ? 'GLOBAL' : 'IN',
+    hasStripeBilling: Boolean(row.stripe_customer_id),
+    hasRazorpayBilling: Boolean(row.razorpay_subscription_id),
     createdAt: row.created_at,
   };
 }

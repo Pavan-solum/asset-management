@@ -140,12 +140,29 @@ export async function requireAuth(req: Request): Promise<AuthUser | Response> {
   return user;
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+/** Tenant ID used for billing APIs — platform admins fall back to the demo tenant. */
+export function resolveBillingTenantId(auth: AuthUser): string | null {
+  if (auth.tenantId && isUuid(auth.tenantId)) return auth.tenantId;
+  if (auth.role === 'platform_admin') return DEMO_TENANT_ID;
+  return null;
+}
+
+export function canManageBilling(role: string | undefined): boolean {
+  return role === 'tenant_admin' || role === 'platform_admin';
+}
+
 export function canReviewRequests(role: string | undefined): boolean {
   return role === 'tenant_admin' || role === 'it_admin';
 }
 
 export function isPublicApiRoute(pathname: string, method: string): boolean {
   if (pathname === '/api/health') return true;
+  if (pathname === '/api/billing/webhooks' && method === 'POST') return true;
+  if (pathname === '/api/billing/webhooks-razorpay' && method === 'POST') return true;
   if (pathname === '/api/auth/login' && method === 'POST') return true;
   if (method === 'GET' && /^\/api\/assets\/[^/]+$/.test(pathname)) {
     const segment = pathname.split('/').pop();
