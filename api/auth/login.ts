@@ -14,7 +14,7 @@ export default async function handler(req: Request) {
     const email = String(body.email ?? '').trim().toLowerCase();
     const password = String(body.password ?? '');
 
-    if (!email || !password) return error('Email and password are required', 400);
+    if (!email) return error('Email is required', 400);
 
     let userRecord: any = null;
     let tenantRecord: any = DEMO_TENANT; // Default for demo
@@ -52,6 +52,32 @@ export default async function handler(req: Request) {
       if (!cred) return error('Invalid email or password', 401);
       userRecord = cred.user;
     }
+
+    // 3. Check if this is a new employee with no password set — allow passwordless first-time login
+    if (!password && userRecord.role === 'employee') {
+      try {
+        const sql = getSql();
+        const rows = await sql`
+          SELECT password_hash FROM user_passwords WHERE email = ${email}
+        ` as { password_hash: string }[];
+        const hasPassword = rows.length > 0 && rows[0].password_hash && rows[0].password_hash !== 'seed-placeholder';
+        if (!hasPassword) {
+          // First-time login — prompt them to set a password
+          const token = await signAuthToken(userRecord);
+          return json({
+            token,
+            user: userRecord,
+            tenant: tenantRecord,
+            requirePasswordSetup: true,
+          });
+        }
+      } catch {
+        // If DB unavailable, fall through to normal auth
+      }
+    }
+
+    // 4. Password is required for all other cases
+    if (!password) return error('Email and password are required', 400);
 
     const valid = await verifyPassword(email, password);
     if (!valid) return error('Invalid email or password', 401);

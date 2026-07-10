@@ -26,7 +26,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DevicesIcon from '@mui/icons-material/Devices';
-import { useAppDispatch, useAuthUser } from '../../hooks/storeHooks';
+import { useAppDispatch, useAuthUser, usePermissions } from '../../hooks/storeHooks';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { logout } from '../../store/authSlice';
 import { ThemeModeToggle } from '../../components/ThemeModeToggle';
@@ -37,14 +37,23 @@ interface ModuleCardProps {
   description: string;
   icon: React.ReactNode;
   path: string;
+  locked?: boolean;
 }
 
-function ModuleCard({ title, description, icon, path }: ModuleCardProps) {
+function ModuleCard({ title, description, icon, path, locked }: ModuleCardProps) {
   const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (locked) {
+      navigate('/login', { state: { from: path } });
+    } else {
+      navigate(path);
+    }
+  };
 
   return (
     <Card
-      onClick={() => navigate(path)}
+      onClick={handleClick}
       elevation={0}
       sx={{
         height: '100%',
@@ -82,6 +91,7 @@ export function LandingPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
+  const { can } = usePermissions();
   const isDarkMode = theme.palette.mode === 'dark';
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -95,7 +105,7 @@ export function LandingPage() {
     navigate('/login');
   };
 
-  const modules = [
+  const allModules = [
     ...(user?.role === 'employee'
       ? [
           {
@@ -103,6 +113,7 @@ export function LandingPage() {
             description: 'Request new devices, replacements, accessories, and view request status.',
             icon: <DevicesIcon sx={{ fontSize: 48 }} />,
             path: '/portal',
+            permission: undefined,
           },
         ]
       : []),
@@ -111,26 +122,38 @@ export function LandingPage() {
       description: 'Track hardware, software, procurement, and asset lifecycle.',
       icon: <InventoryIcon sx={{ fontSize: 48 }} />,
       path: '/dashboard',
+      permission: 'module:assets' as const,
     },
     {
       title: 'HR Policy & Management',
       description: 'Streamline payroll, attendance, leave policies, and employee management.',
       icon: <PeopleIcon sx={{ fontSize: 48 }} />,
       path: '/hr',
+      permission: 'module:hr' as const,
     },
     {
       title: 'Employee Doc Management',
       description: 'Securely manage employee documents, onboarding checklists, and verification.',
       icon: <FolderIcon sx={{ fontSize: 48 }} />,
       path: '/exec-docs',
+      permission: 'module:docs' as const,
     },
     {
       title: 'Finance & Expenses',
       description: 'Automate expense tracking, approvals, and payroll records.',
       icon: <AccountBalanceIcon sx={{ fontSize: 48 }} />,
       path: '/finance',
-    }
+      permission: 'module:finance' as const,
+    },
   ];
+
+  // When not logged in: show all default (non-employee) modules as locked.
+  // When logged in: show only the modules the user has permission to access.
+  const modules = !user
+    ? allModules.filter(m => m.permission !== undefined).map(m => ({ ...m, locked: true }))
+    : allModules
+        .filter(m => !m.permission || can(m.permission))
+        .map(m => ({ ...m, locked: false }));
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -257,6 +280,14 @@ export function LandingPage() {
             </Grid>
           ))}
         </Grid>
+
+        {!user && (
+          <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              Sign in to access your organisation's modules.
+            </Typography>
+          </Box>
+        )}
       </Box>
     </Box>
   );

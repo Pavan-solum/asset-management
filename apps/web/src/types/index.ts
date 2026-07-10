@@ -16,7 +16,7 @@ export type AssetStatus = 'in_stock' | 'deployed' | 'in_repair' | 'retired' | 'l
 export type LifecycleStage = 'procurement' | 'active' | 'maintenance' | 'end_of_life';
 export type EmployeeStatus = 'active' | 'terminated' | 'on_leave';
 export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'ASSIGN' | 'RETURN' | 'LOGIN' | 'LOGOUT';
-export type UserRole = 'platform_admin' | 'tenant_admin' | 'it_admin' | 'viewer' | 'employee';
+export type UserRole = 'platform_admin' | 'tenant_admin' | 'it_admin' | 'hr_admin' | 'finance_admin' | 'viewer' | 'employee';
 
 export interface Tenant {
   id: string;
@@ -171,7 +171,7 @@ export interface Asset {
   createdAt: string;
 }
 
-export type AssetRequestType = 'new' | 'replacement' | 'accessory';
+export type AssetRequestType = 'new' | 'replacement' | 'accessory' | 'return';
 export type AssetRequestStatus = 'submitted' | 'approved' | 'rejected' | 'fulfilled';
 
 export interface AssetRequest {
@@ -181,6 +181,7 @@ export interface AssetRequest {
   requestType: AssetRequestType;
   category: AssetCategory;
   description: string;
+  assetIds?: string[];
   neededBy?: string;
   status: AssetRequestStatus;
   reviewNotes?: string;
@@ -269,14 +270,18 @@ export interface DeviceContextData {
 }
 
 export const PERMISSIONS = {
+  'module:assets': ['tenant_admin', 'it_admin', 'viewer'],
+  'module:hr': ['tenant_admin', 'hr_admin'],
+  'module:finance': ['tenant_admin', 'finance_admin'],
+  'module:docs': ['tenant_admin', 'hr_admin', 'it_admin', 'finance_admin', 'viewer'],
   'asset:read': ['tenant_admin', 'it_admin', 'viewer'],
   'asset:write': ['tenant_admin', 'it_admin'],
   'asset:delete': ['tenant_admin'],
   'asset:assign': ['tenant_admin', 'it_admin'],
-  'employee:write': ['tenant_admin', 'it_admin'],
+  'employee:write': ['tenant_admin', 'hr_admin', 'it_admin'],
   'employee:delete': ['tenant_admin'],
-  'vendor:write': ['tenant_admin', 'it_admin'],
-  'audit:read': ['tenant_admin', 'it_admin', 'viewer'],
+  'vendor:write': ['tenant_admin', 'it_admin', 'finance_admin'],
+  'audit:read': ['tenant_admin', 'it_admin', 'hr_admin', 'finance_admin', 'viewer'],
   'settings:write': ['tenant_admin'],
   'request:create': ['employee'],
   'request:read-own': ['employee'],

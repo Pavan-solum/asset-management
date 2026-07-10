@@ -85,6 +85,24 @@ export async function verifyPassword(email: string, password: string): Promise<b
 
     if (rows.length > 0) {
       const stored = rows[0].password_hash;
+      if (stored === 'seed-placeholder') {
+        const cred = DEMO_USERS[normalized];
+        if (cred && cred.password === password) {
+          // Auto-upgrade seed-placeholder to PBKDF2
+          try {
+            const hash = await hashPassword(password);
+            await sql`
+              UPDATE user_passwords
+              SET password_hash = ${hash}, updated_at = NOW()
+              WHERE email = ${normalized}
+            `;
+          } catch {
+            // Ignore DB errors on upgrade
+          }
+          return true;
+        }
+        return false;
+      }
       if (stored.startsWith(PBKDF2_PREFIX)) {
         return verifyPbkdf2Hash(password, stored);
       }

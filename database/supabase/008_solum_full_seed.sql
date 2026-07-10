@@ -170,6 +170,8 @@ INSERT INTO users (id, tenant_id, email, first_name, last_name, role) VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'admin@solumtechnologies.com',   'Vasanth', '',       'tenant_admin'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111111', 'itadmin@solumtechnologies.com', 'Pavan',   '',       'it_admin'),
   ('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'viewer@solumtechnologies.com',  'Lisa',    'Viewer', 'viewer'),
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '11111111-1111-1111-1111-111111111111', 'hradmin@solumtechnologies.com', 'Emily',   'Davis',  'hr_admin'),
+  ('ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111111', 'financeadmin@solumtechnologies.com', 'Priya', 'Patel', 'finance_admin'),
   ('dddddddd-dddd-dddd-dddd-dddddddddddd', '11111111-1111-1111-1111-111111111111', 'sarah.chen@solumtechnologies.com', 'Sarah', 'Chen',  'employee')
 ON CONFLICT DO NOTHING;
 
@@ -181,5 +183,7 @@ INSERT INTO user_passwords (email, password_hash, updated_at) VALUES
   ('admin@solumtechnologies.com',   'seed-placeholder', NOW()),
   ('itadmin@solumtechnologies.com', 'seed-placeholder', NOW()),
   ('viewer@solumtechnologies.com',  'seed-placeholder', NOW()),
+  ('hradmin@solumtechnologies.com',  'seed-placeholder', NOW()),
+  ('financeadmin@solumtechnologies.com', 'seed-placeholder', NOW()),
   ('sarah.chen@solumtechnologies.com', 'seed-placeholder', NOW())
 ON CONFLICT (email) DO NOTHING;

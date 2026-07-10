@@ -59,19 +59,19 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'Inventory',
     items: [
-      { to: '/assets', label: 'Assets', icon: <InventoryIcon fontSize="small" /> },
-      { to: '/lifecycle', label: 'Lifecycle', icon: <SyncIcon fontSize="small" /> },
-      { to: '/devices', label: 'Devices', icon: <DevicesOtherIcon fontSize="small" /> },
-      { to: '/network-devices', label: 'Network Devices', icon: <LanIcon fontSize="small" /> },
-      { to: '/mobile', label: 'Mobile & Field', icon: <PhoneIphoneIcon fontSize="small" /> },
+      { to: '/assets', label: 'Assets', icon: <InventoryIcon fontSize="small" />, permission: 'module:assets' },
+      { to: '/lifecycle', label: 'Lifecycle', icon: <SyncIcon fontSize="small" />, permission: 'module:assets' },
+      { to: '/devices', label: 'Devices', icon: <DevicesOtherIcon fontSize="small" />, permission: 'module:assets' },
+      { to: '/network-devices', label: 'Network Devices', icon: <LanIcon fontSize="small" />, permission: 'module:assets' },
+      { to: '/mobile', label: 'Mobile & Field', icon: <PhoneIphoneIcon fontSize="small" />, permission: 'module:assets' },
     ],
   },
   {
     label: 'Finance & Maintenance',
     items: [
-      { to: '/finance', label: 'Finance', icon: <AttachMoneyIcon fontSize="small" /> },
-      { to: '/software', label: 'Software SAM', icon: <CodeIcon fontSize="small" /> },
-      { to: '/maintenance', label: 'Maintenance', icon: <BuildIcon fontSize="small" /> },
+      { to: '/finance', label: 'Finance', icon: <AttachMoneyIcon fontSize="small" />, permission: 'module:finance' },
+      { to: '/software', label: 'Software SAM', icon: <CodeIcon fontSize="small" />, permission: 'module:assets' },
+      { to: '/maintenance', label: 'Maintenance', icon: <BuildIcon fontSize="small" />, permission: 'module:assets' },
     ],
   },
   {
@@ -85,9 +85,9 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'System',
     items: [
-      { to: '/endpoints', label: 'Endpoint Security', icon: <SecurityIcon fontSize="small" /> },
-      { to: '/audit', label: 'Audit Logs', icon: <HistoryIcon fontSize="small" /> },
-      { to: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
+      { to: '/endpoints', label: 'Endpoint Security', icon: <SecurityIcon fontSize="small" />, permission: 'module:assets' },
+      { to: '/audit', label: 'Audit Logs', icon: <HistoryIcon fontSize="small" />, permission: 'audit:read' },
+      { to: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" />, permission: 'settings:write' },
     ],
   },
   {

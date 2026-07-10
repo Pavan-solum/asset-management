@@ -65,6 +65,28 @@ export const DEMO_USERS: Record<string, { password: string; user: User }> = {
       role: 'viewer',
     },
   },
+  'hradmin@solumtechnologies.com': {
+    password: 'Demo@123456',
+    user: {
+      id: 'user-hradmin',
+      tenantId: '11111111-1111-1111-1111-111111111111',
+      email: 'hradmin@solumtechnologies.com',
+      firstName: 'Emily',
+      lastName: 'Davis',
+      role: 'hr_admin',
+    },
+  },
+  'financeadmin@solumtechnologies.com': {
+    password: 'Demo@123456',
+    user: {
+      id: 'user-financeadmin',
+      tenantId: '11111111-1111-1111-1111-111111111111',
+      email: 'financeadmin@solumtechnologies.com',
+      firstName: 'Priya',
+      lastName: 'Patel',
+      role: 'finance_admin',
+    },
+  },
   'sarah.chen@solumtechnologies.com': {
     password: 'Demo@123456',
     user: {
@@ -382,6 +404,7 @@ export const REQUEST_TYPE_LABELS: Record<string, string> = {
   new: 'New Device',
   replacement: 'Replacement',
   accessory: 'Accessory',
+  return: 'Return',
 };
 
 export const REQUEST_STATUS_LABELS: Record<string, string> = {

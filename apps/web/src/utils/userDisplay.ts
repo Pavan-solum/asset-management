@@ -5,6 +5,8 @@ import { isApiEnabled } from '../services/api/config';
 const ROLE_LABELS: Record<UserRole, string> = {
   platform_admin: 'Platform Admin',
   tenant_admin: 'Tenant Admin',
+  hr_admin: 'HR Admin',
+  finance_admin: 'Finance Admin',
   it_admin: 'IT Admin',
   viewer: 'Viewer',
   employee: 'Employee',

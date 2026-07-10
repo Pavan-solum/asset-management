@@ -17,6 +17,11 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import BusinessIcon from '@mui/icons-material/Business';
 import HomeIcon from '@mui/icons-material/Home';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import GavelIcon from '@mui/icons-material/Gavel';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTenant, useAuthUser, usePermissions } from '../../hooks/storeHooks';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
@@ -39,10 +44,35 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: 'Directory',
+    label: 'People',
     items: [
       { to: '/hr/employees', label: 'Employees', icon: <PeopleIcon fontSize="small" /> },
       { to: '/hr/departments', label: 'Departments', icon: <BusinessIcon fontSize="small" /> },
+    ],
+  },
+  {
+    label: 'Leave & Attendance',
+    items: [
+      { to: '/hr/leaves', label: 'Leave Management', icon: <EventAvailableIcon fontSize="small" /> },
+      { to: '/hr/attendance', label: 'Attendance', icon: <AccessTimeIcon fontSize="small" /> },
+    ],
+  },
+  {
+    label: 'Lifecycle',
+    items: [
+      { to: '/hr/onboarding', label: 'Onboarding', icon: <RocketLaunchIcon fontSize="small" /> },
+    ],
+  },
+  {
+    label: 'Performance',
+    items: [
+      { to: '/hr/performance', label: 'Performance Reviews', icon: <EmojiEventsIcon fontSize="small" /> },
+    ],
+  },
+  {
+    label: 'Policy & Compliance',
+    items: [
+      { to: '/hr/policies', label: 'Company Policies', icon: <GavelIcon fontSize="small" /> },
     ],
   },
   {
@@ -60,6 +90,7 @@ interface HRSidebarProps {
 
 function isNavActive(pathname: string, to: string): boolean {
   if (to === '/') return pathname === '/';
+  if (to === '/hr') return pathname === '/hr';
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
@@ -74,24 +105,27 @@ export function HRSidebar({ mobileOpen, onClose }: HRSidebarProps) {
   const initials = getUserInitials(user);
   const displayName = getUserDisplayName(user);
 
+  const isDarkMode = theme.palette.mode === 'dark';
+
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar sx={{ px: 2.5, gap: 1.5, minHeight: { xs: 64, md: 72 } }}>
-        <Avatar
-          sx={{
-            bgcolor: 'primary.main',
-            width: 42,
-            height: 42,
-            boxShadow: '0 4px 12px rgba(21, 101, 192, 0.3)',
+        <Box
+          component="img"
+          src="/logo.png"
+          alt="App Logo"
+          sx={{ 
+            width: 64, height: 64, objectFit: 'contain', 
+            mixBlendMode: isDarkMode ? 'screen' : 'multiply', 
+            filter: isDarkMode ? 'invert(1) hue-rotate(180deg)' : 'none',
+            transform: 'scale(1.3)' 
           }}
-        >
-          <PeopleIcon fontSize="small" />
-        </Avatar>
+        />
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2} noWrap>
+          <Typography fontWeight={600} lineHeight={1.2} noWrap sx={{ fontSize: '0.95rem', color: 'text.primary' }}>
             HR Policy App
           </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap display="block">
+          <Typography variant="caption" color="text.secondary" noWrap display="block" sx={{ fontSize: '0.7rem' }}>
             {tenant?.name}
           </Typography>
         </Box>

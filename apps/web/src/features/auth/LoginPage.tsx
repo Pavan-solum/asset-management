@@ -24,22 +24,24 @@ import SecurityIcon from '@mui/icons-material/Security';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { login, clearError, setSession, setLoginError } from '../../store/authSlice';
+import { login, setPasswordAndLogin, clearError, setSession, setLoginError, setPendingSession } from '../../store/authSlice';
 import { APP_NAME, APP_TAGLINE, COMPANY_EMAIL_DOMAIN, COMPANY_NAME } from '../../constants/brand';
 import { ThemeModeToggle } from '../../components/ThemeModeToggle';
 import { LoadingButton } from '../../components/Loader';
 import { withMinDelay } from '../../hooks/useAsyncAction';
 import { isApiEnabled } from '../../services/api/config';
-import { apiLogin } from '../../services/api/auth';
+import { apiLogin, changePassword } from '../../services/api/auth';
 import { ApiError, checkApiHealth, loginErrorMessage } from '../../services/api/client';
 import { getHomeRouteForRole } from '../../utils/routing';
 
 const demoAccounts = [
   { email: `sysadmin@${COMPANY_EMAIL_DOMAIN}`, role: 'Platform Admin', desc: 'System-wide control' },
   { email: 'admin@solumtechnologies.com', role: 'Tenant Admin', desc: 'Full access' },
-  { email: 'itadmin@solumtechnologies.com', role: 'IT Admin', desc: 'Review device requests' },
+  { email: 'itadmin@solumtechnologies.com', role: 'IT Admin', desc: 'IT Assets module access' },
+  { email: 'hradmin@solumtechnologies.com', role: 'HR Admin', desc: 'HR module access' },
+  { email: 'financeadmin@solumtechnologies.com', role: 'Finance Admin', desc: 'Finance module access' },
   { email: 'viewer@solumtechnologies.com', role: 'Viewer', desc: 'Read-only' },
-  { email: 'sarah.chen@solumtechnologies.com', role: 'Employee', desc: 'Device request portal only' },
+  { email: 'sarah.chen@solumtechnologies.com', role: 'Employee', desc: 'Self-service portal' },
 ];
 
 const features = [
@@ -52,6 +54,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('sysadmin@assetly.com');
   const [password, setPassword] = useState('Demo@123456');
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [apiWarning, setApiWarning] = useState<string | null>(null);
   const dispatch = useAppDispatch();
@@ -60,6 +63,8 @@ export function LoginPage() {
   const isWide = useMediaQuery(theme.breakpoints.up('md'));
   const error = useAppSelector((s) => s.auth.error);
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const requirePasswordSetup = useAppSelector((s) => s.auth.requirePasswordSetup);
+  const pendingUserEmail = useAppSelector((s) => s.auth.pendingUserEmail);
   const role = useAppSelector((s) => s.auth.user?.role);
   const location = useLocation();
 
@@ -80,17 +85,59 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     dispatch(clearError());
+    
+    if (requirePasswordSetup) {
+      if (password !== confirmPassword) {
+        dispatch(setLoginError('Passwords do not match'));
+        return;
+      }
+      if (password.length < 6) {
+        dispatch(setLoginError('Password must be at least 6 characters'));
+        return;
+      }
+      setLoading(true);
+      try {
+        if (isApiEnabled()) {
+          // Call change-password API (we already have a token from the first-time login)
+          await changePassword('', password);
+          // Clear requirePasswordSetup flag by re-dispatching the same session without the flag
+          dispatch(setSession({
+            user: (window as any).__pendingUser,
+            tenant: (window as any).__pendingTenant,
+            token: (window as any).__pendingToken,
+          }));
+        } else {
+          await withMinDelay(Promise.resolve().then(() => dispatch(setPasswordAndLogin(password))));
+        }
+      } catch (err) {
+        dispatch(setLoginError(err instanceof Error ? err.message : 'Failed to set password'));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     setLoading(true);
     try {
       if (isApiEnabled()) {
         const data = await apiLogin(email, password);
-        dispatch(
-          setSession({
-            user: data.user,
-            tenant: data.tenant,
-            token: data.token,
-          }),
-        );
+        if (data.requirePasswordSetup) {
+          // Store pending session data for use after password is set
+          (window as any).__pendingUser = data.user;
+          (window as any).__pendingTenant = data.tenant;
+          (window as any).__pendingToken = data.token;
+          // Store the token so changePassword API call is authenticated
+          (await import('../../services/api/auth')).storeToken(data.token);
+          dispatch(setPendingSession({ user: data.user, tenant: data.tenant, token: data.token }));
+        } else {
+          dispatch(
+            setSession({
+              user: data.user,
+              tenant: data.tenant,
+              token: data.token,
+            }),
+          );
+        }
       } else {
         await withMinDelay(
           Promise.resolve().then(() => {
@@ -252,96 +299,147 @@ export function LoginPage() {
               </Alert>
             )}
 
-            <Box component="form" onSubmit={handleSubmit}>
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                margin="normal"
-                required
-                autoComplete="email"
-                disabled={loading}
-              />
-              <TextField
-                fullWidth
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                margin="normal"
-                required
-                autoComplete="current-password"
-                disabled={loading}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <LoadingButton
-                type="submit"
-                fullWidth
-                variant="contained"
-                size="large"
-                sx={{ mt: 3, py: 1.5 }}
-                loading={loading}
-                loadingLabel="Signing in…"
-              >
-                Sign In
-              </LoadingButton>
-            </Box>
-
-            <Divider sx={{ my: 3 }}>
-              <Chip label="Demo accounts" size="small" />
-            </Divider>
-
-            <Stack spacing={1}>
-              {demoAccounts.map((acc) => (
-                <Button
-                  key={acc.email}
-                  variant="outlined"
+            {requirePasswordSetup ? (
+              <Box component="form" onSubmit={handleSubmit}>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Welcome, <strong>{pendingUserEmail}</strong>! Since this is your first time logging in, please set a password for your account.
+                </Typography>
+                <TextField
                   fullWidth
-                  onClick={() => fillDemo(acc.email)}
-                  sx={{
-                    justifyContent: 'space-between',
-                    textTransform: 'none',
-                    py: 1.25,
-                    borderColor: 'divider',
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      bgcolor: alpha(theme.palette.primary.main, 0.08),
-                    },
+                  label="New Password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  margin="normal"
+                  required
+                  disabled={loading}
+                />
+                <TextField
+                  fullWidth
+                  label="Confirm Password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  margin="normal"
+                  required
+                  disabled={loading}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
                   }}
+                />
+                <LoadingButton
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  sx={{ mt: 3, py: 1.5 }}
+                  loading={loading}
+                  loadingLabel="Setting password…"
                 >
-                  <Box sx={{ textAlign: 'left' }}>
-                    <Typography variant="body2" fontWeight={600}>
-                      {acc.role}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {acc.email}
-                    </Typography>
-                  </Box>
-                  <Typography variant="caption" color="text.secondary">
-                    {acc.desc}
-                  </Typography>
-                </Button>
-              ))}
-            </Stack>
+                  Set Password & Sign In
+                </LoadingButton>
+              </Box>
+            ) : (
+              <Box component="form" onSubmit={handleSubmit}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  margin="normal"
+                  required
+                  autoComplete="email"
+                  disabled={loading}
+                />
+                <TextField
+                  fullWidth
+                  label="Password (optional for new employees)"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  margin="normal"
+                  autoComplete="current-password"
+                  disabled={loading}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowPassword(!showPassword)}
+                          edge="end"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <LoadingButton
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  sx={{ mt: 3, py: 1.5 }}
+                  loading={loading}
+                  loadingLabel="Signing in…"
+                >
+                  Sign In
+                </LoadingButton>
+              </Box>
+            )}
 
-            <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={2}>
-              Password for all demo accounts: Demo@123456
-            </Typography>
-          </CardContent>
+            {!requirePasswordSetup && (
+              <>
+                <Divider sx={{ my: 3 }}>
+                  <Chip label="Demo accounts" size="small" />
+                </Divider>
+
+              <Stack spacing={1}>
+                {demoAccounts.map((acc) => (
+                  <Button
+                    key={acc.email}
+                    variant="outlined"
+                    fullWidth
+                    onClick={() => fillDemo(acc.email)}
+                    sx={{
+                      justifyContent: 'space-between',
+                      textTransform: 'none',
+                      py: 1.25,
+                      borderColor: 'divider',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                      },
+                    }}
+                  >
+                    <Box sx={{ textAlign: 'left' }}>
+                      <Typography variant="body2" fontWeight={600}>
+                        {acc.role}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {acc.email}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      {acc.desc}
+                    </Typography>
+                  </Button>
+                ))}
+              </Stack>
+
+              <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={2}>
+                Password for all demo accounts: Demo@123456
+              </Typography>
+            </>
+          )}
+        </CardContent>
         </Card>
       </Box>
     </Box>

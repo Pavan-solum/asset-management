@@ -55,6 +55,26 @@ export const DEMO_USERS: Record<
       role: 'viewer',
     },
   },
+  'hradmin@solumtechnologies.com': {
+    password: 'Demo@123456',
+    user: {
+      id: 'user-hradmin',
+      email: 'hradmin@solumtechnologies.com',
+      firstName: 'Emily',
+      lastName: 'Davis',
+      role: 'hr_admin',
+    },
+  },
+  'financeadmin@solumtechnologies.com': {
+    password: 'Demo@123456',
+    user: {
+      id: 'user-financeadmin',
+      email: 'financeadmin@solumtechnologies.com',
+      firstName: 'Priya',
+      lastName: 'Patel',
+      role: 'finance_admin',
+    },
+  },
   'sarah.chen@solumtechnologies.com': {
     password: 'Demo@123456',
     user: {
