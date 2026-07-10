@@ -2,6 +2,9 @@
   "name": "assetly",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "description": "Assetly — IT Asset Management Platform",
   "scripts": {
     "dev": "npm run dev --prefix apps/web",

@@ -29,3 +29,9 @@ export async function updateLeaveRequestStatus(
     body: JSON.stringify({ status }),
   });
 }
+
+export async function deleteLeaveRequestApi(id: string): Promise<void> {
+  return apiFetch<void>(`/api/hr/leave/${id}`, {
+    method: 'DELETE',
+  });
+}

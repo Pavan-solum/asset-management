@@ -23,6 +23,9 @@ import {
   FormControl,
   Select,
   MenuItem,
+  Chip,
+  Button,
+  Avatar,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
@@ -31,12 +34,17 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
+import PaidIcon from '@mui/icons-material/Paid';
 import { useNavigate } from 'react-router-dom';
-import { useAppSelector } from '../../hooks/storeHooks';
+import { useAppSelector, useAppDispatch } from '../../hooks/storeHooks';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { formatCurrency, formatDate, getEmployeeName } from '../../utils/format';
 import { CATEGORY_LABELS } from '../../data/demoData';
+import { updateExpenseStatus } from '../../store/expensesSlice';
 import {
   BarChart,
   Bar,
@@ -59,13 +67,16 @@ const DEFAULT_BUDGET = 50000;
 
 export function FinancePage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const assets = useAppSelector((s) => s.assets.items);
   const employees = useAppSelector((s) => s.employees.items);
+  const expenses = useAppSelector((s) => s.expenses.claims);
 
   const [activeTab, setActiveTab] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [expenseFilter, setExpenseFilter] = useState<string>('all');
 
   const employeeMap = useMemo(
     () => Object.fromEntries(employees.map((e) => [e.id, e])),
@@ -279,6 +290,7 @@ export function FinancePage() {
           >
             <Tab label="Asset Valuation" icon={<AttachMoneyIcon fontSize="small" />} iconPosition="start" />
             <Tab label="Annual Budget & Expenditures" icon={<TrendingUpIcon fontSize="small" />} iconPosition="start" />
+            <Tab label="Employee Expenses" icon={<ReceiptIcon fontSize="small" />} iconPosition="start" />
           </Tabs>
 
           {/* TAB 0: ASSET VALUATION */}
@@ -661,6 +673,105 @@ export function FinancePage() {
                   </Card>
                 </Grid>
               </Grid>
+            </Box>
+          )}
+
+          {/* TAB 2: EMPLOYEE EXPENSES */}
+          {activeTab === 2 && (
+            <Box sx={{ mt: 3 }}>
+              <Grid container spacing={3} sx={{ mb: 3 }}>
+                {[
+                  { label: 'Total Submitted', value: formatCurrency(expenses.reduce((s, e) => s + e.amount, 0)), color: '#1565C0' },
+                  { label: 'Pending Approval', value: String(expenses.filter(e => e.status === 'submitted').length), color: '#E65100' },
+                  { label: 'Approved & Paid', value: formatCurrency(expenses.filter(e => e.status === 'paid' || e.status === 'approved').reduce((s, e) => s + e.amount, 0)), color: '#2E7D32' },
+                  { label: 'Rejected', value: String(expenses.filter(e => e.status === 'rejected').length), color: '#C62828' },
+                ].map(s => (
+                  <Grid item xs={12} sm={6} md={3} key={s.label}>
+                    <Card sx={{ p: 2, borderLeft: `4px solid ${s.color}` }}>
+                      <Typography variant="body2" color="text.secondary">{s.label}</Typography>
+                      <Typography variant="h5" fontWeight={700} sx={{ color: s.color }}>{s.value}</Typography>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+              <Card>
+                <CardContent>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                    <Typography variant="h6" fontWeight={700}>Expense Claims</Typography>
+                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                      <Select value={expenseFilter} onChange={e => setExpenseFilter(e.target.value)} displayEmpty>
+                        <MenuItem value="all">All Statuses</MenuItem>
+                        <MenuItem value="submitted">Pending</MenuItem>
+                        <MenuItem value="approved">Approved</MenuItem>
+                        <MenuItem value="paid">Paid</MenuItem>
+                        <MenuItem value="rejected">Rejected</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Stack>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 700 }}>Employee</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Title</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>Amount</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {expenses.filter(e => expenseFilter === 'all' || e.status === expenseFilter).map(exp => {
+                          const emp = employeeMap[exp.employeeId];
+                          return (
+                            <TableRow key={exp.id} hover>
+                              <TableCell>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  <Avatar sx={{ width: 28, height: 28, bgcolor: 'primary.main', fontSize: '0.7rem' }}>
+                                    {emp ? `${emp.firstName[0]}${emp.lastName[0]}` : '?'}
+                                  </Avatar>
+                                  <Typography variant="body2" fontWeight={600} sx={{ cursor: 'pointer', color: 'primary.main' }} onClick={() => navigate(`/hr/employees/${exp.employeeId}`)}>
+                                    {emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown'}
+                                  </Typography>
+                                </Stack>
+                              </TableCell>
+                              <TableCell><Typography variant="body2" noWrap sx={{ maxWidth: 160 }}>{exp.title}</Typography></TableCell>
+                              <TableCell><Chip label={exp.category.replace('_', ' ')} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} /></TableCell>
+                              <TableCell>{exp.date}</TableCell>
+                              <TableCell align="right"><Typography variant="body2" fontWeight={700}>{formatCurrency(exp.amount)}</Typography></TableCell>
+                              <TableCell>
+                                <Chip label={exp.status} size="small"
+                                  color={exp.status === 'paid' ? 'success' : exp.status === 'approved' ? 'primary' : exp.status === 'submitted' ? 'warning' : exp.status === 'rejected' ? 'error' : 'default'}
+                                  sx={{ textTransform: 'capitalize', fontWeight: 600 }} />
+                              </TableCell>
+                              <TableCell align="right">
+                                <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                                  {exp.status === 'submitted' && (
+                                    <>
+                                      <Tooltip title="Approve">
+                                        <IconButton size="small" color="success" onClick={() => dispatch(updateExpenseStatus({ id: exp.id, status: 'approved', approvedBy: 'finance-admin' }))}><ThumbUpIcon fontSize="small" /></IconButton>
+                                      </Tooltip>
+                                      <Tooltip title="Reject">
+                                        <IconButton size="small" color="error" onClick={() => dispatch(updateExpenseStatus({ id: exp.id, status: 'rejected', rejectionReason: 'Not approved.' }))}><ThumbDownIcon fontSize="small" /></IconButton>
+                                      </Tooltip>
+                                    </>
+                                  )}
+                                  {exp.status === 'approved' && (
+                                    <Tooltip title="Mark as Paid">
+                                      <IconButton size="small" color="primary" onClick={() => dispatch(updateExpenseStatus({ id: exp.id, status: 'paid' }))}><PaidIcon fontSize="small" /></IconButton>
+                                    </Tooltip>
+                                  )}
+                                </Stack>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </CardContent>
+              </Card>
             </Box>
           )}
         </>
