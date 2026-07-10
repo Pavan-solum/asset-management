@@ -19,8 +19,11 @@ const networkDevicesSlice = createSlice({
       const idx = state.items.findIndex((d) => d.id === action.payload.id);
       if (idx >= 0) state.items[idx] = action.payload;
     },
+    replaceAllNetworkDevices: (state, action: PayloadAction<NetworkDevice[]>) => {
+      state.items = action.payload;
+    },
   },
 });
 
-export const { addNetworkDevice, updateNetworkDevice } = networkDevicesSlice.actions;
+export const { addNetworkDevice, updateNetworkDevice, replaceAllNetworkDevices } = networkDevicesSlice.actions;
 export default networkDevicesSlice.reducer;

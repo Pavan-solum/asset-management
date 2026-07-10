@@ -1,5 +1,5 @@
 import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
-import { mapAsset } from '../_lib/mappers';
+import { mapAsset, type DbAsset } from '../_lib/mappers';
 import { requireAuth, insertAuditLog } from '../_lib/auth';
 
 export const config = { runtime: 'edge' };

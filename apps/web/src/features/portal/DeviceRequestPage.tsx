@@ -341,9 +341,6 @@ export function DeviceRequestPage() {
         </CardContent>
       </Card>
 
-      <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>
-        My requests
-      </Typography>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, mt: 4 }}>
         <Typography variant="h6" fontWeight={700}>

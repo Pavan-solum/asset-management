@@ -10,8 +10,20 @@ import { replaceAllDepartments } from '../store/departmentsSlice';
 import { replaceAllVendors } from '../store/vendorsSlice';
 import { replaceAllAuditLogs } from '../store/auditSlice';
 import { replaceAllRequests } from '../store/requestsSlice';
+import { replaceAllNetworkDevices } from '../store/networkDevicesSlice';
 import { fetchAssetRequests } from '../services/api/requests';
 import { setBootstrapReady, startLoading, stopLoading } from '../store/uiSlice';
+import {
+  generateDemoAssets,
+  generateDemoAssignments,
+  generateDemoOwnershipHistory,
+  generateDemoNetworkDevices,
+  DEMO_EMPLOYEES,
+  DEMO_DEPARTMENTS,
+  DEMO_VENDORS,
+  DEMO_AUDIT_LOGS,
+  DEMO_ASSET_REQUESTS,
+} from '../data/demoData';
 import type { AppDispatch } from '../store';
 
 function hydrateFromSync(dispatch: AppDispatch, data: Awaited<ReturnType<typeof fetchSync>>) {
@@ -38,13 +50,35 @@ export async function reloadFromApi(dispatch: AppDispatch): Promise<void> {
   }
 }
 
+function seedDemoData(dispatch: AppDispatch) {
+  const assets = generateDemoAssets();
+  const assignments = generateDemoAssignments(assets);
+  const ownershipHistory = generateDemoOwnershipHistory(assets);
+  dispatch(setInventory({ items: assets, assignments, ownershipHistory }));
+  dispatch(replaceAllEmployees(DEMO_EMPLOYEES));
+  dispatch(replaceAllDepartments(DEMO_DEPARTMENTS));
+  dispatch(replaceAllVendors(DEMO_VENDORS));
+  dispatch(replaceAllAuditLogs(DEMO_AUDIT_LOGS));
+  dispatch(replaceAllRequests(DEMO_ASSET_REQUESTS));
+  dispatch(replaceAllNetworkDevices(generateDemoNetworkDevices()));
+}
+
 export function DataBootstrap() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
   const role = useAppSelector((s) => s.auth.user?.role);
+  const assetsCount = useAppSelector((s) => s.assets.items.length);
   const syncedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const isEmployee = role === 'employee';
+
+  // Seed demo data in non-API mode when logged in and store is empty
+  useEffect(() => {
+    if (!isApiEnabled() && isAuthenticated && !syncedRef.current && assetsCount === 0) {
+      seedDemoData(dispatch);
+      syncedRef.current = true;
+    }
+  }, [dispatch, isAuthenticated, assetsCount]);
 
   useEffect(() => {
     if (!isAuthenticated) {

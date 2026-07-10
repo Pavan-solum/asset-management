@@ -71,7 +71,7 @@ export function EmployeeDetailPage() {
   return (
     <Box>
       <Breadcrumbs sx={{ mb: 2 }}>
-        <Link component={RouterLink} to="/hr/employees" underline="hover" color="inherit">Employees</Link>
+        <Link component={RouterLink} to="/employees" underline="hover" color="inherit">Employees</Link>
         <Typography color="text.primary">{getEmployeeName(employee.firstName, employee.lastName)}</Typography>
       </Breadcrumbs>
 
