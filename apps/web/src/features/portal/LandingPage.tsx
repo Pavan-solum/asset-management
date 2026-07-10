@@ -37,14 +37,23 @@ interface ModuleCardProps {
   description: string;
   icon: React.ReactNode;
   path: string;
+  locked?: boolean;
 }
 
-function ModuleCard({ title, description, icon, path }: ModuleCardProps) {
+function ModuleCard({ title, description, icon, path, locked }: ModuleCardProps) {
   const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (locked) {
+      navigate('/login', { state: { from: path } });
+    } else {
+      navigate(path);
+    }
+  };
 
   return (
     <Card
-      onClick={() => navigate(path)}
+      onClick={handleClick}
       elevation={0}
       sx={{
         height: '100%',
@@ -96,7 +105,7 @@ export function LandingPage() {
     navigate('/login');
   };
 
-  const modules = [
+  const allModules = [
     ...(user?.role === 'employee'
       ? [
           {
@@ -104,6 +113,7 @@ export function LandingPage() {
             description: 'Request new devices, replacements, accessories, and view request status.',
             icon: <DevicesIcon sx={{ fontSize: 48 }} />,
             path: '/portal',
+            permission: undefined as const,
           },
         ]
       : []),
@@ -134,8 +144,16 @@ export function LandingPage() {
       icon: <AccountBalanceIcon sx={{ fontSize: 48 }} />,
       path: '/finance',
       permission: 'module:finance' as const,
-    }
-  ].filter(m => !m.permission || can(m.permission));
+    },
+  ];
+
+  // When not logged in: show all default (non-employee) modules as locked.
+  // When logged in: show only the modules the user has permission to access.
+  const modules = !user
+    ? allModules.filter(m => m.permission !== undefined).map(m => ({ ...m, locked: true }))
+    : allModules
+        .filter(m => !m.permission || can(m.permission))
+        .map(m => ({ ...m, locked: false }));
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -262,6 +280,14 @@ export function LandingPage() {
             </Grid>
           ))}
         </Grid>
+
+        {!user && (
+          <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              Sign in to access your organisation's modules.
+            </Typography>
+          </Box>
+        )}
       </Box>
     </Box>
   );
