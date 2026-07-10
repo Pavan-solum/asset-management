@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -26,15 +26,47 @@ import GroupIcon from '@mui/icons-material/Group';
 import AttachmentIcon from '@mui/icons-material/Attachment';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RoomOutlinedIcon from '@mui/icons-material/RoomOutlined';
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { MeetingData } from './modal/MeetingCard';
+
+const quillModules = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    [{ 'align': [] }],
+    [{ 'indent': '-1'}, { 'indent': '+1' }],
+    [{ 'color': [] }, { 'background': [] }],
+    ['blockquote', 'code-block'],
+    ['clean']
+  ]
+};
 
 export function CompletedReportPage() {
   const locationState = useLocation();
   const navigate = useNavigate();
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [summaryHtml, setSummaryHtml] = useState(`
+    <div style="font-size: 0.875rem;">
+      <p style="font-style: italic; margin-bottom: 16px; font-weight: 600;">
+        Summary: <span style="font-weight: 400;">The board convened to evaluate Q3 performance and set the trajectory for Q4. Primary focus was placed on the EMEA expansion progress.</span>
+      </p>
+      <p style="font-weight: 700; margin-bottom: 12px;">Key Discussion Points:</p>
+      <ul style="padding-left: 24px; margin-bottom: 24px; color: #475569;">
+        <li style="margin-bottom: 8px;">EMEA revenue exceeded projections by 14%, largely driven by the Enterprise segment.</li>
+        <li style="margin-bottom: 8px;">Concerns raised regarding the churn rate in small to medium business tiers.</li>
+        <li style="margin-bottom: 8px;">The CTO presented a roadmap for the transition to a headless CMS architecture by Q2 next year.</li>
+      </ul>
+    </div>
+  `);
 
   // Fallback default completed meeting details if accessed directly
   const defaultMeeting: MeetingData = {
@@ -53,6 +85,37 @@ export function CompletedReportPage() {
     { id: 1, text: 'Prepare EMEA hiring plan', priority: 'URGENT', assignee: 'Sarah Chen', date: 'Oct 30', checked: false },
     { id: 2, text: 'SaaS Migration Audit', priority: 'DRAFT', assignee: 'Marcus Thorne', date: 'Nov 05', checked: true },
   ]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [files, setFiles] = useState([
+    { name: 'Q3_Performance_Report.pdf', size: '4.2 MB - PDF File', color: 'error.main' },
+    { name: 'EMEA_Hiring_Strategy.docx', size: '1.1 MB - DOCX File', color: 'primary.main' },
+  ]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files).map((file) => {
+        let sizeText = '';
+        if (file.size < 1024 * 1024) {
+          sizeText = `${(file.size / 1024).toFixed(1)} KB`;
+        } else {
+          sizeText = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+        }
+        const extension = file.name.split('.').pop()?.toLowerCase() || '';
+        const isPdf = extension === 'pdf';
+        return {
+          name: file.name,
+          size: `${sizeText} - ${extension.toUpperCase()} File`,
+          color: isPdf ? 'error.main' : 'primary.main',
+        };
+      });
+      setFiles((prev) => [...prev, ...newFiles]);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleToggleTask = (id: number) => {
     setTasks((prev) =>
@@ -161,6 +224,22 @@ export function CompletedReportPage() {
           <Box sx={{ display: 'flex', gap: 1.5 }}>
             <Button
               variant="outlined"
+              sx={{
+                borderRadius: '8px',
+                textTransform: 'none',
+                borderColor: (theme) => theme.palette.mode === 'dark' ? '#334155' : '#CBD5E1',
+                color: 'text.primary',
+                fontWeight: 700,
+                px: 2.5,
+                py: 1,
+                bgcolor: 'background.paper',
+                '&:hover': { borderColor: 'text.primary', bgcolor: 'action.hover' },
+              }}
+            >
+              Save Changes
+            </Button>
+            <Button
+              variant="outlined"
               startIcon={<GetAppOutlinedIcon />}
               sx={{
                 borderRadius: '8px',
@@ -201,134 +280,7 @@ export function CompletedReportPage() {
         {/* Left Column (Decision Records & Minutes & Agenda) */}
         <Grid item xs={12} md={8}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {/* Card 1: Decision Records */}
-            <Paper sx={cardStyle}>
-              <Box sx={sectionHeaderStyle}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <GavelIcon sx={{ color: '#0D47A1' }} />
-                  <Typography variant="h6" fontWeight={800}>
-                    Decision Records
-                  </Typography>
-                </Box>
-                <Chip
-                  label="2 DECISIONS LOGGED"
-                  size="small"
-                  sx={{
-                    bgcolor: 'action.hover',
-                    color: 'text.secondary',
-                    fontWeight: 700,
-                    fontSize: '0.62rem',
-                  }}
-                />
-              </Box>
 
-              {/* Decisions List */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                {/* Decision 1 */}
-                <Box
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 2.5,
-                    border: '1px solid',
-                    borderColor: (theme) => theme.palette.mode === 'dark' ? '#334155' : '#E2E8F0',
-                    display: 'flex',
-                    gap: 2,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      bgcolor: 'rgba(21, 101, 192, 0.08)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#1565C0',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <CheckCircleOutlinedIcon fontSize="small" />
-                  </Box>
-                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                      <Typography variant="caption" color="primary.main" fontWeight={700}>
-                        SR-2023-Q4-01
-                      </Typography>
-                      <Chip
-                        label="UNANIMOUS"
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          borderRadius: '4px',
-                          fontWeight: 700,
-                          fontSize: '0.58rem',
-                          height: 18,
-                        }}
-                      />
-                    </Box>
-                    <Typography variant="body2" fontWeight={800} sx={{ mb: 0.75, color: 'text.primary' }}>
-                      Approve $4.2M additional R&D budget for AI initiative.
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Expansion of the machine learning team and infrastructure procurement for next gen analytics suite.
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {/* Decision 2 */}
-                <Box
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 2.5,
-                    border: '1px solid',
-                    borderColor: (theme) => theme.palette.mode === 'dark' ? '#334155' : '#E2E8F0',
-                    display: 'flex',
-                    gap: 2,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      bgcolor: 'action.hover',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'text.secondary',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <HelpOutlineIcon fontSize="small" />
-                  </Box>
-                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary" fontWeight={700}>
-                        SR-2023-Q4-02
-                      </Typography>
-                      <Chip
-                        label="MAJORITY (7-2)"
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          borderRadius: '4px',
-                          fontWeight: 700,
-                          fontSize: '0.58rem',
-                          height: 18,
-                        }}
-                      />
-                    </Box>
-                    <Typography variant="body2" fontWeight={800} sx={{ mb: 0.75, color: 'text.primary' }}>
-                      Postpone Berlin office expansion to Q1 2024.
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Delayed due to current market volatility in European commercial real estate sectors.
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-            </Paper>
 
             {/* Card 2: Minutes & Agenda */}
             <Paper sx={cardStyle}>
@@ -380,25 +332,54 @@ export function CompletedReportPage() {
                   border: '1px solid',
                   borderColor: (theme) => theme.palette.mode === 'dark' ? '#334155' : '#E2E8F0',
                   borderLeftColor: '#0D47A1',
+                  position: 'relative',
                 }}
               >
-                <Typography variant="body2" sx={{ fontStyle: 'italic', mb: 2, color: 'text.primary', fontWeight: 600 }}>
-                  Summary: <span style={{ fontWeight: 400 }}>The board convened to evaluate Q3 performance and set the trajectory for Q4. Primary focus was placed on the EMEA expansion progress.</span>
-                </Typography>
-                <Typography variant="body2" fontWeight={700} sx={{ mb: 1.5, color: 'text.primary' }}>
-                  Key Discussion Points:
-                </Typography>
-                <Box sx={{ pl: 2, display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    &bull; EMEA revenue exceeded projections by 14%, largely driven by the Enterprise segment.
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    &bull; Concerns raised regarding the churn rate in small to medium business tiers.
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    &bull; The CTO presented a roadmap for the transition to a headless CMS architecture by Q2 next year.
-                  </Typography>
-                </Box>
+                {!isEditingSummary ? (
+                  <>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => setIsEditingSummary(true)}
+                      sx={{ position: 'absolute', top: 8, right: 8, color: 'text.secondary' }}
+                    >
+                      <EditOutlinedIcon fontSize="small" />
+                    </IconButton>
+                    <Box dangerouslySetInnerHTML={{ __html: summaryHtml }} sx={{ pr: 4, '& p': { m: 0 } }} />
+                  </>
+                ) : (
+                  <Box sx={{
+                    '& .ql-container': {
+                      minHeight: '150px',
+                      fontSize: '0.875rem',
+                      fontFamily: 'inherit',
+                    },
+                    '& .ql-toolbar': {
+                      borderTopLeftRadius: '4px',
+                      borderTopRightRadius: '4px',
+                    },
+                    '& .ql-container.ql-snow': {
+                      borderBottomLeftRadius: '4px',
+                      borderBottomRightRadius: '4px',
+                    }
+                  }}>
+                    <ReactQuill 
+                      theme="snow"
+                      value={summaryHtml} 
+                      onChange={setSummaryHtml} 
+                      modules={quillModules}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, mt: 2, justifyContent: 'flex-end' }}>
+                      <Button 
+                        onClick={() => setIsEditingSummary(false)} 
+                        variant="contained" 
+                        size="small"
+                        sx={{ textTransform: 'none', borderRadius: '8px', bgcolor: '#0D47A1' }}
+                      >
+                        Done Editing
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
 
                 <Box
                   sx={{
@@ -532,9 +513,9 @@ export function CompletedReportPage() {
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2.5 }}>
                   {[
-                    { name: 'Jameson Davies', role: 'CEO / Chairperson', initial: 'JD' },
-                    { name: 'Sarah Chen', role: 'CFO', initial: 'SC' },
-                    { name: 'Marcus Thorne', role: 'CTO', initial: 'MT' },
+                    { name: 'Jameson Davies', role: 'CEO / Chairperson', initial: 'JD', status: 'Present' },
+                    { name: 'Sarah Chen', role: 'CFO', initial: 'SC', status: 'Present' },
+                    { name: 'Marcus Thorne', role: 'CTO', initial: 'MT', status: 'Present' },
                   ].map((attendee) => (
                     <Box
                       key={attendee.name}
@@ -565,32 +546,16 @@ export function CompletedReportPage() {
                           </Typography>
                         </Box>
                       </Box>
-                      <Box
-                        sx={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          bgcolor: 'success.main',
-                        }}
-                      />
+                      <Typography 
+                        variant="caption" 
+                        fontWeight={700} 
+                        sx={{ color: attendee.status === 'Present' ? 'success.main' : 'error.main', textTransform: 'uppercase' }}
+                      >
+                        {attendee.status}
+                      </Typography>
                     </Box>
                   ))}
                 </Box>
-
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  sx={{
-                    borderRadius: '8px',
-                    textTransform: 'none',
-                    borderColor: (theme) => theme.palette.mode === 'dark' ? '#334155' : '#CBD5E1',
-                    color: 'text.primary',
-                    fontWeight: 700,
-                    '&:hover': { borderColor: 'text.primary', bgcolor: 'action.hover' },
-                  }}
-                >
-                  Manage Invitees
-                </Button>
               </Paper>
 
               {/* Card 5: Attachments */}
@@ -603,10 +568,7 @@ export function CompletedReportPage() {
                 </Box>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {[
-                    { name: 'Q3_Performance_Report.pdf', size: '4.2 MB - PDF File', color: 'error.main' },
-                    { name: 'EMEA_Hiring_Strategy.docx', size: '1.1 MB - DOCX File', color: 'primary.main' },
-                  ].map((doc, idx) => (
+                  {files.map((doc, idx) => (
                     <Box
                       key={idx}
                       sx={{
@@ -643,189 +605,62 @@ export function CompletedReportPage() {
                           {doc.size}
                         </Typography>
                       </Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => setFiles((prev) => prev.filter((_, i) => i !== idx))}
+                        sx={{
+                          color: 'text.secondary',
+                          bgcolor: (theme) => alpha(theme.palette.text.primary, 0.04),
+                          '&:hover': {
+                            color: 'error.main',
+                            bgcolor: (theme) => alpha(theme.palette.error.main, 0.08),
+                          },
+                          flexShrink: 0,
+                        }}
+                      >
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
                     </Box>
                   ))}
+                </Box>
+
+                <Box
+                  onClick={() => fileInputRef.current?.click()}
+                  sx={{
+                    border: '1px dashed',
+                    borderColor: 'primary.main',
+                    borderRadius: 2.5,
+                    p: 3,
+                    mt: 2.5,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
+                    '&:hover': {
+                      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05),
+                    },
+                  }}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    hidden
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".pdf,.docx,.xlsx"
+                  />
+                  <CloudUploadOutlinedIcon sx={{ color: 'primary.main', fontSize: '1.75rem', mb: 1 }} />
+                  <Typography variant="body2" fontWeight={700} sx={{ color: 'text.primary', mb: 0.5 }}>
+                    Drop files here to upload
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    PDF, DOCX, XLSX (Max 50MB)
+                  </Typography>
                 </Box>
               </Paper>
             </Box>
           </Grid>
 
-          {/* Bottom Section: Upcoming Meetings */}
-          <Grid item xs={12}>
-            <Box sx={{ mt: 2, position: 'relative' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-                <Typography variant="h6" fontWeight={800}>
-                  Upcoming Meetings
-                </Typography>
-                <Box sx={{ bgcolor: 'action.hover', p: 0.5, borderRadius: '8px', display: 'flex', gap: 0.5 }}>
-                  <Button size="small" variant="text" sx={{ fontWeight: 700, textTransform: 'none', px: 2 }}>
-                    List View
-                  </Button>
-                  <Button size="small" variant="text" disabled sx={{ fontWeight: 700, textTransform: 'none', px: 2 }}>
-                    Calendar
-                  </Button>
-                </Box>
-              </Box>
 
-              <Grid container spacing={3}>
-                {/* Upcoming Meeting Card 1 */}
-                <Grid item xs={12} md={6}>
-                  <Box
-                    sx={{
-                      p: 2.5,
-                      borderRadius: 3,
-                      border: '1px solid',
-                      borderColor: (theme) => theme.palette.mode === 'dark' ? '#334155' : '#E2E8F0',
-                      bgcolor: 'background.paper',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: 2,
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-                      <Box
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 2,
-                          bgcolor: 'action.hover',
-                          textAlign: 'center',
-                          minWidth: 60,
-                        }}
-                      >
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          OCT
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', fontSize: '1.25rem', lineHeight: 1.1 }}>
-                          28
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" fontWeight={800} sx={{ color: 'text.primary', mb: 0.5 }}>
-                          Fiscal Budget Approval FY24
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 2, color: 'text.secondary', flexWrap: 'wrap' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <AccessTimeOutlinedIcon sx={{ fontSize: '0.85rem' }} />
-                            <Typography variant="caption" fontWeight={600}>01:00 - 04:00 PM</Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <VideocamOutlinedIcon sx={{ fontSize: '0.85rem' }} />
-                            <Typography variant="caption" fontWeight={600}>Virtual Conference</Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-                    </Box>
-
-                    <Button
-                      variant="contained"
-                      sx={{
-                        borderRadius: '8px',
-                        textTransform: 'none',
-                        bgcolor: '#0D47A1',
-                        color: '#FFFFFF',
-                        fontWeight: 700,
-                        px: 2.5,
-                        py: 0.75,
-                        fontSize: '0.8rem',
-                        '&:hover': { bgcolor: '#0A192F' },
-                      }}
-                    >
-                      View Agenda
-                    </Button>
-                  </Box>
-                </Grid>
-
-                {/* Upcoming Meeting Card 2 */}
-                <Grid item xs={12} md={6}>
-                  <Box
-                    sx={{
-                      p: 2.5,
-                      borderRadius: 3,
-                      border: '1px solid',
-                      borderColor: (theme) => theme.palette.mode === 'dark' ? '#334155' : '#E2E8F0',
-                      bgcolor: 'background.paper',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: 2,
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-                      <Box
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 2,
-                          bgcolor: 'action.hover',
-                          textAlign: 'center',
-                          minWidth: 60,
-                        }}
-                      >
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          OCT
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', fontSize: '1.25rem', lineHeight: 1.1 }}>
-                          31
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" fontWeight={800} sx={{ color: 'text.primary', mb: 0.5 }}>
-                          Quarterly Product Roadmap
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 2, color: 'text.secondary', flexWrap: 'wrap' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <AccessTimeOutlinedIcon sx={{ fontSize: '0.85rem' }} />
-                            <Typography variant="caption" fontWeight={600}>10:00 - 11:30 AM</Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <RoomOutlinedIcon sx={{ fontSize: '0.85rem' }} />
-                            <Typography variant="caption" fontWeight={600}>Executive Room 3B</Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-                    </Box>
-
-                    {/* Stacked avatars */}
-                    <Box>
-                      <AvatarGroup max={3}>
-                        {['John Doe', 'Jane Smith', 'Alex Carter', 'Ben Davis'].map((name, i) => (
-                          <Avatar
-                            key={i}
-                            sx={{
-                              width: 28,
-                              height: 28,
-                              fontSize: '0.7rem',
-                              bgcolor: 'primary.light',
-                            }}
-                          >
-                            {name.split(' ').map((n) => n[0]).join('')}
-                          </Avatar>
-                        ))}
-                      </AvatarGroup>
-                    </Box>
-                  </Box>
-                </Grid>
-              </Grid>
-
-              {/* Floating add circle button */}
-              <IconButton
-                sx={{
-                  position: 'absolute',
-                  right: 0,
-                  bottom: -16,
-                  bgcolor: '#0D47A1',
-                  color: '#FFFFFF',
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
-                  '&:hover': { bgcolor: '#0A192F' },
-                  display: { xs: 'none', md: 'flex' },
-                }}
-              >
-                <AddIcon />
-              </IconButton>
-            </Box>
-          </Grid>
         </Grid>
       </Box>
   );

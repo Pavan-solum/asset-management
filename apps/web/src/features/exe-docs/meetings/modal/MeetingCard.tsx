@@ -77,7 +77,7 @@ export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit, onChangeS
   const handleChangeStatusClick = (event: React.MouseEvent) => {
     event.stopPropagation();
     handleMenuClose();
-    onViewAgenda(meeting);
+    if (onChangeStatus) onChangeStatus(meeting.id, 'COMPLETED');
   };
 
   // Determine chip color
@@ -365,7 +365,7 @@ export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit, onChangeS
             <ListItemIcon>
               <SwapHorizIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText primary="Change Status" />
+            <ListItemText primary="Completed" />
           </MenuItem>
         )}
         {onDelete && (
