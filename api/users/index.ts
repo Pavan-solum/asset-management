@@ -1,6 +1,7 @@
 import { getSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { mapUser, type DbUser } from '../_lib/mappers';
 import { requireAuth, insertAuditLog, hashPassword } from '../_lib/auth';
+import { checkAdminLimit } from '../_lib/subscription';
 
 export const config = { runtime: 'edge' };
 
@@ -38,6 +39,12 @@ export default async function handler(req: Request) {
 
       if (!email || !firstName || !tenantId) {
         return error('email, firstName, and tenantId are required', 400);
+      }
+
+      const adminRoles = ['tenant_admin', 'it_admin', 'platform_admin'];
+      if (adminRoles.includes(role)) {
+        const limitCheck = await checkAdminLimit(tenantId);
+        if (!limitCheck.allowed) return error(limitCheck.message ?? 'Plan limit reached', 402);
       }
 
       const id = body.id && String(body.id) ? String(body.id) : crypto.randomUUID();

@@ -1,7 +1,7 @@
 import { json, error, corsPreflight, parseBody, getSql } from '../_lib/db';
 import { DEMO_USERS, DEMO_TENANT } from '../_lib/demo-users';
 import { signAuthToken, verifyPassword, insertAuditLog } from '../_lib/auth';
-import type { DbUser } from '../_lib/mappers';
+import { mapTenant, type DbUser, type DbTenant } from '../_lib/mappers';
 
 export const config = { runtime: 'edge' };
 
@@ -35,9 +35,9 @@ export default async function handler(req: Request) {
         };
         
         // Fetch their tenant — required for DB users
-        const tenants = await sql`SELECT * FROM tenants WHERE id = ${u.tenant_id}`;
+        const tenants = await sql`SELECT * FROM tenants WHERE id = ${u.tenant_id}` as DbTenant[];
         if (tenants.length > 0) {
-          tenantRecord = tenants[0];
+          tenantRecord = mapTenant(tenants[0]);
         } else {
           tenantRecord = null;
         }

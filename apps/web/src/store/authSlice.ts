@@ -167,8 +167,21 @@ const authSlice = createSlice({
       state.error = action.payload;
       state.isAuthenticated = false;
     },
+    updateTenantPlan: (
+      state,
+      action: PayloadAction<{ plan: string; subscriptionStatus?: string }>,
+    ) => {
+      if (state.tenant) {
+        state.tenant = {
+          ...state.tenant,
+          plan: action.payload.plan,
+          subscriptionStatus: action.payload.subscriptionStatus ?? state.tenant.subscriptionStatus,
+        };
+        sessionStorage.setItem('assetly_auth_state', JSON.stringify(state));
+      }
+    },
   },
 });
 
-export const { login, setPasswordAndLogin, setSession, setPendingSession, logout, clearError, setLoginError } = authSlice.actions;
+export const { login, setPasswordAndLogin, setSession, setPendingSession, logout, clearError, setLoginError, updateTenantPlan } = authSlice.actions;
 export default authSlice.reducer;

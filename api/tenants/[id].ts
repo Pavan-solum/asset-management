@@ -33,7 +33,8 @@ export default async function handler(req: Request) {
           domain = COALESCE(${body.domain ? String(body.domain) : null}, domain),
           infrastructure_strategy = COALESCE(${body.infrastructureStrategy ? String(body.infrastructureStrategy) : null}, infrastructure_strategy),
           admin_email = COALESCE(${body.adminEmail ? String(body.adminEmail) : null}, admin_email),
-          admin_name = COALESCE(${body.adminName ? String(body.adminName) : null}, admin_name)
+          admin_name = COALESCE(${body.adminName ? String(body.adminName) : null}, admin_name),
+          billing_region = COALESCE(${body.billingRegion ? (String(body.billingRegion).toUpperCase() === 'GLOBAL' ? 'GLOBAL' : 'IN') : null}, billing_region)
         WHERE id = ${id}
         RETURNING *
       ` as DbTenant[];

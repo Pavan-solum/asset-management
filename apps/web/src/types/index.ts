@@ -27,7 +27,60 @@ export interface Tenant {
   infrastructureStrategy?: 'shared' | 'dedicated';
   adminEmail?: string;
   adminName?: string;
+  subscriptionStatus?: string;
+  trialEndsAt?: string;
+  billingRegion?: 'IN' | 'GLOBAL';
+  hasStripeBilling?: boolean;
+  hasRazorpayBilling?: boolean;
   createdAt?: string;
+}
+
+export type BillingRegion = 'IN' | 'GLOBAL';
+export type BillingProvider = 'razorpay' | 'stripe';
+export type BillingMode = 'demo' | 'stripe' | 'razorpay' | 'dual';
+
+export type PlanTier = 'starter' | 'professional' | 'enterprise';
+export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'canceled' | 'suspended';
+
+export interface SubscriptionPlan {
+  tier: PlanTier;
+  name: string;
+  maxAssets: number;
+  maxAdmins: number;
+  maxEndpoints: number;
+  pricePerUnit: number;
+  featureLabels: string[];
+  currency?: string;
+  displayPrice?: number;
+  priceLabel?: string;
+}
+
+export interface SubscriptionUsage {
+  assets: number;
+  admins: number;
+  endpoints: number;
+}
+
+export interface BillingSubscription {
+  tenantId: string;
+  status: SubscriptionStatus;
+  trialEndsAt: string | null;
+  billingRegion: BillingRegion;
+  provider: BillingProvider;
+  stripeCustomerId: string | null;
+  hasStripeSubscription: boolean;
+  hasRazorpaySubscription: boolean;
+  plan: SubscriptionPlan;
+  usage: SubscriptionUsage;
+}
+
+export interface BillingOverview {
+  mode: BillingMode;
+  provider: BillingProvider;
+  billingRegion: BillingRegion;
+  currency: string;
+  plans: SubscriptionPlan[];
+  subscription: BillingSubscription;
 }
 
 export interface User {

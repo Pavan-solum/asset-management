@@ -23,6 +23,7 @@ export function CreateOrganizationPage() {
     name: '',
     slug: '',
     plan: 'Professional',
+    billingRegion: 'IN',
     domain: '',
     infrastructureStrategy: 'shared',
     adminEmail: '',
@@ -100,6 +101,19 @@ export function CreateOrganizationPage() {
                 <MenuItem value="Starter">Starter</MenuItem>
                 <MenuItem value="Professional">Professional</MenuItem>
                 <MenuItem value="Enterprise">Enterprise</MenuItem>
+              </TextField>
+
+              <TextField
+                select
+                required
+                fullWidth
+                label="Billing Region"
+                value={form.billingRegion ?? 'IN'}
+                onChange={(e) => setForm({ ...form, billingRegion: e.target.value as 'IN' | 'GLOBAL' })}
+                helperText="India → Razorpay (INR, UPI). Global → Stripe (USD, international cards)."
+              >
+                <MenuItem value="IN">India (Razorpay)</MenuItem>
+                <MenuItem value="GLOBAL">Global (Stripe)</MenuItem>
               </TextField>
 
               <TextField
