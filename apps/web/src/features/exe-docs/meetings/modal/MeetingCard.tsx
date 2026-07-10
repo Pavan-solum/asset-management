@@ -39,6 +39,7 @@ export interface MeetingData {
   participants?: string[];
   description?: string;
   link?: string;
+  agendaItems?: string[];
 }
 
 interface MeetingCardProps {
