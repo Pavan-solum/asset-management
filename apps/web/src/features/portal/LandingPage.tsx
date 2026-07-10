@@ -113,7 +113,7 @@ export function LandingPage() {
             description: 'Request new devices, replacements, accessories, and view request status.',
             icon: <DevicesIcon sx={{ fontSize: 48 }} />,
             path: '/portal',
-            permission: undefined as const,
+            permission: undefined,
           },
         ]
       : []),
