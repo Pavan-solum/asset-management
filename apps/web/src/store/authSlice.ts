@@ -128,12 +128,28 @@ const authSlice = createSlice({
       action: PayloadAction<{ user: User; tenant: Tenant; token: string }>,
     ) => {
       state.isAuthenticated = true;
+      state.requirePasswordSetup = false;
+      state.pendingUserEmail = null;
       state.user = resolveDemoUser(action.payload.user);
       state.tenant = action.payload.tenant;
       state.token = action.payload.token;
       state.error = null;
       storeToken(action.payload.token);
       sessionStorage.setItem('assetly_auth_state', JSON.stringify(state));
+    },
+    setPendingSession: (
+      state,
+      action: PayloadAction<{ user: User; tenant: Tenant; token: string }>,
+    ) => {
+      // Not yet authenticated — waiting for user to set their password
+      state.isAuthenticated = false;
+      state.requirePasswordSetup = true;
+      state.pendingUserEmail = action.payload.user.email;
+      state.user = resolveDemoUser(action.payload.user);
+      state.tenant = action.payload.tenant;
+      state.token = action.payload.token;
+      state.error = null;
+      storeToken(action.payload.token);
     },
     logout: (state) => {
       state.isAuthenticated = false;
@@ -154,5 +170,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { login, setPasswordAndLogin, setSession, logout, clearError, setLoginError } = authSlice.actions;
+export const { login, setPasswordAndLogin, setSession, setPendingSession, logout, clearError, setLoginError } = authSlice.actions;
 export default authSlice.reducer;

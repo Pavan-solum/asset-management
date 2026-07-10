@@ -15,8 +15,8 @@ export default async function handler(req: Request) {
     const currentPassword = String(body.currentPassword ?? '');
     const newPassword = String(body.newPassword ?? '');
 
-    if (!currentPassword || !newPassword) {
-      return error('Current and new password are required', 400);
+    if (!newPassword) {
+      return error('New password is required', 400);
     }
     if (newPassword.length < 8) {
       return error('New password must be at least 8 characters', 400);
@@ -24,8 +24,25 @@ export default async function handler(req: Request) {
 
     const email = String(auth.email ?? '').toLowerCase();
 
-    const valid = await verifyPassword(email, currentPassword);
-    if (!valid) return error('Current password is incorrect', 401);
+    // For first-time password setup, currentPassword may be empty if no password is set yet
+    if (currentPassword) {
+      const valid = await verifyPassword(email, currentPassword);
+      if (!valid) return error('Current password is incorrect', 401);
+    } else {
+      // Ensure this is genuinely a first-time setup (no real password stored)
+      try {
+        const sql = getSql();
+        const rows = await sql`
+          SELECT password_hash FROM user_passwords WHERE email = ${email}
+        ` as { password_hash: string }[];
+        const hasPassword = rows.length > 0 && rows[0].password_hash && rows[0].password_hash !== 'seed-placeholder';
+        if (hasPassword) {
+          return error('Current password is required', 400);
+        }
+      } catch {
+        return error('Current password is required', 400);
+      }
+    }
 
     const sql = getSql();
     const passwordHash = await hashPassword(newPassword);

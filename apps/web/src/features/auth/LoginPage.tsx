@@ -24,13 +24,13 @@ import SecurityIcon from '@mui/icons-material/Security';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { login, setPasswordAndLogin, clearError, setSession, setLoginError } from '../../store/authSlice';
+import { login, setPasswordAndLogin, clearError, setSession, setLoginError, setPendingSession } from '../../store/authSlice';
 import { APP_NAME, APP_TAGLINE, COMPANY_EMAIL_DOMAIN, COMPANY_NAME } from '../../constants/brand';
 import { ThemeModeToggle } from '../../components/ThemeModeToggle';
 import { LoadingButton } from '../../components/Loader';
 import { withMinDelay } from '../../hooks/useAsyncAction';
 import { isApiEnabled } from '../../services/api/config';
-import { apiLogin } from '../../services/api/auth';
+import { apiLogin, changePassword } from '../../services/api/auth';
 import { ApiError, checkApiHealth, loginErrorMessage } from '../../services/api/client';
 import { getHomeRouteForRole } from '../../utils/routing';
 
@@ -96,8 +96,24 @@ export function LoginPage() {
         return;
       }
       setLoading(true);
-      await withMinDelay(Promise.resolve().then(() => dispatch(setPasswordAndLogin(password))));
-      setLoading(false);
+      try {
+        if (isApiEnabled()) {
+          // Call change-password API (we already have a token from the first-time login)
+          await changePassword('', password);
+          // Clear requirePasswordSetup flag by re-dispatching the same session without the flag
+          dispatch(setSession({
+            user: (window as any).__pendingUser,
+            tenant: (window as any).__pendingTenant,
+            token: (window as any).__pendingToken,
+          }));
+        } else {
+          await withMinDelay(Promise.resolve().then(() => dispatch(setPasswordAndLogin(password))));
+        }
+      } catch (err) {
+        dispatch(setLoginError(err instanceof Error ? err.message : 'Failed to set password'));
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -105,13 +121,23 @@ export function LoginPage() {
     try {
       if (isApiEnabled()) {
         const data = await apiLogin(email, password);
-        dispatch(
-          setSession({
-            user: data.user,
-            tenant: data.tenant,
-            token: data.token,
-          }),
-        );
+        if (data.requirePasswordSetup) {
+          // Store pending session data for use after password is set
+          (window as any).__pendingUser = data.user;
+          (window as any).__pendingTenant = data.tenant;
+          (window as any).__pendingToken = data.token;
+          // Store the token so changePassword API call is authenticated
+          (await import('../../services/api/auth')).storeToken(data.token);
+          dispatch(setPendingSession({ user: data.user, tenant: data.tenant, token: data.token }));
+        } else {
+          dispatch(
+            setSession({
+              user: data.user,
+              tenant: data.tenant,
+              token: data.token,
+            }),
+          );
+        }
       } else {
         await withMinDelay(
           Promise.resolve().then(() => {

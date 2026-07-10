@@ -5,6 +5,7 @@ export interface LoginResponse {
   token: string;
   user: User;
   tenant: Tenant;
+  requirePasswordSetup?: boolean;
 }
 
 export async function apiLogin(email: string, password: string): Promise<LoginResponse> {
