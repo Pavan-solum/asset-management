@@ -19,7 +19,7 @@ import requestsReducer from './requestsSlice';
 import tenantsReducer from './tenantsSlice';
 import usersReducer from './usersSlice';
 
-const rootReducer = combineReducers({
+const appReducer = combineReducers({
   auth: authReducer,
   assets: assetsReducer,
   employees: employeesReducer,
@@ -37,6 +37,14 @@ const rootReducer = combineReducers({
   tenants: tenantsReducer,
   users: usersReducer,
 });
+
+const rootReducer = (state: any, action: any) => {
+  if (action.type === 'auth/logout') {
+    storage.removeItem('persist:root');
+    state = undefined;
+  }
+  return appReducer(state, action);
+};
 
 const persistConfig = {
   key: 'root',

@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { requireAuth, insertAuditLog } from '../_lib/auth';
 
 export const config = { runtime: 'edge' };
@@ -8,8 +8,10 @@ export default async function handler(req: Request) {
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
+  if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
+  if (auth instanceof Response) return auth;
 
-  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+  const sql = await getTenantSql(auth.tenantId!);
 
   try {
     if (req.method === 'GET') {
@@ -20,13 +22,13 @@ export default async function handler(req: Request) {
       if (employeeId) {
         rows = await sql`
           SELECT * FROM hr_leave_requests 
-          WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND employee_id = ${employeeId} AND deleted_at IS NULL
+          WHERE tenant_id = ${auth.tenantId!} AND employee_id = ${employeeId} AND deleted_at IS NULL
           ORDER BY created_at DESC
         ` as Record<string, any>[];
       } else {
         rows = await sql`
           SELECT * FROM hr_leave_requests 
-          WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND deleted_at IS NULL
+          WHERE tenant_id = ${auth.tenantId!} AND deleted_at IS NULL
           ORDER BY created_at DESC
         ` as Record<string, any>[];
       }
@@ -63,7 +65,7 @@ export default async function handler(req: Request) {
         INSERT INTO hr_leave_requests (
           id, tenant_id, employee_id, leave_type, start_date, end_date, days_count, reason, status
         ) VALUES (
-          ${id}, ${auth.tenantId || DEMO_TENANT_ID}, ${employeeId}, ${leaveType}, ${startDate}, ${endDate}, ${daysCount}, ${reason}, 'pending'
+          ${id}, ${auth.tenantId!}, ${employeeId}, ${leaveType}, ${startDate}, ${endDate}, ${daysCount}, ${reason}, 'pending'
         )
         RETURNING *
       ` as Record<string, any>[];

@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx';
 import { COMPANY_EMAIL_DOMAIN } from '../constants/brand';
-import { DEMO_TENANT } from '../data/demoData';
 import type { AssetCategory, AssetStatus, Employee, Vendor } from '../types';
 
 export type ImportFieldKey = 'assetName' | 'serialNumber' | 'category' | 'assetTag' | 'user';
@@ -354,9 +353,11 @@ function buildImportEmail(parsed: { firstName: string; lastName: string }, index
 export class ImportEmployeeRegistry {
   private readonly existing: Employee[];
   private readonly created = new Map<string, Employee>();
+  private readonly tenantId: string;
 
-  constructor(existing: Employee[]) {
+  constructor(existing: Employee[], tenantId: string) {
     this.existing = existing;
+    this.tenantId = tenantId;
   }
 
   resolve(userRaw: string): Employee | undefined {
@@ -375,7 +376,7 @@ export class ImportEmployeeRegistry {
 
     const employee: Employee = {
       id: `emp-import-${String(this.created.size + 1).padStart(3, '0')}`,
-      tenantId: DEMO_TENANT.id,
+      tenantId: this.tenantId,
       employeeNumber: `EMP-IMP-${String(this.created.size + 1).padStart(3, '0')}`,
       firstName: parsed.firstName,
       lastName: parsed.lastName,
@@ -476,8 +477,9 @@ export function buildImportRows(
   rawRows: Record<string, unknown>[],
   mapping: ColumnMapping,
   employees: Employee[],
+  tenantId: string,
 ): ImportBuildResult {
-  const registry = new ImportEmployeeRegistry(employees);
+  const registry = new ImportEmployeeRegistry(employees, tenantId);
   const results: ImportAssetRow[] = [];
 
   rawRows.forEach((row, index) => {

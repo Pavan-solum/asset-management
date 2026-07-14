@@ -8,7 +8,10 @@ import {
   MenuItem,
   Stack,
   Alert,
+  Typography,
+  CircularProgress,
 } from '@mui/material';
+import CheckIcon from '@mui/icons-material/Check';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { createUser } from '../../store/usersSlice';
@@ -36,6 +39,8 @@ export function CreateUserPage() {
     tenantId: '',
   });
   const [error, setError] = useState<string | null>(null);
+  const [createdUser, setCreatedUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,8 +49,9 @@ export function CreateUserPage() {
       return;
     }
 
+    setLoading(true);
     try {
-      await dispatch(
+      const newUser = await dispatch(
         createUser({
           firstName: form.firstName,
           lastName: form.lastName || '',
@@ -54,9 +60,11 @@ export function CreateUserPage() {
           tenantId: form.tenantId,
         })
       ).unwrap();
-      navigate('/system-admin/users');
+      setCreatedUser(newUser);
     } catch (err) {
       setError('Failed to create user');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,7 +79,31 @@ export function CreateUserPage() {
 
       <Card sx={{ mt: 3 }}>
         <CardContent>
-          <form onSubmit={handleSubmit}>
+          {createdUser ? (
+            <Stack spacing={3} alignItems="center" py={4}>
+              <Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: 'success.light', color: 'success.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckIcon sx={{ fontSize: 32 }} />
+              </Box>
+              <Box textAlign="center">
+                <Typography variant="h5" gutterBottom>User Created Successfully</Typography>
+                <Typography color="text.secondary">
+                  The temporary password for <strong>{createdUser.email}</strong> is:
+                </Typography>
+              </Box>
+              <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px dashed', borderColor: 'divider', minWidth: 300, textAlign: 'center' }}>
+                <Typography variant="h4" sx={{ fontFamily: 'monospace', letterSpacing: 2 }}>
+                  {createdUser.generatedPassword}
+                </Typography>
+              </Box>
+              <Alert severity="warning" sx={{ maxWidth: 400 }}>
+                Please copy and share this password securely. The user will be required to change it upon their first login.
+              </Alert>
+              <Button variant="contained" size="large" onClick={() => navigate('/system-admin/users')}>
+                Done
+              </Button>
+            </Stack>
+          ) : (
+            <form onSubmit={handleSubmit}>
             <Stack spacing={3}>
               {error && <Alert severity="error">{error}</Alert>}
               
@@ -136,12 +168,19 @@ export function CreateUserPage() {
                 <Button onClick={() => navigate('/system-admin/users')} size="large">
                   Cancel
                 </Button>
-                <Button type="submit" variant="contained" size="large">
+                <Button 
+                  type="submit" 
+                  variant="contained" 
+                  size="large"
+                  disabled={loading}
+                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+                >
                   Create User
                 </Button>
               </Box>
             </Stack>
           </form>
+          )}
         </CardContent>
       </Card>
     </Box>

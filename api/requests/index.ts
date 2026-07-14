@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { mapAssetRequest, type DbAssetRequest } from '../_lib/mappers';
 import { requireAuth, canReviewRequests, insertAuditLog, type AuthUser } from '../_lib/auth';
 
@@ -9,7 +9,7 @@ function isUuid(value: string): boolean {
 }
 
 async function resolveEmployeeId(auth: AuthUser): Promise<string | Response> {
-  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+  const sql = await getTenantSql(auth.tenantId!);
 
   if (auth.employeeId && isUuid(auth.employeeId)) {
     return auth.employeeId;
@@ -18,7 +18,7 @@ async function resolveEmployeeId(auth: AuthUser): Promise<string | Response> {
   try {
     const rows = (await sql`
       SELECT id FROM employees
-      WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND lower(email) = ${auth.email.toLowerCase()}
+      WHERE tenant_id = ${auth.tenantId!} AND lower(email) = ${auth.email.toLowerCase()}
       LIMIT 1
     `) as { id: string }[];
 
@@ -69,18 +69,20 @@ export default async function handler(req: Request) {
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
+  if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
+  if (auth instanceof Response) return auth;
 
   try {
     if (req.method === 'GET') {
       if (canReviewRequests(auth.role)) {
-        const rows = await fetchRequests(auth.tenantId || DEMO_TENANT_ID);
+        const rows = await fetchRequests(auth.tenantId!);
         return json(rows.map(mapAssetRequest));
       }
 
       if (auth.role === 'employee') {
         const employeeId = await resolveEmployeeId(auth);
         if (employeeId instanceof Response) return employeeId;
-        const rows = await fetchRequests(auth.tenantId || DEMO_TENANT_ID, employeeId);
+        const rows = await fetchRequests(auth.tenantId || employeeId);
         return json(rows.map(mapAssetRequest));
       }
 
@@ -109,12 +111,12 @@ export default async function handler(req: Request) {
         return error('Invalid requestType', 400);
       }
 
-      const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+      const sql = await getTenantSql(auth.tenantId!);
       const rows = (await sql`
         INSERT INTO asset_requests (
           tenant_id, employee_id, request_type, category, description, needed_by
         ) VALUES (
-          ${auth.tenantId || DEMO_TENANT_ID}, ${employeeId}, ${requestType}, ${category}, ${description}, ${neededBy}
+          ${auth.tenantId!}, ${employeeId}, ${requestType}, ${category}, ${description}, ${neededBy}
         )
         RETURNING *
       `) as DbAssetRequest[];

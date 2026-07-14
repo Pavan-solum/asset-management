@@ -34,7 +34,6 @@ import {
   CATEGORY_LABELS,
   DEMO_DEPARTMENTS,
   DEMO_EMPLOYEES,
-  DEMO_TENANT,
   REQUEST_STATUS_COLORS,
   REQUEST_STATUS_LABELS,
   REQUEST_TYPE_LABELS,
@@ -93,7 +92,6 @@ export function DeviceRequestPage() {
   }, [assets, user, employeeProfile]);
 
   const loadRequests = useCallback(async () => {
-    if (!isApiEnabled()) return;
     setFetching(true);
     try {
       const data = await fetchAssetRequests();
@@ -128,27 +126,8 @@ export function DeviceRequestPage() {
         neededBy: neededBy || undefined,
       };
 
-      if (isApiEnabled()) {
-        const created = await createAssetRequest(payload);
-        dispatch(addRequest(created));
-      } else {
-        dispatch(
-          addRequest({
-            id: `req-${Date.now()}`,
-            tenantId: DEMO_TENANT.id,
-            employeeId: user?.employeeId ?? employeeProfile?.id ?? 'unknown',
-            requestType,
-            category,
-            description: description.trim(),
-            neededBy: neededBy || undefined,
-            status: 'submitted',
-            createdAt: new Date().toISOString(),
-            employeeName: user ? `${user.firstName} ${user.lastName}` : undefined,
-            employeeEmail: user?.email,
-            departmentName: employeeProfile ? deptMap[employeeProfile.departmentId] : undefined,
-          }),
-        );
-      }
+      const created = await createAssetRequest(payload);
+      dispatch(addRequest(created));
 
       setDescription('');
       setNeededBy('');
@@ -181,27 +160,8 @@ export function DeviceRequestPage() {
         assetIds: assetsToReturn.map(a => a.id),
       };
 
-      if (isApiEnabled()) {
-        const created = await createAssetRequest(payload);
-        dispatch(addRequest(created));
-      } else {
-        dispatch(
-          addRequest({
-            id: `req-${Date.now()}`,
-            tenantId: DEMO_TENANT.id,
-            employeeId: user?.employeeId ?? employeeProfile?.id ?? 'unknown',
-            requestType: 'return',
-            category: assetsToReturn.length === 1 ? assetsToReturn[0].category : 'other',
-            description: returnFeedback.trim(),
-            assetIds: assetsToReturn.map(a => a.id),
-            status: 'submitted',
-            createdAt: new Date().toISOString(),
-            employeeName: user ? `${user.firstName} ${user.lastName}` : undefined,
-            employeeEmail: user?.email,
-            departmentName: employeeProfile ? deptMap[employeeProfile.departmentId] : undefined,
-          }),
-        );
-      }
+      const created = await createAssetRequest(payload);
+      dispatch(addRequest(created));
 
       setSuccess(`Return request submitted for ${assetsToReturn.length} asset(s).`);
       setReturnDialogOpen(false);

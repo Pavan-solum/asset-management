@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { assetInsertPayload, mapAsset, type DbAsset } from '../_lib/mappers';
 import { requireAuth } from '../_lib/auth';
 
@@ -24,9 +24,11 @@ export default async function handler(req: Request) {
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
+  if (!auth.tenantId! && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
+  if (auth instanceof Response) return auth;
 
   try {
-    const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+    const sql = await getTenantSql(auth.tenantId!);
     const body = await parseBody<ImportBody>(req);
     const items = body.items ?? [];
     const employees = body.employees ?? [];
@@ -35,10 +37,10 @@ export default async function handler(req: Request) {
 
     // Only wipe existing data when the caller explicitly requests a full replace
     if (body.replaceAll === true) {
-      await sql`DELETE FROM ownership_history WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
-      await sql`DELETE FROM asset_assignments WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
-      await sql`DELETE FROM assets WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
-      await sql`DELETE FROM employees WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
+      await sql`DELETE FROM ownership_history WHERE tenant_id = ${auth.tenantId!}`;
+      await sql`DELETE FROM asset_assignments WHERE tenant_id = ${auth.tenantId!}`;
+      await sql`DELETE FROM assets WHERE tenant_id = ${auth.tenantId!}`;
+      await sql`DELETE FROM employees WHERE tenant_id = ${auth.tenantId!}`;
     }
 
     const empIdMap = new Map<string, string>();
@@ -55,7 +57,7 @@ export default async function handler(req: Request) {
           id, tenant_id, employee_number, first_name, last_name, email,
           job_title, department_id, status, hire_date
         ) VALUES (
-          ${id}, ${auth.tenantId || DEMO_TENANT_ID}, ${String(emp.employeeNumber ?? '')},
+          ${id}, ${auth.tenantId!}, ${String(emp.employeeNumber ?? '')},
           ${String(emp.firstName ?? '')}, ${String(emp.lastName ?? '')},
           ${String(emp.email ?? '')}, ${String(emp.jobTitle ?? 'Staff')},
           ${departmentId}, ${String(emp.status ?? 'active')},
@@ -74,7 +76,7 @@ export default async function handler(req: Request) {
       }
       itemCopy.id = crypto.randomUUID();
 
-      const payload = assetInsertPayload(itemCopy, (auth.tenantId || DEMO_TENANT_ID));
+      const payload = assetInsertPayload(itemCopy, (auth.tenantId!));
 
       if (payload.vendorId && !isUuid(payload.vendorId)) payload.vendorId = null;
       if (payload.assignedEmployeeId && !isUuid(payload.assignedEmployeeId)) {
@@ -106,14 +108,14 @@ export default async function handler(req: Request) {
         await sql`
           INSERT INTO asset_assignments (tenant_id, asset_id, employee_id, assigned_by, notes)
           VALUES (
-            ${auth.tenantId || DEMO_TENANT_ID}, ${asset.id}, ${payload.assignedEmployeeId},
+            ${auth.tenantId!}, ${asset.id}, ${payload.assignedEmployeeId},
             ${body.assignedBy}, 'Imported from Excel'
           )
         `;
         await sql`
           INSERT INTO ownership_history (tenant_id, asset_id, event_type, description, performed_by)
           VALUES (
-            ${auth.tenantId || DEMO_TENANT_ID}, ${asset.id}, 'ASSIGNED', 'Assigned during Excel import',
+            ${auth.tenantId!}, ${asset.id}, 'ASSIGNED', 'Assigned during Excel import',
             ${body.assignedBy}
           )
         `;
@@ -125,7 +127,7 @@ export default async function handler(req: Request) {
       await sql`
         INSERT INTO audit_logs (tenant_id, user_id, user_name, action, entity_type, entity_id, entity_label, details)
         VALUES (
-          ${auth.tenantId || DEMO_TENANT_ID}, ${audit.userId ?? null}, ${audit.userName ?? null},
+          ${auth.tenantId!}, ${audit.userId ?? null}, ${audit.userName ?? null},
           ${audit.action ?? 'CREATE'}, ${audit.entityType ?? 'asset'}, ${audit.entityId ?? 'bulk-import'},
           ${audit.entityLabel ?? 'Bulk Import'}, ${audit.details ?? null}
         )

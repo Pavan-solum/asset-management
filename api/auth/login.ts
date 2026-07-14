@@ -1,5 +1,5 @@
 import { json, error, corsPreflight, parseBody, getSql } from '../_lib/db';
-import { DEMO_USERS, DEMO_TENANT } from '../_lib/demo-users';
+import { DEMO_USERS } from '../_lib/demo-users';
 import { signAuthToken, verifyPassword, insertAuditLog } from '../_lib/auth';
 import { mapTenant, type DbUser, type DbTenant } from '../_lib/mappers';
 
@@ -17,7 +17,13 @@ export default async function handler(req: Request) {
     if (!email) return error('Email is required', 400);
 
     let userRecord: any = null;
-    let tenantRecord: any = DEMO_TENANT; // Default for demo
+    const SYSTEM_TENANT = {
+      id: 'system',
+      name: 'Assetly Platform',
+      slug: 'system',
+      plan: 'Enterprise',
+    };
+    let tenantRecord: any = SYSTEM_TENANT; // Default for platform admin
 
     // 1. Try to find the user in the database
     try {
@@ -82,7 +88,28 @@ export default async function handler(req: Request) {
     const valid = await verifyPassword(email, password);
     if (!valid) return error('Invalid email or password', 401);
 
+    // Check if the user is forced to reset their password
+    let mustChange = false;
+    try {
+      const sql = getSql();
+      const rows = await sql`SELECT must_change_password FROM user_passwords WHERE email = ${email}` as { must_change_password: boolean }[];
+      if (rows.length > 0 && rows[0].must_change_password) {
+        mustChange = true;
+      }
+    } catch {
+      // Ignore DB errors if column doesn't exist
+    }
+
     const token = await signAuthToken(userRecord);
+
+    if (mustChange) {
+      return json({
+        token,
+        user: userRecord,
+        tenant: tenantRecord,
+        requirePasswordSetup: true,
+      });
+    }
 
     try {
       await insertAuditLog({

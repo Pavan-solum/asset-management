@@ -24,7 +24,7 @@ import SecurityIcon from '@mui/icons-material/Security';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { login, setPasswordAndLogin, clearError, setSession, setLoginError, setPendingSession } from '../../store/authSlice';
+import { clearError, setSession, setLoginError, setPendingSession } from '../../store/authSlice';
 import { APP_NAME, APP_TAGLINE, COMPANY_EMAIL_DOMAIN, COMPANY_NAME } from '../../constants/brand';
 import { ThemeModeToggle } from '../../components/ThemeModeToggle';
 import { LoadingButton } from '../../components/Loader';
@@ -34,15 +34,7 @@ import { apiLogin, changePassword } from '../../services/api/auth';
 import { ApiError, checkApiHealth, loginErrorMessage } from '../../services/api/client';
 import { getHomeRouteForRole } from '../../utils/routing';
 
-const demoAccounts = [
-  { email: `sysadmin@${COMPANY_EMAIL_DOMAIN}`, role: 'Platform Admin', desc: 'System-wide control' },
-  { email: 'admin@solumtechnologies.com', role: 'Tenant Admin', desc: 'Full access' },
-  { email: 'itadmin@solumtechnologies.com', role: 'IT Admin', desc: 'IT Assets module access' },
-  { email: 'hradmin@solumtechnologies.com', role: 'HR Admin', desc: 'HR module access' },
-  { email: 'financeadmin@solumtechnologies.com', role: 'Finance Admin', desc: 'Finance module access' },
-  { email: 'viewer@solumtechnologies.com', role: 'Viewer', desc: 'Read-only' },
-  { email: 'sarah.chen@solumtechnologies.com', role: 'Employee', desc: 'Self-service portal' },
-];
+
 
 const features = [
   { icon: <Inventory2Icon fontSize="small" />, text: 'Track assets, warranties & assignments' },
@@ -51,8 +43,8 @@ const features = [
 ];
 
 export function LoginPage() {
-  const [email, setEmail] = useState('sysadmin@assetly.com');
-  const [password, setPassword] = useState('Demo@123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -97,18 +89,12 @@ export function LoginPage() {
       }
       setLoading(true);
       try {
-        if (isApiEnabled()) {
-          // Call change-password API (we already have a token from the first-time login)
-          await changePassword('', password);
-          // Clear requirePasswordSetup flag by re-dispatching the same session without the flag
-          dispatch(setSession({
-            user: (window as any).__pendingUser,
-            tenant: (window as any).__pendingTenant,
-            token: (window as any).__pendingToken,
-          }));
-        } else {
-          await withMinDelay(Promise.resolve().then(() => dispatch(setPasswordAndLogin(password))));
-        }
+        await changePassword('', password);
+        dispatch(setSession({
+          user: (window as any).__pendingUser,
+          tenant: (window as any).__pendingTenant,
+          token: (window as any).__pendingToken,
+        }));
       } catch (err) {
         dispatch(setLoginError(err instanceof Error ? err.message : 'Failed to set password'));
       } finally {
@@ -119,29 +105,21 @@ export function LoginPage() {
 
     setLoading(true);
     try {
-      if (isApiEnabled()) {
-        const data = await apiLogin(email, password);
-        if (data.requirePasswordSetup) {
-          // Store pending session data for use after password is set
-          (window as any).__pendingUser = data.user;
-          (window as any).__pendingTenant = data.tenant;
-          (window as any).__pendingToken = data.token;
-          // Store the token so changePassword API call is authenticated
-          (await import('../../services/api/auth')).storeToken(data.token);
-          dispatch(setPendingSession({ user: data.user, tenant: data.tenant, token: data.token }));
-        } else {
-          dispatch(
-            setSession({
-              user: data.user,
-              tenant: data.tenant,
-              token: data.token,
-            }),
-          );
-        }
+      const data = await apiLogin(email, password);
+      if (data.requirePasswordSetup) {
+        // Store pending session data for use after password is set
+        (window as any).__pendingUser = data.user;
+        (window as any).__pendingTenant = data.tenant;
+        (window as any).__pendingToken = data.token;
+        // Store the token so changePassword API call is authenticated
+        (await import('../../services/api/auth')).storeToken(data.token);
+        dispatch(setPendingSession({ user: data.user, tenant: data.tenant, token: data.token }));
       } else {
-        await withMinDelay(
-          Promise.resolve().then(() => {
-            dispatch(login({ email, password }));
+        dispatch(
+          setSession({
+            user: data.user,
+            tenant: data.tenant,
+            token: data.token,
           }),
         );
       }
@@ -154,12 +132,6 @@ export function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillDemo = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('Demo@123456');
-    dispatch(clearError());
   };
 
   return (
@@ -284,7 +256,7 @@ export function LoginPage() {
               Sign in
             </Typography>
             <Typography variant="body2" color="text.secondary" mb={3}>
-              {COMPANY_NAME} demo tenant
+              {COMPANY_NAME} portal
             </Typography>
 
             {apiWarning && (
@@ -394,52 +366,7 @@ export function LoginPage() {
                 </LoadingButton>
               </Box>
             )}
-
-            {!requirePasswordSetup && (
-              <>
-                <Divider sx={{ my: 3 }}>
-                  <Chip label="Demo accounts" size="small" />
-                </Divider>
-
-              <Stack spacing={1}>
-                {demoAccounts.map((acc) => (
-                  <Button
-                    key={acc.email}
-                    variant="outlined"
-                    fullWidth
-                    onClick={() => fillDemo(acc.email)}
-                    sx={{
-                      justifyContent: 'space-between',
-                      textTransform: 'none',
-                      py: 1.25,
-                      borderColor: 'divider',
-                      '&:hover': {
-                        borderColor: 'primary.main',
-                        bgcolor: alpha(theme.palette.primary.main, 0.08),
-                      },
-                    }}
-                  >
-                    <Box sx={{ textAlign: 'left' }}>
-                      <Typography variant="body2" fontWeight={600}>
-                        {acc.role}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {acc.email}
-                      </Typography>
-                    </Box>
-                    <Typography variant="caption" color="text.secondary">
-                      {acc.desc}
-                    </Typography>
-                  </Button>
-                ))}
-              </Stack>
-
-              <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={2}>
-                Password for all demo accounts: Demo@123456
-              </Typography>
-            </>
-          )}
-        </CardContent>
+          </CardContent>
         </Card>
       </Box>
     </Box>

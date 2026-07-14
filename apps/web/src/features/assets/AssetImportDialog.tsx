@@ -25,14 +25,10 @@ import {
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import * as XLSX from 'xlsx';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { importInventory } from '../../store/assetsSlice';
-import { replaceAllEmployees } from '../../store/employeesSlice';
 import { DialogLoader, LoadingButton } from '../../components/Loader';
-import { addAuditLog } from '../../store/auditSlice';
 import { reloadFromApi } from '../../components/DataBootstrap';
-import { isApiEnabled } from '../../services/api/config';
 import { importInventory as importInventoryApi } from '../../services/api/assets';
-import { CATEGORY_LABELS, DEMO_TENANT } from '../../data/demoData';
+import { CATEGORY_LABELS } from '../../data/demoData';
 import type { AssetCategory, AssetStatus } from '../../types';
 import {
   buildImportRows,
@@ -151,7 +147,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
       setExcelColumns(columns);
       setColumnMapping(mapping);
       setRawExcelRows(rows);
-      const built = buildImportRows(rows, mapping, employees);
+      const built = buildImportRows(rows, mapping, employees, user!.tenantId);
       setImportRows(built.rows);
       setStep(1);
 
@@ -167,7 +163,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
     setIsProcessing(true);
     setReviewPage(0);
     window.setTimeout(() => {
-      const built = buildImportRows(rawExcelRows, columnMapping, employees);
+      const built = buildImportRows(rawExcelRows, columnMapping, employees, user!.tenantId);
       startTransition(() => {
         setImportRows(built.rows);
         setStep(2);
@@ -185,7 +181,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
         let userParsedWarnings: string[] = [];
 
         if (patch.userRaw !== undefined) {
-          const registry = new ImportEmployeeRegistry(employees);
+          const registry = new ImportEmployeeRegistry(employees, user!.tenantId);
           const userParsed = parseUserField(updated.userRaw, employees, registry);
           updated.location = userParsed.location;
           updated.status = userParsed.assignedEmployeeId ? 'deployed' : userParsed.status;
@@ -224,7 +220,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
 
     setIsImporting(true);
     try {
-    const registry = new ImportEmployeeRegistry([]);
+    const registry = new ImportEmployeeRegistry([], user!.tenantId);
     const resolvedRows = validRows.map((row) => {
       if (!row.userRaw.trim()) return row;
       const parsed = parseUserField(row.userRaw, registry.getNewEmployees(), registry);
@@ -251,7 +247,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
       const manufacturer = row.manufacturer || guessManufacturer(row.assetName);
       return {
         id,
-        tenantId: DEMO_TENANT.id,
+        tenantId: user.tenantId,
         assetTag: row.assetTag,
         name: row.assetName,
         category: row.category,
@@ -278,7 +274,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
       if (!row?.assignedEmployeeId) return [];
       return [{
         id: `assign-import-${Date.now()}-${i}`,
-        tenantId: DEMO_TENANT.id,
+        tenantId: user.tenantId,
         assetId: item.id,
         employeeId: row.assignedEmployeeId,
         assignedAt: now,
@@ -289,7 +285,7 @@ export function AssetImportDialog({ open, onClose }: Props) {
 
     const ownershipHistory = fixedAssignments.map((a, i) => ({
       id: `hist-import-${Date.now()}-${i}`,
-      tenantId: DEMO_TENANT.id,
+      tenantId: user.tenantId,
       assetId: a.assetId,
       eventType: 'ASSIGNED',
       description: 'Assigned during Excel import',
@@ -299,53 +295,27 @@ export function AssetImportDialog({ open, onClose }: Props) {
 
     const auditDetails = `Replaced inventory with ${items.length} assets and ${importedEmployees.length} employees from ${fileName}`;
 
-    if (isApiEnabled()) {
-      try {
-        await importInventoryApi({
-          items,
-          employees: importedEmployees,
-          assignedBy,
-          qrOrigin: window.location.origin,
-          audit: {
-            userId: user.id,
-            userName: assignedBy,
-            action: 'CREATE',
-            entityType: 'asset',
-            entityId: 'bulk-import',
-            entityLabel: 'Bulk Import',
-            details: auditDetails,
-          },
-        });
-        await reloadFromApi(dispatch);
-        handleClose();
-      } catch {
-        setParseError('Import failed. Check backend connection and try again.');
-      }
-      return;
-    }
-
-    dispatch(replaceAllEmployees(importedEmployees));
-    dispatch(
-      importInventory({
+    try {
+      await importInventoryApi({
         items,
-        assignments: fixedAssignments,
-        ownershipHistory,
-      }),
-    );
-
-    dispatch(
-      addAuditLog({
-        userId: user.id,
-        userName: assignedBy,
-        action: 'CREATE',
-        entityType: 'asset',
-        entityId: 'bulk-import',
-        entityLabel: 'Bulk Import',
-        details: `Replaced inventory with ${items.length} assets and ${importedEmployees.length} employees from ${fileName}`,
-      }),
-    );
-
-    handleClose();
+        employees: importedEmployees,
+        assignedBy,
+        qrOrigin: window.location.origin,
+        audit: {
+          userId: user.id,
+          userName: assignedBy,
+          action: 'CREATE',
+          entityType: 'asset',
+          entityId: 'bulk-import',
+          entityLabel: 'Bulk Import',
+          details: auditDetails,
+        },
+      });
+      await reloadFromApi(dispatch);
+      handleClose();
+    } catch {
+      setParseError('Import failed. Check backend connection and try again.');
+    }
     } finally {
       setIsImporting(false);
     }

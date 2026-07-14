@@ -1,6 +1,4 @@
-import { DEMO_USERS } from '../data/demoData';
 import type { User, UserRole } from '../types';
-import { isApiEnabled } from '../services/api/config';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   platform_admin: 'Platform Admin',
@@ -11,19 +9,6 @@ const ROLE_LABELS: Record<UserRole, string> = {
   viewer: 'Viewer',
   employee: 'Employee',
 };
-
-/** Apply demo account profile from demoData when logging in via API. */
-export function resolveDemoUser(user: User): User {
-  const cred = DEMO_USERS[user.email.toLowerCase()];
-  if (!cred) return user;
-  return {
-    ...user,
-    firstName: cred.user.firstName,
-    lastName: cred.user.lastName,
-    role: cred.user.role,
-    employeeId: isApiEnabled() ? (user.employeeId ?? cred.user.employeeId) : cred.user.employeeId,
-  };
-}
 
 export function getUserDisplayName(user: Pick<User, 'firstName' | 'lastName'> | null | undefined): string {
   if (!user) return '';

@@ -1,8 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import type { User } from '../types';
-import { DEMO_USERS } from '../data/demoData';
 import { apiFetch } from '../services/api/client';
-import { isApiEnabled } from '../services/api/config';
 
 interface UsersState {
   items: User[];
@@ -10,27 +8,17 @@ interface UsersState {
   error: string | null;
 }
 
-const initialUsers: User[] = Object.values(DEMO_USERS).map((cred) => cred.user);
-
 const initialState: UsersState = {
-  items: initialUsers,
+  items: [],
   loading: false,
   error: null,
 };
 
 export const fetchUsers = createAsyncThunk('users/fetchUsers', async () => {
-  if (!isApiEnabled()) return initialUsers;
   return apiFetch<User[]>('/api/users');
 });
 
 export const createUser = createAsyncThunk('users/createUser', async (user: Partial<User>) => {
-  if (!isApiEnabled()) {
-    return {
-      ...user,
-      id: `user-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    } as User;
-  }
   return apiFetch<User>('/api/users', {
     method: 'POST',
     body: JSON.stringify(user),
@@ -38,7 +26,6 @@ export const createUser = createAsyncThunk('users/createUser', async (user: Part
 });
 
 export const updateUserThunk = createAsyncThunk('users/updateUser', async (user: User) => {
-  if (!isApiEnabled()) return user;
   return apiFetch<User>(`/api/users/${user.id}`, {
     method: 'PATCH',
     body: JSON.stringify(user),
@@ -46,7 +33,6 @@ export const updateUserThunk = createAsyncThunk('users/updateUser', async (user:
 });
 
 export const deleteUserThunk = createAsyncThunk('users/deleteUser', async (id: string) => {
-  if (!isApiEnabled()) return id;
   await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
   return id;
 });

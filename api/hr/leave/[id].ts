@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody } from '../../_lib/db';
 import { requireAuth, insertAuditLog } from '../../_lib/auth';
 
 export const config = { runtime: 'edge' };
@@ -8,13 +8,15 @@ export default async function handler(req: Request) {
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
+  if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
+  if (auth instanceof Response) return auth;
 
   const url = new URL(req.url);
   const segments = url.pathname.split('/');
   const id = segments[segments.length - 1];
   if (!id || id === 'leave') return error('ID required', 400);
 
-  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+  const sql = await getTenantSql(auth.tenantId!);
 
   try {
     if (req.method === 'PUT') {
@@ -28,7 +30,7 @@ export default async function handler(req: Request) {
       const rows = await sql`
         UPDATE hr_leave_requests
         SET status = ${status}, approved_by = ${auth.sub}, updated_at = NOW()
-        WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+        WHERE id = ${id} AND tenant_id = ${auth.tenantId!}
         RETURNING *
       ` as Record<string, any>[];
 
@@ -63,7 +65,7 @@ export default async function handler(req: Request) {
       const rows = await sql`
         UPDATE hr_leave_requests
         SET deleted_at = NOW(), updated_at = NOW()
-        WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+        WHERE id = ${id} AND tenant_id = ${auth.tenantId!}
         RETURNING *
       ` as Record<string, any>[];
 

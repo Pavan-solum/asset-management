@@ -10,6 +10,8 @@ export default async function handler(req: Request) {
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
+  if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
+  if (auth instanceof Response) return auth;
 
   if (!canManageBilling(auth.role)) {
     return error('Only tenant admins can manage billing', 403);

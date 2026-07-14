@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { mapAsset, type DbAsset } from '../_lib/mappers';
 import { requireAuth, insertAuditLog } from '../_lib/auth';
 
@@ -8,6 +8,8 @@ export default async function handler(req: Request) {
   if (req.method === 'OPTIONS') return corsPreflight();
 
   const auth = await requireAuth(req);
+  if (auth instanceof Response) return auth;
+  if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
   if (auth instanceof Response) return auth;
   if (req.method !== 'POST') return error('Method not allowed', 405);
 
@@ -25,10 +27,10 @@ export default async function handler(req: Request) {
 
     if (!assetId) return error('assetId is required', 400);
 
-    const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+    const sql = await getTenantSql(auth.tenantId!);
 
     const existing = await sql`
-      SELECT id FROM assets WHERE id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+      SELECT id FROM assets WHERE id = ${assetId} AND tenant_id = ${auth.tenantId!}
     ` as { id: string }[];
     if (existing.length === 0) return error('Asset not found', 404);
 
@@ -36,7 +38,7 @@ export default async function handler(req: Request) {
       UPDATE asset_assignments SET
         returned_at = NOW(),
         return_condition = ${returnCondition}
-      WHERE asset_id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND returned_at IS NULL
+      WHERE asset_id = ${assetId} AND tenant_id = ${auth.tenantId!} AND returned_at IS NULL
     `;
 
     await sql`
@@ -44,13 +46,13 @@ export default async function handler(req: Request) {
         status = 'in_stock',
         assigned_employee_id = NULL,
         updated_at = NOW()
-      WHERE id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+      WHERE id = ${assetId} AND tenant_id = ${auth.tenantId!}
     `;
 
     await sql`
       INSERT INTO ownership_history (tenant_id, asset_id, event_type, description, performed_by)
       VALUES (
-        ${auth.tenantId || DEMO_TENANT_ID}, ${assetId}, 'RETURNED',
+        ${auth.tenantId!}, ${assetId}, 'RETURNED',
         ${`Returned — ${returnCondition}`}, ${performedBy}
       )
     `;
@@ -67,7 +69,7 @@ export default async function handler(req: Request) {
     });
 
     const rows = await sql`
-      SELECT * FROM assets WHERE id = ${assetId} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+      SELECT * FROM assets WHERE id = ${assetId} AND tenant_id = ${auth.tenantId!}
     ` as DbAsset[];
     return json(mapAsset(rows[0]));
   } catch (e) {

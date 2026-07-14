@@ -8,7 +8,7 @@ import {
   TextField,
 } from '@mui/material';
 import { useAppDispatch } from '../../hooks/storeHooks';
-import { addDepartment, updateDepartment } from '../../store/departmentsSlice';
+
 import { LoadingButton } from '../../components/Loader';
 import { reloadFromApi } from '../../components/DataBootstrap';
 import { isApiEnabled } from '../../services/api/config';
@@ -42,15 +42,9 @@ export function DepartmentFormDialog({ open, onClose, department }: Props) {
     setLoading(true);
     try {
       const payload = { name: name.trim(), costCenter: costCenter.trim() };
-      if (isApiEnabled()) {
-        if (department) await updateDepartmentApi(department.id, payload);
-        else await createDepartment({ ...payload, id: crypto.randomUUID() });
-        await reloadFromApi(dispatch);
-      } else if (department) {
-        dispatch(updateDepartment({ ...department, ...payload }));
-      } else {
-        dispatch(addDepartment(payload));
-      }
+      if (department) await updateDepartmentApi(department.id, payload);
+      else await createDepartment({ ...payload, id: crypto.randomUUID() });
+      await reloadFromApi(dispatch);
       onClose();
     } finally {
       setLoading(false);

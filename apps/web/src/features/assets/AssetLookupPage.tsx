@@ -6,7 +6,7 @@ import { useAppSelector } from '../../hooks/storeHooks';
 import { StatusChip } from '../../components/StatusChip';
 import { PageLoader } from '../../components/Loader';
 import { formatCurrency, formatDate, getEmployeeName } from '../../utils/format';
-import { CATEGORY_LABELS, DEMO_TENANT } from '../../data/demoData';
+import { CATEGORY_LABELS } from '../../data/demoData';
 import { APP_NAME } from '../../constants/brand';
 import { isApiEnabled } from '../../services/api/config';
 import { apiFetch } from '../../services/api/client';
@@ -17,6 +17,7 @@ export function AssetLookupPage() {
   const reduxAsset = useAppSelector((s) => s.assets.items.find((a) => a.id === id));
   const employees = useAppSelector((s) => s.employees.items);
   const vendors = useAppSelector((s) => s.vendors.items);
+  const tenant = useAppSelector((s) => s.auth.tenant);
   const [remoteAsset, setRemoteAsset] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(isApiEnabled());
   const [notFound, setNotFound] = useState(false);
@@ -98,7 +99,7 @@ export function AssetLookupPage() {
             <DevicesIcon sx={{ color: 'white' }} />
           </Box>
           <Typography variant="h6" fontWeight={700}>
-            {DEMO_TENANT.name}
+            {tenant ? tenant.name : 'Company Asset'}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             Asset Lookup

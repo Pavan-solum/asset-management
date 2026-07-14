@@ -10,8 +10,6 @@ import {
   MenuItem,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { addEmployee, updateEmployee } from '../../store/employeesSlice';
-import { addAuditLog } from '../../store/auditSlice';
 import { LoadingButton } from '../../components/Loader';
 import { reloadFromApi } from '../../components/DataBootstrap';
 import { isApiEnabled } from '../../services/api/config';
@@ -71,31 +69,12 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
     setLoading(true);
     const userName = `${user.firstName} ${user.lastName}`;
     try {
-      if (isApiEnabled()) {
-        if (employee) {
-          await updateEmployeeApi(employee.id, form);
-        } else {
-          await createEmployee({ ...form, id: crypto.randomUUID() });
-        }
-        await reloadFromApi(dispatch);
-      } else if (employee) {
-        dispatch(updateEmployee({ ...employee, ...form }));
+      if (employee) {
+        await updateEmployeeApi(employee.id, form);
       } else {
-        dispatch(addEmployee(form));
+        await createEmployee({ ...form, id: crypto.randomUUID() });
       }
-      if (!isApiEnabled()) {
-        dispatch(
-          addAuditLog({
-            userId: user.id,
-            userName,
-            action: employee ? 'UPDATE' : 'CREATE',
-            entityType: 'employee',
-            entityId: employee?.id ?? 'new',
-            entityLabel: `${form.firstName} ${form.lastName}`,
-            details: employee ? 'Employee updated' : 'Employee created',
-          }),
-        );
-      }
+      await reloadFromApi(dispatch);
       onClose();
     } finally {
       setLoading(false);

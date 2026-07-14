@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 
-export const DEMO_TENANT_ID = '11111111-1111-1111-1111-111111111111';
+
 
 /** Restrict to your production domain via ALLOWED_ORIGIN env var. Defaults to * in dev. */
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? '*';

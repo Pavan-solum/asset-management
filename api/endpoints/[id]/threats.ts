@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, DEMO_TENANT_ID } from '../../_lib/db';
+import { getTenantSql, json, error, corsPreflight } from '../../_lib/db';
 import { requireAuth } from '../../_lib/auth';
 
 export const config = { runtime: 'edge' };
@@ -8,6 +8,8 @@ export default async function handler(req: Request) {
   if (req.method !== 'GET') return error('Method not allowed', 405);
 
   const auth = await requireAuth(req);
+  if (auth instanceof Response) return auth;
+  if (!auth.tenantId! && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
   if (auth instanceof Response) return auth;
 
   try {
@@ -19,7 +21,7 @@ export default async function handler(req: Request) {
     if (!id) return error('Endpoint ID is required', 400);
 
     const resolvedParam = url.searchParams.get('resolved');
-    const tenantId = auth.tenantId || DEMO_TENANT_ID;
+    const tenantId = auth.tenantId!;
     const sql = await getTenantSql(tenantId);
 
     // Verify the endpoint belongs to this tenant

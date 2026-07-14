@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { mapEmployee, type DbEmployee } from '../_lib/mappers';
 import { requireAuth, insertAuditLog } from '../_lib/auth';
 
@@ -9,13 +9,15 @@ export default async function handler(req: Request) {
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
+  if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
+  if (auth instanceof Response) return auth;
 
-  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+  const sql = await getTenantSql(auth.tenantId!);
 
   try {
     if (req.method === 'GET') {
       const rows = await sql`
-        SELECT * FROM employees WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} ORDER BY created_at DESC
+        SELECT * FROM employees WHERE tenant_id = ${auth.tenantId!} ORDER BY created_at DESC
       ` as DbEmployee[];
       return json(rows.map(mapEmployee));
     }
@@ -35,7 +37,7 @@ export default async function handler(req: Request) {
           id, tenant_id, employee_number, first_name, last_name, email,
           job_title, department_id, status, hire_date
         ) VALUES (
-          ${id}, ${auth.tenantId || DEMO_TENANT_ID},
+          ${id}, ${auth.tenantId!},
           ${body.employeeNumber ? String(body.employeeNumber) : null},
           ${firstName}, ${lastName}, ${email},
           ${body.jobTitle ? String(body.jobTitle) : null},

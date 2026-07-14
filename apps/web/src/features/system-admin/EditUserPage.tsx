@@ -70,7 +70,8 @@ export function EditUserPage() {
       ).unwrap();
       navigate('/system-admin/users');
     } catch (err) {
-      setError('Failed to update user');
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message: string }).message) : 'Failed to update user';
+      setError(msg);
     }
   };
 

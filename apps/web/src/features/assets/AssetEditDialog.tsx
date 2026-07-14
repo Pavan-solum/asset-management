@@ -11,11 +11,10 @@ import {
   MenuItem,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { updateAsset, deleteAsset } from '../../store/assetsSlice';
-import { addAuditLog } from '../../store/auditSlice';
+
 import { LoadingButton } from '../../components/Loader';
 import { reloadFromApi } from '../../components/DataBootstrap';
-import { isApiEnabled } from '../../services/api/config';
+
 import { patchAsset, deleteAsset as deleteAssetApi } from '../../services/api/assets';
 import { CATEGORY_LABELS, STATUS_LABELS } from '../../data/demoData';
 import { LIFECYCLE_LABELS } from '../../utils/assetUtils';
@@ -52,34 +51,19 @@ export function AssetEditDialog({ open, onClose, asset, onDeleted }: Props) {
     setLoading(true);
     const userName = `${user.firstName} ${user.lastName}`;
     try {
-      if (isApiEnabled()) {
-        await patchAsset(asset.id, {
-          ...form,
-          audit: {
-            userId: user.id,
-            userName,
-            action: 'UPDATE',
-            entityType: 'asset',
-            entityId: asset.id,
-            entityLabel: form.assetTag,
-            details: `Updated ${form.name}`,
-          },
-        });
-        await reloadFromApi(dispatch);
-      } else {
-        dispatch(updateAsset(form));
-        dispatch(
-          addAuditLog({
-            userId: user.id,
-            userName,
-            action: 'UPDATE',
-            entityType: 'asset',
-            entityId: asset.id,
-            entityLabel: form.assetTag,
-            details: `Updated ${form.name}`,
-          }),
-        );
-      }
+      await patchAsset(asset.id, {
+        ...form,
+        audit: {
+          userId: user.id,
+          userName,
+          action: 'UPDATE',
+          entityType: 'asset',
+          entityId: asset.id,
+          entityLabel: form.assetTag,
+          details: `Updated ${form.name}`,
+        },
+      });
+      await reloadFromApi(dispatch);
       onClose();
     } finally {
       setLoading(false);
@@ -95,23 +79,8 @@ export function AssetEditDialog({ open, onClose, asset, onDeleted }: Props) {
     setLoading(true);
     const userName = `${user.firstName} ${user.lastName}`;
     try {
-      if (isApiEnabled()) {
-        await deleteAssetApi(asset.id);
-        await reloadFromApi(dispatch);
-      } else {
-        dispatch(deleteAsset(asset.id));
-        dispatch(
-          addAuditLog({
-            userId: user.id,
-            userName,
-            action: 'DELETE',
-            entityType: 'asset',
-            entityId: asset.id,
-            entityLabel: asset.assetTag,
-            details: `Deleted ${asset.name}`,
-          }),
-        );
-      }
+      await deleteAssetApi(asset.id);
+      await reloadFromApi(dispatch);
       onClose();
       onDeleted?.();
     } finally {

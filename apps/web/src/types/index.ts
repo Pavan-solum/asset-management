@@ -91,6 +91,7 @@ export interface User {
   lastName: string;
   role: UserRole;
   employeeId?: string;
+  generatedPassword?: string;
 }
 
 export interface Department {

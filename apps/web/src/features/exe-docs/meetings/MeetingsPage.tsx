@@ -9,6 +9,7 @@ import { NewMeetingModal } from './modal/NewMeetingModal';
 import { UpcomingMeetingDetailsModal } from './modal/UpcomingMeetingDetailsModal';
 import { ReadReportModal } from './modal/ReadReportModal';
 
+
 export function MeetingsPage() {
   const navigate = useNavigate();
   const [meetings, setMeetings] = useState<MeetingData[]>([]);
@@ -21,23 +22,11 @@ export function MeetingsPage() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<MeetingData | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<MeetingData | null>(null);
-
   useEffect(() => {
-    fetch('/data/meetings.json')
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (data.meetings) setMeetings(data.meetings);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Error fetching meetings data:', err);
-        setLoading(false);
-      });
+    // In a production environment, you would fetch meetings from your API
+    // e.g., apiFetch('/api/exec-docs/meetings')
+    setMeetings([]);
+    setLoading(false);
   }, []);
 
   const handleOpenNewMeeting = () => {
