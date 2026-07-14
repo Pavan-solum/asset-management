@@ -48,9 +48,9 @@ export default async function handler(req: Request) {
     const passwordHash = await hashPassword(newPassword);
     try {
       await sql`
-        INSERT INTO user_passwords (email, password_hash, updated_at)
-        VALUES (${email}, ${passwordHash}, NOW())
-        ON CONFLICT (email) DO UPDATE SET password_hash = ${passwordHash}, updated_at = NOW()
+        INSERT INTO user_passwords (email, password_hash, updated_at, must_change_password)
+        VALUES (${email}, ${passwordHash}, NOW(), false)
+        ON CONFLICT (email) DO UPDATE SET password_hash = ${passwordHash}, updated_at = NOW(), must_change_password = false
       `;
     } catch (e) {
       const msg = e instanceof Error ? e.message : '';

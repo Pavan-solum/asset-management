@@ -58,12 +58,14 @@ export default async function handler(req: Request) {
         RETURNING *
       ` as DbUser[];
 
-      // Insert default password for the new user
-      const hashed = await hashPassword('Demo@123456');
+      const randomSuffix = crypto.randomUUID().split('-')[0].toUpperCase();
+      const generatedPassword = `Temp-${randomSuffix}`;
+      const hashed = await hashPassword(generatedPassword);
+
       await sql`
-        INSERT INTO user_passwords (email, password_hash)
-        VALUES (${email}, ${hashed})
-        ON CONFLICT (email) DO UPDATE SET password_hash = ${hashed}
+        INSERT INTO user_passwords (email, password_hash, must_change_password)
+        VALUES (${email}, ${hashed}, true)
+        ON CONFLICT (email) DO UPDATE SET password_hash = ${hashed}, must_change_password = true
       `;
 
       await insertAuditLog({
@@ -76,7 +78,7 @@ export default async function handler(req: Request) {
         details: `Created user ${email} with role ${role}`,
       });
 
-      return json(mapUser(rows[0]), 201);
+      return json({ ...mapUser(rows[0]), generatedPassword }, 201);
     }
 
     return error('Method not allowed', 405);

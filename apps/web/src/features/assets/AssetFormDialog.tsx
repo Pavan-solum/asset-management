@@ -10,10 +10,10 @@ import {
   MenuItem,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { addAsset } from '../../store/assetsSlice';
-import { addAuditLog } from '../../store/auditSlice';
+
 import { LoadingButton } from '../../components/Loader';
-import { withMinDelay } from '../../hooks/useAsyncAction';
+import { reloadFromApi } from '../../components/DataBootstrap';
+import { createAsset as createAssetApi } from '../../services/api/assets';
 import type { AssetCategory, AssetStatus, LifecycleStage } from '../../types';
 
 interface Props {
@@ -55,22 +55,37 @@ export function AssetFormDialog({ open, onClose }: Props) {
     if (!form.assetTag || !form.name || loading) return;
     setLoading(true);
     try {
-      await withMinDelay(
-        Promise.resolve().then(() => {
-          dispatch(addAsset(form));
-          dispatch(
-            addAuditLog({
-              userId: user!.id,
-              userName: `${user!.firstName} ${user!.lastName}`,
-              action: 'CREATE',
-              entityType: 'asset',
-              entityId: 'new',
-              entityLabel: form.assetTag,
-              details: `Created ${form.name}`,
-            }),
-          );
-        }),
-      );
+      const created = await createAssetApi({
+        id: crypto.randomUUID(),
+        tenantId: user!.tenantId,
+        assetTag: form.assetTag.trim(),
+        name: form.name.trim(),
+        category: form.category,
+        manufacturer: form.manufacturer.trim(),
+        model: form.model.trim(),
+        serialNumber: form.serialNumber.trim(),
+        status: form.status,
+        lifecycleStage: form.lifecycleStage,
+        purchaseDate: form.purchaseDate,
+        purchaseCost: form.purchaseCost,
+        currentValue: form.currentValue,
+        repairCost: form.repairCost,
+        location: form.location.trim(),
+        vendorId: form.vendorId,
+        warrantyExpiresAt: form.warrantyExpiresAt,
+        notes: form.notes,
+        qrOrigin: window.location.origin,
+        audit: {
+          userId: user!.id,
+          userName: `${user!.firstName} ${user!.lastName}`,
+          action: 'CREATE',
+          entityType: 'asset',
+          entityId: 'new',
+          entityLabel: form.assetTag,
+          details: `Created ${form.name}`,
+        },
+      });
+      await reloadFromApi(dispatch);
       setForm(defaultForm);
       onClose();
     } finally {

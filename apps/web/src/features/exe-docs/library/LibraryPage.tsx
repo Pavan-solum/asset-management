@@ -11,30 +11,20 @@ import { PageHeader } from '../../../components/PageHeader';
 import { FolderSidebar, FolderConfig } from './FolderSidebar';
 import { DocumentsTable, DocumentRowData } from './DocumentsTable';
 
+
 export function LibraryPage() {
   const [selectedFolder, setSelectedFolder] = useState('Employee Docs');
   const [folders, setFolders] = useState<FolderConfig[]>([]);
   const [documents, setDocuments] = useState<Record<string, DocumentRowData[]>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [triggerUpload, setTriggerUpload] = useState(0);
 
   useEffect(() => {
-    fetch('/data/library.json')
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (data.folders) setFolders(data.folders);
-        if (data.documents) setDocuments(data.documents);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Error fetching library data:', err);
-        setLoading(false);
-      });
+    // In a production environment, you would fetch folders and documents from your API
+    // e.g., apiFetch('/api/exec-docs/library')
+    setFolders([]);
+    setDocuments({});
+    setLoading(false);
   }, []);
 
   const handleCreateNewClick = () => {

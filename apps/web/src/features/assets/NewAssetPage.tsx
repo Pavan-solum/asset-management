@@ -17,17 +17,16 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { addAsset, assignAsset } from '../../store/assetsSlice';
-import { addAuditLog } from '../../store/auditSlice';
+
 import { PageHeader } from '../../components/PageHeader';
 import { AssetQrPanel } from '../../components/AssetQrPanel';
 import { LoadingButton } from '../../components/Loader';
 import { reloadFromApi } from '../../components/DataBootstrap';
-import { isApiEnabled } from '../../services/api/config';
+
 import { createAsset as createAssetApi } from '../../services/api/assets';
 import { uploadImage } from '../../services/api/entities';
 import { EmployeeFormDialog } from '../employees/EmployeeFormDialog';
-import { CATEGORY_LABELS, STATUS_LABELS, DEMO_TENANT } from '../../data/demoData';
+import { CATEGORY_LABELS, STATUS_LABELS } from '../../data/demoData';
 import {
   ASSET_CATEGORIES,
   ASSET_STATUSES,
@@ -132,133 +131,50 @@ export function NewAssetPage() {
       const notes = [form.specs && `Specs: ${form.specs}`, form.notes].filter(Boolean).join('\n\n') || undefined;
       const assignedBy = `${user.firstName} ${user.lastName}`;
 
-      if (isApiEnabled()) {
-        let imageUrl = form.imageUrl;
-        if (imageUrl && imageFile) {
-          const uploaded = await uploadImage(imageUrl, imageFile.name);
-          imageUrl = uploaded.url;
-        }
-        const created = await createAssetApi({
-          id: crypto.randomUUID(),
-          tenantId: user.tenantId || DEMO_TENANT.id,
-          assetTag: form.assetTag.trim(),
-          name: form.name.trim(),
-          category: form.category,
-          manufacturer: form.manufacturer.trim(),
-          model: form.model.trim(),
-          serialNumber: form.category !== 'software' ? form.serialNumber.trim() : '',
-          activationKey: form.category === 'software' ? form.activationKey?.trim() : undefined,
-          status,
-          lifecycleStage: form.lifecycleStage,
-          purchaseDate: form.purchaseDate || new Date().toISOString().split('T')[0],
-          purchaseCost,
-          currentValue,
-          repairCost,
-          location: form.location.trim() || 'HQ',
-          vendorId: form.vendorId,
-          warrantyExpiresAt: form.warrantyExpiresAt || createEmptyAssetForm().warrantyExpiresAt,
-          specs: form.specs.trim() || undefined,
-          department: form.department.trim() || undefined,
-          imageUrl,
-          notes,
-          assignedEmployeeId,
-          assignedAssetId,
-          assignedBy: assignedEmployeeId || assignedAssetId ? assignedBy : undefined,
-          qrOrigin: window.location.origin,
-          audit: {
-            userId: user.id,
-            userName: assignedBy,
-            action: 'CREATE',
-            entityType: 'asset',
-            entityId: 'new',
-            entityLabel: form.assetTag.trim(),
-            details: `Created ${form.name.trim()}${imageFile ? ' with image' : ''}`,
-          },
-        });
-        await reloadFromApi(dispatch);
-        setCreatedItem({ id: created.id, assetTag: created.assetTag, name: created.name });
-        return;
+      let imageUrl = form.imageUrl;
+      if (imageUrl && imageFile) {
+        const uploaded = await uploadImage(imageUrl, imageFile.name);
+        imageUrl = uploaded.url;
       }
-
-      const action = dispatch(
-        addAsset({
-          assetTag: form.assetTag.trim(),
-          name: form.name.trim(),
-          category: form.category,
-          manufacturer: form.manufacturer.trim(),
-          model: form.model.trim(),
-          serialNumber: form.category !== 'software' ? form.serialNumber.trim() : '',
-          activationKey: form.category === 'software' ? form.activationKey?.trim() : '',
-          status,
-          lifecycleStage: form.lifecycleStage,
-          purchaseDate: form.purchaseDate || new Date().toISOString().split('T')[0],
-          purchaseCost,
-          currentValue,
-          repairCost,
-          location: form.location.trim() || 'HQ',
-          vendorId: form.vendorId,
-          warrantyExpiresAt: form.warrantyExpiresAt || createEmptyAssetForm().warrantyExpiresAt,
-          specs: form.specs.trim() || undefined,
-          department: form.department.trim() || undefined,
-          imageUrl: form.imageUrl,
-          notes,
-          assignedEmployeeId,
-          assignedAssetId,
-        }),
-      );
-
-      const created = action.payload as { id: string; assetTag: string; name: string };
-
-      if (assignedEmployeeId) {
-        dispatch(
-          assignAsset({
-            assetId: created.id,
-            employeeId: assignedEmployeeId,
-            assignedBy: `${user.firstName} ${user.lastName}`,
-            notes: 'Assigned during asset creation',
-          }),
-        );
-      } else if (isHardware && form.assignedTo.trim()) {
-        // Keep assignee hint in notes when no employee match
-        dispatch(
-          addAuditLog({
-            userId: user.id,
-            userName: `${user.firstName} ${user.lastName}`,
-            action: 'UPDATE',
-            entityType: 'asset',
-            entityId: created.id,
-            entityLabel: created.assetTag,
-            details: `Assignee "${form.assignedTo.trim()}" not matched to an employee`,
-          }),
-        );
-      } else if (assignedAssetId) {
-        const targetAsset = assets.find((a) => a.id === assignedAssetId);
-        dispatch(
-          addAuditLog({
-            userId: user.id,
-            userName: `${user.firstName} ${user.lastName}`,
-            action: 'ASSIGN',
-            entityType: 'asset',
-            entityId: created.id,
-            entityLabel: created.assetTag,
-            details: `Assigned to Asset ${targetAsset?.assetTag || assignedAssetId}`,
-          }),
-        );
-      }
-
-      dispatch(
-        addAuditLog({
+      const created = await createAssetApi({
+        id: crypto.randomUUID(),
+        tenantId: user.tenantId,
+        assetTag: form.assetTag.trim(),
+        name: form.name.trim(),
+        category: form.category,
+        manufacturer: form.manufacturer.trim(),
+        model: form.model.trim(),
+        serialNumber: form.category !== 'software' ? form.serialNumber.trim() : '',
+        activationKey: form.category === 'software' ? form.activationKey?.trim() : undefined,
+        status,
+        lifecycleStage: form.lifecycleStage,
+        purchaseDate: form.purchaseDate || new Date().toISOString().split('T')[0],
+        purchaseCost,
+        currentValue,
+        repairCost,
+        location: form.location.trim() || 'HQ',
+        vendorId: form.vendorId,
+        warrantyExpiresAt: form.warrantyExpiresAt || createEmptyAssetForm().warrantyExpiresAt,
+        specs: form.specs.trim() || undefined,
+        department: form.department.trim() || undefined,
+        imageUrl,
+        notes,
+        assignedEmployeeId,
+        assignedAssetId,
+        assignedBy: assignedEmployeeId || assignedAssetId ? assignedBy : undefined,
+        qrOrigin: window.location.origin,
+        audit: {
           userId: user.id,
-          userName: `${user.firstName} ${user.lastName}`,
+          userName: assignedBy,
           action: 'CREATE',
           entityType: 'asset',
-          entityId: created.id,
-          entityLabel: created.assetTag,
-          details: `Created ${created.name}${imageFile ? ' with image' : ''}`,
-        }),
-      );
-
-      setCreatedItem(created);
+          entityId: 'new',
+          entityLabel: form.assetTag.trim(),
+          details: `Created ${form.name.trim()}${imageFile ? ' with image' : ''}`,
+        },
+      });
+      await reloadFromApi(dispatch);
+      setCreatedItem({ id: created.id, assetTag: created.assetTag, name: created.name });
     } finally {
       setLoading(false);
     }

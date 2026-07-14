@@ -8,7 +8,7 @@ import {
   TextField,
 } from '@mui/material';
 import { useAppDispatch } from '../../hooks/storeHooks';
-import { addVendor, updateVendor } from '../../store/vendorsSlice';
+
 import { LoadingButton } from '../../components/Loader';
 import { reloadFromApi } from '../../components/DataBootstrap';
 import { isApiEnabled } from '../../services/api/config';
@@ -45,15 +45,9 @@ export function VendorFormDialog({ open, onClose, vendor }: Props) {
     setLoading(true);
     try {
       const payload = { name: name.trim(), contactEmail: contactEmail.trim(), website: website.trim() };
-      if (isApiEnabled()) {
-        if (vendor) await updateVendorApi(vendor.id, payload);
-        else await createVendor({ ...payload, id: crypto.randomUUID() });
-        await reloadFromApi(dispatch);
-      } else if (vendor) {
-        dispatch(updateVendor({ ...vendor, ...payload }));
-      } else {
-        dispatch(addVendor(payload));
-      }
+      if (vendor) await updateVendorApi(vendor.id, payload);
+      else await createVendor({ ...payload, id: crypto.randomUUID() });
+      await reloadFromApi(dispatch);
       onClose();
     } finally {
       setLoading(false);

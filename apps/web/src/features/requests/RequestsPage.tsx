@@ -33,7 +33,6 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import { PageHeader } from '../../components/PageHeader';
 import { SearchField } from '../../components/SearchField';
 import { EmptyState } from '../../components/EmptyState';
-import { isApiEnabled } from '../../services/api/config';
 import { fetchAssetRequests, reviewAssetRequest } from '../../services/api/requests';
 import { replaceAllRequests, updateRequest } from '../../store/requestsSlice';
 import {
@@ -63,7 +62,6 @@ export function RequestsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const loadRequests = useCallback(async () => {
-    if (!isApiEnabled()) return;
     setLoading(true);
     setError(null);
     try {
@@ -117,20 +115,8 @@ export function RequestsPage() {
     setSubmitting(true);
     setError(null);
     try {
-      if (isApiEnabled()) {
-        const updated = await reviewAssetRequest(reviewTarget.id, reviewAction, reviewNotes || undefined);
-        dispatch(updateRequest(updated));
-      } else {
-        dispatch(
-          updateRequest({
-            ...reviewTarget,
-            status: reviewAction,
-            reviewNotes: reviewNotes || undefined,
-            reviewedBy: 'Pavan',
-            reviewedAt: new Date().toISOString(),
-          }),
-        );
-      }
+      const updated = await reviewAssetRequest(reviewTarget.id, reviewAction, reviewNotes || undefined);
+      dispatch(updateRequest(updated));
       closeReview();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to update request');

@@ -1,4 +1,4 @@
-import { DEMO_TENANT_ID } from './db';
+
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -295,7 +295,7 @@ export function mapAssetRequest(row: DbAssetRequest) {
   };
 }
 
-export function assetInsertPayload(body: Record<string, unknown>, tenantId = DEMO_TENANT_ID) {
+export function assetInsertPayload(body: Record<string, unknown>, tenantId: string) {
   const assetTag = String(body.assetTag ?? '').trim();
   const name = String(body.name ?? '').trim();
   if (!assetTag || !name) throw new Error('assetTag and name are required');

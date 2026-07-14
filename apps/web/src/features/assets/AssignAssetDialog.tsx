@@ -9,12 +9,11 @@ import {
   MenuItem,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { assignAsset, returnAsset } from '../../store/assetsSlice';
-import { addAuditLog } from '../../store/auditSlice';
+
 import { getEmployeeName } from '../../utils/format';
 import { LoadingButton } from '../../components/Loader';
 import { reloadFromApi } from '../../components/DataBootstrap';
-import { isApiEnabled } from '../../services/api/config';
+
 import { assignAssetApi, returnAssetApi } from '../../services/api/assets';
 
 interface AssignProps {
@@ -38,39 +37,22 @@ export function AssignAssetDialog({ open, onClose, assetId, assetTag }: AssignPr
     const assignedBy = `${user.firstName} ${user.lastName}`;
     setLoading(true);
     try {
-      if (isApiEnabled()) {
-        await assignAssetApi({
-          assetId,
-          employeeId,
-          assignedBy,
-          notes,
-          audit: {
-            userId: user.id,
-            userName: assignedBy,
-            action: 'ASSIGN',
-            entityType: 'asset',
-            entityId: assetId,
-            entityLabel: assetTag,
-            details: `Assigned to ${getEmployeeName(emp.firstName, emp.lastName)}`,
-          },
-        });
-        await reloadFromApi(dispatch);
-      } else {
-        dispatch(
-          assignAsset({ assetId, employeeId, assignedBy, notes }),
-        );
-        dispatch(
-          addAuditLog({
-            userId: user.id,
-            userName: assignedBy,
-            action: 'ASSIGN',
-            entityType: 'asset',
-            entityId: assetId,
-            entityLabel: assetTag,
-            details: `Assigned to ${getEmployeeName(emp.firstName, emp.lastName)}`,
-          }),
-        );
-      }
+      await assignAssetApi({
+        assetId,
+        employeeId,
+        assignedBy,
+        notes,
+        audit: {
+          userId: user.id,
+          userName: assignedBy,
+          action: 'ASSIGN',
+          entityType: 'asset',
+          entityId: assetId,
+          entityLabel: assetTag,
+          details: `Assigned to ${getEmployeeName(emp.firstName, emp.lastName)}`,
+        },
+      });
+      await reloadFromApi(dispatch);
       setEmployeeId('');
       setNotes('');
       onClose();
@@ -144,38 +126,21 @@ export function ReturnAssetDialog({ open, onClose, assetId, assetTag }: ReturnPr
     const performedBy = `${user.firstName} ${user.lastName}`;
     setLoading(true);
     try {
-      if (isApiEnabled()) {
-        await returnAssetApi({
-          assetId,
-          performedBy,
-          returnCondition: condition,
-          audit: {
-            userId: user.id,
-            userName: performedBy,
-            action: 'RETURN',
-            entityType: 'asset',
-            entityId: assetId,
-            entityLabel: assetTag,
-            details: `Returned — ${condition}`,
-          },
-        });
-        await reloadFromApi(dispatch);
-      } else {
-        dispatch(
-          returnAsset({ assetId, performedBy, returnCondition: condition }),
-        );
-        dispatch(
-          addAuditLog({
-            userId: user.id,
-            userName: performedBy,
-            action: 'RETURN',
-            entityType: 'asset',
-            entityId: assetId,
-            entityLabel: assetTag,
-            details: `Returned — ${condition}`,
-          }),
-        );
-      }
+      await returnAssetApi({
+        assetId,
+        performedBy,
+        returnCondition: condition,
+        audit: {
+          userId: user.id,
+          userName: performedBy,
+          action: 'RETURN',
+          entityType: 'asset',
+          entityId: assetId,
+          entityLabel: assetTag,
+          details: `Returned — ${condition}`,
+        },
+      });
+      await reloadFromApi(dispatch);
       setCondition('Good condition');
       onClose();
     } finally {

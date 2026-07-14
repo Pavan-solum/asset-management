@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
-import { getSql, error, DEMO_TENANT_ID } from './db';
+import { getSql, error } from './db';
 import { DEMO_USERS } from './demo-users';
 
 const PBKDF2_ITERATIONS = 100_000;
@@ -165,7 +165,6 @@ function isUuid(value: string): boolean {
 /** Tenant ID used for billing APIs — platform admins fall back to the demo tenant. */
 export function resolveBillingTenantId(auth: AuthUser): string | null {
   if (auth.tenantId && isUuid(auth.tenantId)) return auth.tenantId;
-  if (auth.role === 'platform_admin') return DEMO_TENANT_ID;
   return null;
 }
 
@@ -202,7 +201,8 @@ export async function insertAuditLog(
   },
 ): Promise<void> {
   const sql = getSql();
-  const tenantId = audit.tenantId ?? DEMO_TENANT_ID;
+  const tenantId = audit.tenantId;
+  if (!tenantId) return; // Silent return if no tenant id since we can't log it
   await sql`
     INSERT INTO audit_logs (tenant_id, user_id, user_name, action, entity_type, entity_id, entity_label, details)
     VALUES (

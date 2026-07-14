@@ -1,8 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import type { Tenant } from '../types';
 import { apiFetch } from '../services/api/client';
-import { isApiEnabled } from '../services/api/config';
-import { DEMO_TENANT } from '../data/demoData';
 
 interface TenantsState {
   items: Tenant[];
@@ -11,24 +9,16 @@ interface TenantsState {
 }
 
 const initialState: TenantsState = {
-  items: [DEMO_TENANT],
+  items: [],
   loading: false,
   error: null,
 };
 
 export const fetchTenants = createAsyncThunk('tenants/fetchTenants', async () => {
-  if (!isApiEnabled()) return [DEMO_TENANT];
   return apiFetch<Tenant[]>('/api/tenants');
 });
 
 export const createTenant = createAsyncThunk('tenants/createTenant', async (tenant: Partial<Tenant>) => {
-  if (!isApiEnabled()) {
-    return {
-      ...tenant,
-      id: `tenant-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    } as Tenant;
-  }
   return apiFetch<Tenant>('/api/tenants', {
     method: 'POST',
     body: JSON.stringify(tenant),
@@ -36,7 +26,6 @@ export const createTenant = createAsyncThunk('tenants/createTenant', async (tena
 });
 
 export const updateTenantThunk = createAsyncThunk('tenants/updateTenant', async (tenant: Tenant) => {
-  if (!isApiEnabled()) return tenant;
   return apiFetch<Tenant>(`/api/tenants/${tenant.id}`, {
     method: 'PATCH',
     body: JSON.stringify(tenant),
@@ -44,7 +33,6 @@ export const updateTenantThunk = createAsyncThunk('tenants/updateTenant', async 
 });
 
 export const deleteTenantThunk = createAsyncThunk('tenants/deleteTenant', async (id: string) => {
-  if (!isApiEnabled()) return id;
   await apiFetch(`/api/tenants/${id}`, { method: 'DELETE' });
   return id;
 });

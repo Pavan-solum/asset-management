@@ -164,6 +164,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     const response = await handler(toWebRequest(req, body));
     await writeWebResponse(res, response);
   } catch (e) {
+    console.error(`[API ERROR] ${req.method} ${pathname}:`, e);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');

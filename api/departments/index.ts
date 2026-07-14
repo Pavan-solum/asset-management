@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { mapDepartment, type DbDepartment } from '../_lib/mappers';
 import { requireAuth, insertAuditLog } from '../_lib/auth';
 
@@ -9,13 +9,15 @@ export default async function handler(req: Request) {
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
+  if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
+  if (auth instanceof Response) return auth;
 
-  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+  const sql = await getTenantSql(auth.tenantId!);
 
   try {
     if (req.method === 'GET') {
       const rows = await sql`
-        SELECT * FROM departments WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} ORDER BY name ASC
+        SELECT * FROM departments WHERE tenant_id = ${auth.tenantId!} ORDER BY name ASC
       ` as DbDepartment[];
       return json(rows.map(mapDepartment));
     }
@@ -28,7 +30,7 @@ export default async function handler(req: Request) {
       const id = body.id ? String(body.id) : crypto.randomUUID();
       const rows = await sql`
         INSERT INTO departments (id, tenant_id, name, cost_center)
-        VALUES (${id}, ${auth.tenantId || DEMO_TENANT_ID}, ${name}, ${body.costCenter ? String(body.costCenter) : null})
+        VALUES (${id}, ${auth.tenantId!}, ${name}, ${body.costCenter ? String(body.costCenter) : null})
         RETURNING *
       ` as DbDepartment[];
 

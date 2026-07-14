@@ -66,7 +66,8 @@ export function EditOrganizationPage() {
       await dispatch(updateTenantThunk(form as Tenant)).unwrap();
       navigate('/system-admin/organizations');
     } catch (err) {
-      setError('Failed to update tenant');
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message: string }).message) : 'Failed to update tenant';
+      setError(msg);
     }
   };
 

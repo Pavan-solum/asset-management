@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { requireAuth, type AuthUser } from '../_lib/auth';
 
 export const config = { runtime: 'edge' };
@@ -8,7 +8,7 @@ function isUuid(value: string): boolean {
 }
 
 async function resolveEmployeeId(auth: AuthUser): Promise<string | null> {
-  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+  const sql = await getTenantSql(auth.tenantId!);
 
   if (auth.employeeId && isUuid(auth.employeeId)) {
     return auth.employeeId;
@@ -17,7 +17,7 @@ async function resolveEmployeeId(auth: AuthUser): Promise<string | null> {
   try {
     const rows = (await sql`
       SELECT id FROM employees
-      WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID} AND lower(email) = ${auth.email.toLowerCase()}
+      WHERE tenant_id = ${auth.tenantId!} AND lower(email) = ${auth.email.toLowerCase()}
       LIMIT 1
     `) as { id: string }[];
 
@@ -153,6 +153,8 @@ export default async function handler(req: Request) {
   if (req.method !== 'POST') return error('Method not allowed', 405);
 
   const auth = await requireAuth(req);
+  if (auth instanceof Response) return auth;
+  if (!auth.tenantId! && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
   if (auth instanceof Response) return auth;
 
   const employeeId = await resolveEmployeeId(auth);
@@ -299,7 +301,7 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
       const partWithFunctionCall = modelContent.parts?.find((p: any) => p.functionCall);
       if (partWithFunctionCall && partWithFunctionCall.functionCall) {
         const { name, args } = partWithFunctionCall.functionCall;
-        const toolResult = await executeTool(name, args, auth.role, employeeId, auth.tenantId || DEMO_TENANT_ID);
+        const toolResult = await executeTool(name, args, auth.role, employeeId, auth.tenantId!);
 
         currentContents.push({
           role: 'function',
@@ -332,19 +334,19 @@ async function handleMockMode(message: string, auth: AuthUser, employeeId: strin
   
   if (text.includes('status') || text.includes('request')) {
     if (auth.role === 'employee' && employeeId) {
-      const data = await listMyRequests(employeeId, auth.tenantId || DEMO_TENANT_ID);
+      const data = await listMyRequests(employeeId, auth.tenantId!);
       if ((data.requests as any[]).length === 0) {
         textResponse = `You don't have any submitted device requests at the moment. You can submit one in the Request form above!`;
       } else {
         textResponse = `Here are your recent device requests:\n\n\`\`\`json\n${JSON.stringify({ type: 'requests', items: data.requests })}\n\`\`\``;
       }
     } else {
-      const data = await listAllRequests(auth.tenantId || DEMO_TENANT_ID);
+      const data = await listAllRequests(auth.tenantId!);
       textResponse = `Here are the organization's device requests (IT Admin view):\n\n\`\`\`json\n${JSON.stringify({ type: 'requests', items: data.requests })}\n\`\`\``;
     }
   } else if (text.includes('asset') || text.includes('device') || text.includes('laptop') || text.includes('hardware')) {
     if (auth.role === 'employee' && employeeId) {
-      const data = await listMyAssets(employeeId, auth.tenantId || DEMO_TENANT_ID);
+      const data = await listMyAssets(employeeId, auth.tenantId!);
       if ((data.assets as any[]).length === 0) {
         textResponse = `You don't have any corporate hardware assets assigned to you at the moment.`;
       } else {

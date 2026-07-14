@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import {
   mapAsset,
   mapAssignment,
@@ -18,26 +18,28 @@ export default async function handler(req: Request) {
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
+  if (!auth.tenantId! && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
+  if (auth instanceof Response) return auth;
 
-  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+  const sql = await getTenantSql(auth.tenantId!);
 
   try {
     if (req.method === 'GET') {
       const rows = await sql`
         SELECT * FROM assets
-        WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+        WHERE tenant_id = ${auth.tenantId!}
         ORDER BY created_at DESC
       ` as DbAsset[];
 
       const assignments = await sql`
         SELECT * FROM asset_assignments
-        WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+        WHERE tenant_id = ${auth.tenantId!}
         ORDER BY assigned_at DESC
       ` as DbAssignment[];
 
       const history = await sql`
         SELECT * FROM ownership_history
-        WHERE tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+        WHERE tenant_id = ${auth.tenantId!}
         ORDER BY created_at DESC
       ` as DbOwnershipEvent[];
 
@@ -49,12 +51,12 @@ export default async function handler(req: Request) {
     }
 
     if (req.method === 'POST') {
-      const tenantId = auth.tenantId || DEMO_TENANT_ID;
+      const tenantId = auth.tenantId!;
       const limitCheck = await checkAssetLimit(tenantId);
       if (!limitCheck.allowed) return error(limitCheck.message ?? 'Plan limit reached', 402);
 
       const body = await parseBody<Record<string, unknown>>(req);
-      const payload = assetInsertPayload(body, (auth.tenantId || DEMO_TENANT_ID));
+      const payload = assetInsertPayload(body, (auth.tenantId!));
 
       const rows = await sql`
         INSERT INTO assets (
@@ -80,14 +82,14 @@ export default async function handler(req: Request) {
         await sql`
           INSERT INTO asset_assignments (tenant_id, asset_id, employee_id, assigned_by, notes)
           VALUES (
-            ${auth.tenantId || DEMO_TENANT_ID}, ${asset.id}, ${payload.assignedEmployeeId},
+            ${auth.tenantId!}, ${asset.id}, ${payload.assignedEmployeeId},
             ${String(body.assignedBy)}, ${body.assignmentNotes ? String(body.assignmentNotes) : 'Assigned on create'}
           )
         `;
         await sql`
           INSERT INTO ownership_history (tenant_id, asset_id, event_type, description, performed_by)
           VALUES (
-            ${auth.tenantId || DEMO_TENANT_ID}, ${asset.id}, 'ASSIGNED', 'Asset assigned to employee',
+            ${auth.tenantId!}, ${asset.id}, 'ASSIGNED', 'Asset assigned to employee',
             ${String(body.assignedBy)}
           )
         `;
@@ -98,7 +100,7 @@ export default async function handler(req: Request) {
         await sql`
           INSERT INTO audit_logs (tenant_id, user_id, user_name, action, entity_type, entity_id, entity_label, details)
           VALUES (
-            ${auth.tenantId || DEMO_TENANT_ID}, ${audit.userId ?? null}, ${audit.userName ?? null},
+            ${auth.tenantId!}, ${audit.userId ?? null}, ${audit.userName ?? null},
             ${audit.action ?? 'CREATE'}, ${audit.entityType ?? 'asset'}, ${audit.entityId ?? asset.id},
             ${audit.entityLabel ?? asset.assetTag}, ${audit.details ?? null}
           )

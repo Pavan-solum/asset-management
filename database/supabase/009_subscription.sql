@@ -13,6 +13,11 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE subscription_plans
+  ADD COLUMN IF NOT EXISTS max_assets INT NOT NULL DEFAULT 100,
+  ADD COLUMN IF NOT EXISTS price_per_unit DECIMAL(10,2) NOT NULL DEFAULT 2.00,
+  ALTER COLUMN price_per_endpoint DROP NOT NULL;
+
 INSERT INTO subscription_plans (id, name, tier, max_assets, max_admins, max_endpoints, price_per_unit, features)
 VALUES
   (
@@ -45,7 +50,7 @@ VALUES
     0.00,
     '["all_features","sso","audit_7y","dedicated_support"]'
   )
-ON CONFLICT (tier) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE tenants
   ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(30) DEFAULT 'trial',
@@ -60,13 +65,13 @@ SET subscription_plan_id = sp.id,
     subscription_status = COALESCE(t.subscription_status, 'active'),
     trial_ends_at = COALESCE(t.trial_ends_at, NOW() + INTERVAL '14 days')
 FROM subscription_plans sp
-WHERE LOWER(t.plan) = sp.tier
+WHERE LOWER(t.plan::text) = sp.tier::text
   AND t.subscription_plan_id IS NULL;
 
 UPDATE tenants t
 SET subscription_plan_id = sp.id
 FROM subscription_plans sp
-WHERE sp.tier = 'professional'
+WHERE sp.tier::text = 'professional'
   AND t.subscription_plan_id IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_tenants_stripe_customer ON tenants(stripe_customer_id)

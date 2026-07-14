@@ -1,4 +1,4 @@
-import { getSql, getTenantSql, DEMO_TENANT_ID } from './db';
+import { getSql, getTenantSql } from './db';
 import {
   type PlanDefinition,
   type PlanTier,
@@ -268,4 +268,4 @@ export function appBaseUrl(req: Request): string {
   return host ? `https://${host}` : 'http://localhost:5173';
 }
 
-export { DEMO_TENANT_ID };
+

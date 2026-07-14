@@ -1,6 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { AssetRequest } from '../types';
-import { DEMO_ASSET_REQUESTS } from '../data/demoData';
 
 const requestsSlice = createSlice({
   name: 'requests',

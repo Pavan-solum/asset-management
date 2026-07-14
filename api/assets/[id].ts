@@ -1,4 +1,4 @@
-import { getTenantSql, json, error, corsPreflight, parseBody, DEMO_TENANT_ID } from '../_lib/db';
+import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { mapAsset, type DbAsset } from '../_lib/mappers';
 import { requireAuth, insertAuditLog } from '../_lib/auth';
 
@@ -19,13 +19,15 @@ export default async function handler(req: Request) {
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
+  if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
+  if (auth instanceof Response) return auth;
 
-  const sql = await getTenantSql(auth.tenantId || DEMO_TENANT_ID);
+  const sql = await getTenantSql(auth.tenantId!);
 
   try {
     if (req.method === 'GET') {
       const rows = await sql`
-        SELECT * FROM assets WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+        SELECT * FROM assets WHERE id = ${id} AND tenant_id = ${auth.tenantId!}
       ` as DbAsset[];
       if (rows.length === 0) return error('Asset not found', 404);
       return json(mapAsset(rows[0]));
@@ -70,7 +72,7 @@ export default async function handler(req: Request) {
           warranty_expires_at = COALESCE(${body.warrantyExpiresAt != null ? String(body.warrantyExpiresAt) : null}, warranty_expires_at),
           notes = COALESCE(${body.notes != null ? String(body.notes) : null}, notes),
           updated_at = NOW()
-        WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+        WHERE id = ${id} AND tenant_id = ${auth.tenantId!}
         RETURNING *
       ` as DbAsset[];
 
@@ -93,13 +95,13 @@ export default async function handler(req: Request) {
 
     if (req.method === 'DELETE') {
       const rows = await sql`
-        SELECT asset_tag FROM assets WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}
+        SELECT asset_tag FROM assets WHERE id = ${id} AND tenant_id = ${auth.tenantId!}
       ` as { asset_tag: string }[];
       if (rows.length === 0) return error('Asset not found', 404);
 
-      await sql`DELETE FROM ownership_history WHERE asset_id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
-      await sql`DELETE FROM asset_assignments WHERE asset_id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
-      await sql`DELETE FROM assets WHERE id = ${id} AND tenant_id = ${auth.tenantId || DEMO_TENANT_ID}`;
+      await sql`DELETE FROM ownership_history WHERE asset_id = ${id} AND tenant_id = ${auth.tenantId!}`;
+      await sql`DELETE FROM asset_assignments WHERE asset_id = ${id} AND tenant_id = ${auth.tenantId!}`;
+      await sql`DELETE FROM assets WHERE id = ${id} AND tenant_id = ${auth.tenantId!}`;
 
       await insertAuditLog({
         userId: auth.sub,

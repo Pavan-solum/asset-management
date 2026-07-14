@@ -54,7 +54,8 @@ export function CreateOrganizationPage() {
       await dispatch(createTenant(form as Omit<Tenant, 'id' | 'createdAt'>)).unwrap();
       navigate('/system-admin/organizations');
     } catch (err) {
-      setError('Failed to provision tenant');
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message: string }).message) : 'Failed to provision tenant';
+      setError(msg);
     }
   };
 
