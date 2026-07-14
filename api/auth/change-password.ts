@@ -33,12 +33,10 @@ export default async function handler(req: Request) {
       try {
         const sql = getSql();
         const rows = await sql`
-          SELECT password_hash, must_change_password FROM user_passwords WHERE email = ${email}
-        ` as { password_hash: string; must_change_password?: boolean }[];
-        const dbUser = rows[0];
-        const hasPassword = rows.length > 0 && dbUser?.password_hash && dbUser.password_hash !== 'seed-placeholder';
-        
-        if (hasPassword && !dbUser?.must_change_password) {
+          SELECT password_hash FROM user_passwords WHERE email = ${email}
+        ` as { password_hash: string }[];
+        const hasPassword = rows.length > 0 && rows[0].password_hash && rows[0].password_hash !== 'seed-placeholder';
+        if (hasPassword) {
           return error('Current password is required', 400);
         }
       } catch {
