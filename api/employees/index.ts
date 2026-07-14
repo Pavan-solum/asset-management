@@ -58,6 +58,18 @@ export default async function handler(req: Request) {
         details: `Created employee ${email}`,
       });
 
+      // Automatically provision a user account for the employee so they can log in to the portal
+      const userId = crypto.randomUUID();
+      try {
+        await sql`
+          INSERT INTO users (id, tenant_id, email, first_name, last_name, role)
+          VALUES (${userId}, ${auth.tenantId!}, ${email}, ${firstName}, ${lastName}, 'employee')
+          ON CONFLICT (email) DO NOTHING
+        `;
+      } catch (userErr) {
+        // Ignore errors if user already exists
+      }
+
       return json(mapEmployee(rows[0]), 201);
     }
 
