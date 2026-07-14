@@ -103,6 +103,7 @@ export function GlobalSearch() {
   const departments = useAppSelector((s) => s.departments.items);
   const vendors = useAppSelector((s) => s.vendors.items);
   const [input, setInput] = useState('');
+  const [open, setOpen] = useState(false);
   const [remoteOptions, setRemoteOptions] = useState<SearchOption[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -120,6 +121,8 @@ export function GlobalSearch() {
 
   const handleInput = async (value: string) => {
     setInput(value);
+    const shouldOpen = value.trim().length >= 2;
+    setOpen(shouldOpen);
     if (!isApiEnabled() || value.trim().length < 2) {
       setRemoteOptions([]);
       return;
@@ -167,6 +170,11 @@ export function GlobalSearch() {
     <Autocomplete
       sx={{ width: { xs: '100%', sm: 280, md: 340 }, mr: 1 }}
       size="small"
+      open={open}
+      onOpen={() => {
+        if (input.trim().length >= 2) setOpen(true);
+      }}
+      onClose={() => setOpen(false)}
       options={options}
       loading={loading}
       filterOptions={(x) => x}
@@ -179,6 +187,7 @@ export function GlobalSearch() {
           navigate(option.path);
           setInput('');
           setRemoteOptions([]);
+          setOpen(false);
         }
       }}
       renderOption={(props, option) => (

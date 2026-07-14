@@ -11,6 +11,8 @@ import {
   ListItemIcon,
   Divider,
   Tooltip,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
@@ -24,6 +26,8 @@ import { logout } from '../../store/authSlice';
 import { getRoleLabel, getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 
 export function SystemAdminLayout() {
+  const theme = useTheme();
+  const showGlobalSearch = useMediaQuery(theme.breakpoints.up('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const dispatch = useAppDispatch();
@@ -65,16 +69,17 @@ export function SystemAdminLayout() {
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ flex: 1, minWidth: 0, display: { xs: 'none', md: 'block' } }}>
-            {/* Can remove GlobalSearch if we don't want it here, but nice to have */}
-            <GlobalSearch />
-          </Box>
-
-          <Box sx={{ flex: { xs: 1, md: 0 }, minWidth: 0, display: { md: 'none' } }}>
-            <Typography variant="subtitle1" fontWeight={700} noWrap>
-              Administration
-            </Typography>
-          </Box>
+          {showGlobalSearch ? (
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <GlobalSearch />
+            </Box>
+          ) : (
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="subtitle1" fontWeight={700} noWrap>
+                Administration
+              </Typography>
+            </Box>
+          )}
 
           <ThemeModeToggle />
 

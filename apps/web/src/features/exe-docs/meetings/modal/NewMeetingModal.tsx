@@ -8,7 +8,6 @@ import {
   Typography,
   Grid,
   Switch,
-  Chip,
   IconButton,
   Divider,
   alpha,
@@ -16,9 +15,11 @@ import {
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
 import RoomOutlinedIcon from '@mui/icons-material/RoomOutlined';
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
-import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { EmployeeMultiSelect } from '../../../../components/EmployeeMultiSelect';
+import { useEmployees } from '../../../../hooks/useEmployees';
+import { getEmployeeName } from '../../../../utils/format';
 import { MeetingData } from './MeetingCard';
 
 interface NewMeetingModalProps {
@@ -75,13 +76,13 @@ const parseDateTime = (dateTimeStr: string) => {
 };
 
 export function NewMeetingModal({ open, onClose, onSave, editMeeting }: NewMeetingModalProps) {
+  const { items: employees } = useEmployees();
   const [title, setTitle] = useState('');
   const [dateTime, setDateTime] = useState('');
   const [location, setLocation] = useState('');
   const [isVirtual, setIsVirtual] = useState(false);
   const [agendaItems, setAgendaItems] = useState<string[]>(['']);
-  const [attendeeSearch, setAttendeeSearch] = useState('');
-  const [attendees, setAttendees] = useState<string[]>([]);
+  const [attendeeIds, setAttendeeIds] = useState<string[]>([]);
   const [status, setStatus] = useState<'CONFIRMED' | 'TENTATIVE' | 'COMPLETED'>('CONFIRMED');
   const [link, setLink] = useState('');
 
@@ -100,7 +101,14 @@ export function NewMeetingModal({ open, onClose, onSave, editMeeting }: NewMeeti
       );
       setLink(editMeeting.link || '');
       setAgendaItems(['Item 1: Financial Overview']); // default mock agenda items
-      setAttendees(editMeeting.participants || ['John Doe', 'Jane Smith']);
+      if (editMeeting.participantIds?.length) {
+        setAttendeeIds(editMeeting.participantIds);
+      } else {
+        const resolved = (editMeeting.participants ?? [])
+          .map((p) => employees.find((e) => e.id === p || getEmployeeName(e.firstName, e.lastName) === p)?.id)
+          .filter((id): id is string => Boolean(id));
+        setAttendeeIds(resolved);
+      }
     } else {
       setTitle('');
       setStatus('CONFIRMED');
@@ -113,10 +121,10 @@ export function NewMeetingModal({ open, onClose, onSave, editMeeting }: NewMeeti
       setLink('');
       setIsVirtual(false);
       setAgendaItems(['']);
-      setAttendees(['Alex Thompson', 'Sarah Jenkins']);
+      setAttendeeIds([]);
     }
     setErrors({});
-  }, [editMeeting, open]);
+  }, [editMeeting, open, employees]);
 
   const handleAddAgendaItem = () => {
     setAgendaItems((prev) => [...prev, '']);
@@ -134,20 +142,6 @@ export function NewMeetingModal({ open, onClose, onSave, editMeeting }: NewMeeti
     setAgendaItems((prev) => prev.map((item, i) => (i === index ? val : item)));
   };
 
-  const handleAddAttendee = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && attendeeSearch.trim()) {
-      e.preventDefault();
-      if (!attendees.includes(attendeeSearch.trim())) {
-        setAttendees((prev) => [...prev, attendeeSearch.trim()]);
-      }
-      setAttendeeSearch('');
-    }
-  };
-
-  const handleRemoveAttendee = (name: string) => {
-    setAttendees((prev) => prev.filter((a) => a !== name));
-  };
-
   const handleSubmit = () => {
     const newErrors: Record<string, string> = {};
     if (!title.trim()) newErrors.title = 'Title is required';
@@ -162,6 +156,13 @@ export function NewMeetingModal({ open, onClose, onSave, editMeeting }: NewMeeti
 
     const { date, time } = parseDateTime(dateTime);
 
+    const participantNames = attendeeIds
+      .map((id) => {
+        const emp = employees.find((e) => e.id === id);
+        return emp ? getEmployeeName(emp.firstName, emp.lastName) : undefined;
+      })
+      .filter((n): n is string => Boolean(n));
+
     onSave({
       id: editMeeting?.id,
       title,
@@ -170,7 +171,8 @@ export function NewMeetingModal({ open, onClose, onSave, editMeeting }: NewMeeti
       time,
       location,
       link: isVirtual ? link : undefined,
-      participants: attendees.length > 0 ? attendees : undefined,
+      participantIds: attendeeIds.length > 0 ? attendeeIds : undefined,
+      participants: participantNames.length > 0 ? participantNames : undefined,
       syncing: editMeeting?.syncing || false,
       priority: editMeeting?.priority || false,
     });
@@ -398,58 +400,17 @@ export function NewMeetingModal({ open, onClose, onSave, editMeeting }: NewMeeti
             </Button>
           </Box>
 
-          {/* Add Attendees Section */}
+          {/* Add Attendees — from centralized employee directory */}
           <Box>
             <Typography variant="caption" sx={labelStyle}>
-              Add Attendees
+              Attendees
             </Typography>
-            <TextField
-              fullWidth
-              placeholder="Search by name or email..."
-              value={attendeeSearch}
-              onChange={(e) => setAttendeeSearch(e.target.value)}
-              onKeyDown={handleAddAttendee}
-              InputProps={{
-                startAdornment: (
-                  <PersonAddOutlinedIcon
-                    sx={{ mr: 1, color: 'text.secondary', fontSize: '1.2rem' }}
-                  />
-                ),
-              }}
-              sx={inputFieldStyle}
-              helperText="Press Enter key to add an attendee chip"
+            <EmployeeMultiSelect
+              value={attendeeIds}
+              onChange={setAttendeeIds}
+              label="Select employees"
+              helperText="Pulled from Employees module (same data as Assets assignments)"
             />
-            {attendees.length > 0 && (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
-                {attendees.map((attendee) => (
-                  <Chip
-                    key={attendee}
-                    label={attendee}
-                    onDelete={() => handleRemoveAttendee(attendee)}
-                    size="small"
-                    sx={{
-                      bgcolor: (theme) =>
-                        theme.palette.mode === 'dark'
-                          ? 'rgba(255, 255, 255, 0.08)'
-                          : 'rgba(21, 101, 192, 0.06)',
-                      color: (theme) =>
-                        theme.palette.mode === 'dark' ? 'text.primary' : '#1565C0',
-                      fontWeight: 700,
-                      fontSize: '0.78rem',
-                      borderRadius: '16px',
-                      border: 'none',
-                      py: 1.5,
-                      '& .MuiChip-deleteIcon': {
-                        color: (theme) =>
-                          theme.palette.mode === 'dark' ? '#9AA8BC' : '#1565C0',
-                        fontSize: '0.9rem',
-                        '&:hover': { color: 'error.main' },
-                      },
-                    }}
-                  />
-                ))}
-              </Box>
-            )}
           </Box>
         </Box>
 

@@ -33,8 +33,6 @@ import { LoadingButton } from '../../components/Loader';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
 import { BillingCard } from './BillingCard';
-import { useDispatch } from 'react-redux';
-import { updateTenantPlan } from '../../store/authSlice';
 
 const demoUsers = [
   { name: 'Vasanth', email: `admin@${COMPANY_EMAIL_DOMAIN}`, role: 'Tenant Admin' },
@@ -52,7 +50,6 @@ const roadmapFeatures = [
 ];
 
 export function SettingsPage() {
-  const dispatch = useDispatch();
   const tenant = useTenant();
   const user = useAuthUser();
   const { can, role } = usePermissions();
@@ -75,31 +72,24 @@ export function SettingsPage() {
 
   return (
     <Box>
-      <PageHeader
-        title="Settings"
-        subtitle={`${APP_NAME} tenant configuration and preferences`}
-        breadcrumbs={[{ label: 'Dashboard', to: '/' }, { label: 'Settings' }]}
-      />
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <PageHeader
+            title="Settings"
+            subtitle={`${APP_NAME} tenant configuration and preferences`}
+            breadcrumbs={[{ label: 'Dashboard', to: '/' }, { label: 'Settings' }]}
+          />
+        </Grid>
 
-      <Grid container spacing={2}>
         {canViewBilling && (
           <Grid item xs={12}>
             {role === 'platform_admin' && (
-              <Alert severity="info" sx={{ mb: 0 }}>
-                Viewing subscription for <strong>{tenant?.name ?? 'demo tenant'}</strong>. Tenant admins manage
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Viewing subscription for <strong>{tenant?.name ?? 'this organization'}</strong>. Tenant admins manage
                 billing for their own organization from this page.
               </Alert>
             )}
-          </Grid>
-        )}
-
-        {canViewBilling && (
-          <Grid item xs={12}>
-            <BillingCard
-              onPlanChanged={(planName) => {
-                dispatch(updateTenantPlan({ plan: planName, subscriptionStatus: 'active' }));
-              }}
-            />
+            <BillingCard />
           </Grid>
         )}
 

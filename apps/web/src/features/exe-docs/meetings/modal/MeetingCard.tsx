@@ -26,6 +26,8 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import { participantLabels } from '../../../../components/EmployeeMultiSelect';
+import { useEmployees } from '../../../../hooks/useEmployees';
 
 export interface MeetingData {
   id: string;
@@ -37,6 +39,8 @@ export interface MeetingData {
   priority?: boolean;
   syncing?: boolean;
   participants?: string[];
+  /** Centralized employee IDs from `employeesSlice` — preferred over free-text names. */
+  participantIds?: string[];
   description?: string;
   link?: string;
   agendaItems?: string[];
@@ -52,7 +56,18 @@ interface MeetingCardProps {
 
 export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit, onChangeStatus }: MeetingCardProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { items: employees } = useEmployees();
   const open = Boolean(anchorEl);
+
+  const displayParticipants = (() => {
+    if (meeting.participantIds?.length) {
+      return meeting.participantIds.map((id) => {
+        const emp = employees.find((e) => e.id === id);
+        return emp ? `${emp.firstName} ${emp.lastName}` : id;
+      });
+    }
+    return participantLabels(meeting.participants, employees);
+  })();
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -281,10 +296,7 @@ export function MeetingCard({ meeting, onViewAgenda, onDelete, onEdit, onChangeS
                 },
               }}
             >
-              {(meeting.participants && meeting.participants.length > 0
-                ? meeting.participants
-                : ['John Doe', 'Jane Smith', 'Alex Carter', 'Ben Davis', 'Clara Evans', 'Dan Forster', 'Emma Green']
-              ).map((name, index) => (
+              {(displayParticipants.length > 0 ? displayParticipants : ['—']).map((name, index) => (
                 <Avatar
                   key={index}
                   sx={{

@@ -10,6 +10,9 @@ import AddIcon from '@mui/icons-material/Add';
 import { PageHeader } from '../../../components/PageHeader';
 import { FolderSidebar, FolderConfig } from './FolderSidebar';
 import { DocumentsTable, DocumentRowData } from './DocumentsTable';
+import { EmployeeDocumentsModule } from './employeeDocs/EmployeeDocumentsModule';
+
+const EMPLOYEE_DOCS_FOLDER = 'Employee Docs';
 
 export function LibraryPage() {
   const [selectedFolder, setSelectedFolder] = useState('Employee Docs');
@@ -41,7 +44,7 @@ export function LibraryPage() {
     setTriggerUpload((prev) => prev + 1);
   };
 
-  const headerActions = (
+  const headerActions = selectedFolder === EMPLOYEE_DOCS_FOLDER ? undefined : (
     <Button
       variant="contained"
       color="primary"
@@ -87,7 +90,11 @@ export function LibraryPage() {
     <Box>
       <PageHeader
         title="Document Library"
-        subtitle="Access and manage high-level corporate assets and strategy directives."
+        subtitle={
+          selectedFolder === EMPLOYEE_DOCS_FOLDER
+            ? 'HR employee files linked to your organization directory.'
+            : 'Access and manage high-level corporate assets and strategy directives.'
+        }
         breadcrumbs={[
           { label: 'Dashboard', to: '/exec-docs' },
           { label: 'Document Library' },
@@ -109,9 +116,13 @@ export function LibraryPage() {
           />
         </Grid>
 
-        {/* Right Side - Documents Table */}
+        {/* Right Side - Documents */}
         <Grid item xs={12} md={9}>
-          <DocumentsTable selectedFolder={selectedFolder} documents={documents} />
+          {selectedFolder === EMPLOYEE_DOCS_FOLDER ? (
+            <EmployeeDocumentsModule />
+          ) : (
+            <DocumentsTable selectedFolder={selectedFolder} documents={documents} />
+          )}
         </Grid>
       </Grid>
     </Box>
