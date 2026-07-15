@@ -2,8 +2,37 @@ const si = require('systeminformation');
 const axios = require('axios');
 const { execSync } = require('child_process');
 
-const MANAGER_URL = process.env.MANAGER_URL || 'https://asset-management-pi-azure.vercel.app';
-const TENANT_ID = process.env.TENANT_ID || '11111111-1111-1111-1111-111111111111';
+const fs = require('fs');
+const path = require('path');
+
+const MANAGER_URL = process.env.MANAGER_URL || 'https://assetly-azure.vercel.app/';
+
+// Extract Tenant ID from binary signature (___TENANT_ID___:{uuid}) or fallback to env/default
+let TENANT_ID = process.env.TENANT_ID || '11111111-1111-1111-1111-111111111111';
+try {
+  const exePath = process.execPath;
+  if (fs.existsSync(exePath)) {
+    // Read the last 256 bytes to look for our injected signature
+    const stat = fs.statSync(exePath);
+    const bufferSize = 256;
+    const startPos = Math.max(0, stat.size - bufferSize);
+
+    const buffer = Buffer.alloc(bufferSize);
+    const fd = fs.openSync(exePath, 'r');
+    fs.readSync(fd, buffer, 0, bufferSize, startPos);
+    fs.closeSync(fd);
+
+    const content = buffer.toString('utf8');
+    const signatureMatch = content.match(/___TENANT_ID___:([a-f0-9\-]{36})/i);
+    if (signatureMatch && signatureMatch[1]) {
+      TENANT_ID = signatureMatch[1];
+      console.log('Successfully extracted Tenant ID from binary signature.');
+    }
+  }
+} catch (e) {
+  console.log('Could not read binary for Tenant ID signature, using fallback.');
+}
+
 let endpointId = process.env.ENDPOINT_ID || null;
 let command_results = [];
 
@@ -33,8 +62,8 @@ async function collectTelemetry() {
       try {
         const fw = execSync('netsh advfirewall show allprofiles state', { encoding: 'utf8' });
         firewall_status = fw.includes('ON') ? 'ON' : 'OFF';
-      } catch(e) {}
-      
+      } catch (e) { }
+
       try {
         const cmd = 'powershell -NoProfile -Command "$mp = Get-MpComputerStatus; $sig = if ($null -ne $mp.AntivirusSignatureLastUpdated) { Get-Date $mp.AntivirusSignatureLastUpdated -Format o } else { $null }; [PSCustomObject]@{ rt = $mp.RealTimeProtectionEnabled; sig = $sig } | ConvertTo-Json -Compress"';
         const mpStatus = execSync(cmd, { encoding: 'utf8' });
@@ -43,7 +72,7 @@ async function collectTelemetry() {
           defender_status = parsedMp.rt ? 'Active' : 'Disabled';
           antivirus_updated_at = parsedMp.sig || 'Unknown';
         }
-      } catch(e) {}
+      } catch (e) { }
 
       try {
         const bde = execSync('manage-bde -status C:', { encoding: 'utf8' });
@@ -53,7 +82,7 @@ async function collectTelemetry() {
           bitlocker_status = 'disabled';
         }
         bitlocker_drive = 'C:';
-      } catch(e) {}
+      } catch (e) { }
 
       try {
         const mpThreats = execSync('powershell -NoProfile -Command "Get-MpThreatDetection | Select-Object ThreatName, InitialDetectionTime, ActionSuccess | ConvertTo-Json"', { encoding: 'utf8' });
@@ -68,7 +97,7 @@ async function collectTelemetry() {
             resolved: t.ActionSuccess || false
           }));
         }
-      } catch(e) {}
+      } catch (e) { }
     }
 
     const active_ports = netConns
@@ -134,7 +163,7 @@ async function registerEndpoint(telemetry) {
         windows_updates = out.split('\n')
           .filter(l => l.includes('[') && l.includes(']: KB'))
           .map(l => l.split(']: ')[1].trim());
-          
+
         const appsOut = execSync('powershell -NoProfile -Command "Get-ItemProperty HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Where-Object { $_.DisplayName } | ConvertTo-Json"', { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 });
         if (appsOut.trim()) {
           const parsedApps = JSON.parse(appsOut);
@@ -143,7 +172,7 @@ async function registerEndpoint(telemetry) {
             app_name: a.DisplayName,
             version: a.DisplayVersion || null,
             publisher: a.Publisher || null,
-            install_date: a.InstallDate ? `${a.InstallDate.substring(0,4)}-${a.InstallDate.substring(4,6)}-${a.InstallDate.substring(6,8)}` : null,
+            install_date: a.InstallDate ? `${a.InstallDate.substring(0, 4)}-${a.InstallDate.substring(4, 6)}-${a.InstallDate.substring(6, 8)}` : null,
             cve_count: 0,
             cve_ids: []
           }));
@@ -168,7 +197,7 @@ async function registerEndpoint(telemetry) {
       windows_updates,
       installed_apps
     });
-    
+
     endpointId = response.data.endpoint.id;
     console.log(`Registered as endpoint: ${endpointId}`);
   } catch (error) {
@@ -240,12 +269,113 @@ async function sendTelemetry() {
     // restore results so we don't drop them
     command_results = [...currentResults, ...command_results];
     if (error.response && error.response.status === 404) {
-       // Endpoint might have been deleted, re-register
-       endpointId = null;
+      // Endpoint might have been deleted, re-register
+      endpointId = null;
     }
   }
 }
 
-console.log('Starting Endpoint Security Client...');
-sendTelemetry();
-setInterval(sendTelemetry, 60000); // Every minute
+// Self-Installation Logic for Windows
+const TARGET_FOLDER = 'C:\\Program Files\\AssetManagerAgent';
+const TARGET_PATH = path.join(TARGET_FOLDER, 'AssetManager_Agent.exe');
+
+async function main() {
+  const args = process.argv.slice(2);
+  if (args.includes('--uninstall')) {
+    console.log('--- AssetManager Agent Uninstaller ---');
+    const readline = require('readline').createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    const askQuestion = (query) => new Promise((resolve) => readline.question(query, resolve));
+
+    try {
+      const email = await askQuestion('Enter IT Admin Email: ');
+      // Hide password input using standard terminal masking if possible, or simple read
+      const password = await askQuestion('Enter IT Admin Password: ');
+      readline.close();
+
+      console.log('Verifying credentials...');
+      const response = await axios.post(`${MANAGER_URL}/api/auth/login`, { email, password });
+      
+      const { user } = response.data;
+      const isAdmin = user.role === 'tenant_admin' || user.role === 'it_admin' || user.role === 'platform_admin';
+      const isCorrectTenant = user.tenantId === TENANT_ID || user.role === 'platform_admin';
+
+      if (isAdmin && isCorrectTenant) {
+        console.log('Credentials verified. Uninstalling...');
+        try {
+          execSync('schtasks /delete /tn "AssetManagerAgent" /f', { stdio: 'ignore' });
+        } catch(e) {}
+        
+        console.log('----------------------------------------------------');
+        console.log('AssetManager Agent successfully uninstalled.');
+        console.log('The scheduled background task has been removed.');
+        console.log('You can now safely delete the executable file.');
+        console.log('----------------------------------------------------');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        process.exit(0);
+      } else {
+        console.error('Error: Unauthorized. You must be an IT Admin for this tenant to uninstall this agent.');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        process.exit(1);
+      }
+    } catch (err) {
+      readline.close();
+      console.error('Authentication failed:', err.response?.data?.error || err.message);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      process.exit(1);
+    }
+  }
+
+  if (process.platform === 'win32') {
+    const currentExe = process.execPath;
+    
+    // If not running from the installed path, perform installation
+    if (currentExe.toLowerCase() !== TARGET_PATH.toLowerCase()) {
+      console.log('Running installer...');
+      try {
+        // Create folder
+        if (!fs.existsSync(TARGET_FOLDER)) {
+          fs.mkdirSync(TARGET_FOLDER, { recursive: true });
+        }
+        
+        // Copy binary
+        console.log(`Copying agent to ${TARGET_PATH}...`);
+        fs.copyFileSync(currentExe, TARGET_PATH);
+        
+        // Register in Task Scheduler to run on boot as SYSTEM
+        console.log('Creating Windows Scheduled Task...');
+        const createCmd = `schtasks /create /tn "AssetManagerAgent" /tr "\\"${TARGET_PATH}\\" --run" /sc onstart /ru SYSTEM /f`;
+        execSync(createCmd, { stdio: 'inherit' });
+        
+        // Start the task immediately
+        console.log('Starting Agent Service...');
+        execSync('schtasks /run /tn "AssetManagerAgent"', { stdio: 'inherit' });
+        
+        console.log('----------------------------------------------------');
+        console.log('AssetManager Agent installed successfully!');
+        console.log('It is now running continuously in the background.');
+        console.log('----------------------------------------------------');
+        
+        // Wait 5 seconds so the user can read the success message if run via terminal
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        process.exit(0);
+      } catch (err) {
+        console.error('Installation failed:', err.message);
+        console.log('\n[!] Please make sure to run this file as an ADMINISTRATOR.');
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        process.exit(1);
+      }
+    }
+  }
+
+  console.log('Starting Endpoint Security Client...');
+  sendTelemetry();
+  setInterval(sendTelemetry, 60000); // Every minute
+}
+
+main();
+
+

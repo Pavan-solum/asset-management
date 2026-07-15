@@ -26,6 +26,7 @@ import tenantsIndex from '../api/tenants/index';
 import tenantsById from '../api/tenants/[id]';
 import usersIndex from '../api/users/index';
 import usersById from '../api/users/[id]';
+import agentDownload from '../api/agent/download';
 import endpointsIndex from '../api/endpoints/index';
 import endpointsRegister from '../api/endpoints/register';
 import endpointsTelemetry from '../api/endpoints/telemetry';
@@ -99,6 +100,8 @@ function resolveHandler(pathname: string): ApiHandler | null {
   if (/^\/api\/tenants\/[^/]+$/.test(pathname)) return tenantsById;
   if (pathname === '/api/users') return usersIndex;
   if (/^\/api\/users\/[^/]+$/.test(pathname)) return usersById;
+
+  if (pathname === '/api/agent/download') return agentDownload;
 
   if (pathname === '/api/billing/subscription') return billingSubscription;
   if (pathname === '/api/billing/checkout') return billingCheckout;

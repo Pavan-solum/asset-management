@@ -2,13 +2,15 @@ import { useState, useEffect, Fragment } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, Collapse, IconButton, Grid, Divider, List,
-  ListItem, ListItemText, Tabs, Tab
+  ListItem, ListItemText, Tabs, Tab, Button
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import DownloadIcon from '@mui/icons-material/Download';
 
 import { apiFetch } from '../../services/api/client';
+import { useAppSelector } from '../../hooks/storeHooks';
 import { ThreatPanel } from './components/ThreatPanel';
 import { InstalledApps } from './components/InstalledApps';
 import { DeviceContext } from './components/DeviceContext';
@@ -212,6 +214,35 @@ function EndpointRow({ endpoint }: { endpoint: Endpoint }) {
 export function EndpointsPage() {
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const token = useAppSelector((state) => state.auth.token);
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      const response = await fetch('/api/agent/download', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to download agent');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'AssetManager_Agent.exe';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Failed to download agent');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchEndpoints() {
@@ -230,7 +261,17 @@ export function EndpointsPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>Endpoint Security</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Endpoint Security</Typography>
+        <Button 
+          variant="contained" 
+          startIcon={<DownloadIcon />} 
+          onClick={handleDownload}
+          disabled={isDownloading}
+        >
+          {isDownloading ? 'Preparing Download...' : 'Download Agent'}
+        </Button>
+      </Box>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
