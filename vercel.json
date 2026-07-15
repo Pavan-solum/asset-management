@@ -4,5 +4,10 @@
   "buildCommand": "npm run build --prefix apps/web",
   "outputDirectory": "apps/web/dist",
   "framework": "vite",
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
+  "functions": {
+    "api/agent/download.ts": {
+      "includeFiles": "apps/client/EndpointSecurityClient_Prod.exe"
+    }
+  }
 }
