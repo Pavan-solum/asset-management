@@ -2,6 +2,13 @@ import { getSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { mapUser, type DbUser } from '../_lib/mappers';
 import { requireAuth, insertAuditLog, hashPassword } from '../_lib/auth';
 import { checkAdminLimit } from '../_lib/subscription';
+import {
+  assertTenantAccess,
+  canManageUsers,
+  getUserTenantId,
+  isRoleAllowedForActor,
+  PLATFORM_ADMIN_ROLE,
+} from '../_lib/roles';
 
 export const config = { runtime: 'edge' };
 
@@ -11,8 +18,7 @@ export default async function handler(req: Request) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
 
-  // Only Platform Admins or Tenant Admins can manage users
-  if (auth.role !== 'platform_admin' && auth.role !== 'tenant_admin') {
+  if (!canManageUsers(auth.role)) {
     return error('Forbidden', 403);
   }
 
@@ -21,7 +27,7 @@ export default async function handler(req: Request) {
   try {
     if (req.method === 'GET') {
       let rows;
-      if (auth.role === 'platform_admin') {
+      if (auth.role === PLATFORM_ADMIN_ROLE) {
         rows = await sql`SELECT * FROM users ORDER BY created_at DESC` as DbUser[];
       } else {
         rows = await sql`SELECT * FROM users WHERE tenant_id = ${auth.tenantId || ''} ORDER BY created_at DESC` as DbUser[];
@@ -35,10 +41,21 @@ export default async function handler(req: Request) {
       const firstName = String(body.firstName ?? '').trim();
       const lastName = String(body.lastName ?? '').trim();
       const role = String(body.role ?? 'viewer').trim();
-      const tenantId = String(body.tenantId ?? '');
+      let tenantId = String(body.tenantId ?? '');
 
       if (!email || !firstName || !tenantId) {
         return error('email, firstName, and tenantId are required', 400);
+      }
+
+      if (!isRoleAllowedForActor(auth.role, role)) {
+        return error(`Your role cannot assign the "${role}" role`, 403);
+      }
+
+      const tenantDenied = assertTenantAccess(auth, tenantId);
+      if (tenantDenied) return tenantDenied;
+
+      if (auth.role !== PLATFORM_ADMIN_ROLE) {
+        tenantId = auth.tenantId!;
       }
 
       const adminRoles = ['tenant_admin', 'it_admin', 'platform_admin'];
@@ -48,7 +65,7 @@ export default async function handler(req: Request) {
       }
 
       const id = body.id && String(body.id) ? String(body.id) : crypto.randomUUID();
-      
+
       const rows = await sql`
         INSERT INTO users (
           id, tenant_id, email, first_name, last_name, role

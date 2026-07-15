@@ -41,10 +41,16 @@ export function createAppTheme(mode: PaletteMode) {
     },
     components: {
       MuiCssBaseline: {
-        styleOverrides: {
+        styleOverrides: (theme) => ({
           html: { scrollBehavior: 'smooth' },
           body: { WebkitFontSmoothing: 'antialiased' },
-        },
+          'input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus': {
+            WebkitBoxShadow: `0 0 0 100px ${theme.palette.background.paper} inset`,
+            WebkitTextFillColor: theme.palette.text.primary,
+            caretColor: theme.palette.text.primary,
+            transition: 'background-color 9999s ease-out 0s',
+          },
+        }),
       },
       MuiButton: {
         styleOverrides: {
@@ -129,15 +135,11 @@ export function createAppTheme(mode: PaletteMode) {
       MuiTextField: {
         defaultProps: { variant: 'outlined' },
         styleOverrides: {
-          root: ({ theme }) => ({
+          root: {
             '& .MuiOutlinedInput-root': {
               borderRadius: 10,
-              transition: 'box-shadow 0.2s ease',
-              '&.Mui-focused': {
-                boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, isDark ? 0.2 : 0.12)}`,
-              },
             },
-          }),
+          },
         },
       },
       MuiChip: {

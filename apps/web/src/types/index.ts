@@ -115,7 +115,12 @@ export interface Employee {
   employeeNumber: string;
   firstName: string;
   lastName: string;
+  /** Active sign-in email (official when assigned, otherwise joining email). */
   email: string;
+  /** Email provided when the employee joined — used for sign-in until official email is set. */
+  joiningEmail: string;
+  /** Company email assigned by HR; replaces joining email for sign-in when set. */
+  officialEmail?: string;
   jobTitle: string;
   departmentId: string;
   status: EmployeeStatus;
@@ -271,23 +276,25 @@ export interface DeviceContextData {
 }
 
 export const PERMISSIONS = {
-  'module:assets': ['tenant_admin', 'it_admin', 'viewer'],
-  'module:hr': ['tenant_admin', 'hr_admin'],
-  'module:finance': ['tenant_admin', 'finance_admin'],
-  'module:docs': ['tenant_admin', 'hr_admin', 'it_admin', 'finance_admin', 'viewer'],
-  'asset:read': ['tenant_admin', 'it_admin', 'viewer'],
-  'asset:write': ['tenant_admin', 'it_admin'],
-  'asset:delete': ['tenant_admin'],
-  'asset:assign': ['tenant_admin', 'it_admin'],
-  'employee:write': ['tenant_admin', 'hr_admin', 'it_admin'],
-  'employee:delete': ['tenant_admin'],
-  'vendor:write': ['tenant_admin', 'it_admin', 'finance_admin'],
-  'audit:read': ['tenant_admin', 'it_admin', 'hr_admin', 'finance_admin', 'viewer'],
-  'settings:write': ['tenant_admin'],
+  'module:assets': ['platform_admin', 'tenant_admin', 'it_admin', 'viewer'],
+  'module:hr': ['platform_admin', 'tenant_admin', 'hr_admin'],
+  'module:finance': ['platform_admin', 'tenant_admin', 'finance_admin'],
+  'module:docs': ['platform_admin', 'tenant_admin', 'hr_admin', 'it_admin', 'finance_admin', 'viewer'],
+  'asset:read': ['platform_admin', 'tenant_admin', 'it_admin', 'viewer'],
+  'asset:write': ['platform_admin', 'tenant_admin', 'it_admin'],
+  'asset:delete': ['platform_admin', 'tenant_admin'],
+  'asset:assign': ['platform_admin', 'tenant_admin', 'it_admin'],
+  'employee:read': ['platform_admin', 'tenant_admin', 'hr_admin', 'it_admin', 'viewer'],
+  'employee:write': ['platform_admin', 'tenant_admin', 'hr_admin'],
+  'employee:delete': ['platform_admin', 'tenant_admin'],
+  'vendor:write': ['platform_admin', 'tenant_admin', 'it_admin', 'finance_admin'],
+  'audit:read': ['platform_admin', 'tenant_admin', 'it_admin', 'hr_admin', 'finance_admin', 'viewer'],
+  'settings:write': ['platform_admin', 'tenant_admin'],
+  'user:manage': ['platform_admin', 'tenant_admin'],
   'request:create': ['employee'],
   'request:read-own': ['employee'],
-  'request:read': ['tenant_admin', 'it_admin'],
-  'request:review': ['tenant_admin', 'it_admin'],
+  'request:read': ['platform_admin', 'tenant_admin', 'it_admin'],
+  'request:review': ['platform_admin', 'tenant_admin', 'it_admin'],
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;

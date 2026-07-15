@@ -11,6 +11,7 @@ export function usePermissions() {
 
   const can = (permission: Permission): boolean => {
     if (!role) return false;
+    if (role === 'platform_admin') return true;
     return (PERMISSIONS[permission] as readonly string[]).includes(role);
   };
 

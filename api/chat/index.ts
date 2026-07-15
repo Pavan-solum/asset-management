@@ -1,5 +1,6 @@
 import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { requireAuth, type AuthUser } from '../_lib/auth';
+import { resolveEmployeeIdByLoginEmail } from '../_lib/employee-auth';
 
 export const config = { runtime: 'edge' };
 
@@ -15,18 +16,10 @@ async function resolveEmployeeId(auth: AuthUser): Promise<string | null> {
   }
 
   try {
-    const rows = (await sql`
-      SELECT id FROM employees
-      WHERE tenant_id = ${auth.tenantId!} AND lower(email) = ${auth.email.toLowerCase()}
-      LIMIT 1
-    `) as { id: string }[];
-
-    if (rows.length > 0) return rows[0].id;
+    return await resolveEmployeeIdByLoginEmail(sql, auth.tenantId!, auth.email);
   } catch {
     return null;
   }
-
-  return null;
 }
 
 // Database Tool Helpers

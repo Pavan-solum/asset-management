@@ -10,7 +10,6 @@ export default async function handler(req: Request) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
-  if (auth instanceof Response) return auth;
 
   const sql = await getTenantSql(auth.tenantId!);
 
@@ -26,20 +25,20 @@ export default async function handler(req: Request) {
       const body = await parseBody<Record<string, unknown>>(req);
       const firstName = String(body.firstName ?? '').trim();
       const lastName = String(body.lastName ?? '').trim();
-      const email = String(body.email ?? '').trim().toLowerCase();
-      if (!firstName || !lastName || !email) {
-        return error('firstName, lastName, and email are required', 400);
+      const joiningEmail = String(body.joiningEmail ?? body.email ?? '').trim().toLowerCase();
+      if (!firstName || !lastName || !joiningEmail) {
+        return error('firstName, lastName, and joiningEmail are required', 400);
       }
 
       const id = body.id && String(body.id) ? String(body.id) : crypto.randomUUID();
       const rows = await sql`
         INSERT INTO employees (
-          id, tenant_id, employee_number, first_name, last_name, email,
+          id, tenant_id, employee_number, first_name, last_name, email, joining_email, official_email,
           job_title, department_id, status, hire_date
         ) VALUES (
           ${id}, ${auth.tenantId!},
           ${body.employeeNumber ? String(body.employeeNumber) : null},
-          ${firstName}, ${lastName}, ${email},
+          ${firstName}, ${lastName}, ${joiningEmail}, ${joiningEmail}, NULL,
           ${body.jobTitle ? String(body.jobTitle) : null},
           ${body.departmentId ? String(body.departmentId) : null},
           ${body.status ? String(body.status) : 'active'},
@@ -55,19 +54,18 @@ export default async function handler(req: Request) {
         entityType: 'employee',
         entityId: id,
         entityLabel: `${firstName} ${lastName}`,
-        details: `Created employee ${email}`,
+        details: `Created employee with joining email ${joiningEmail}`,
       });
 
-      // Automatically provision a user account for the employee so they can log in to the portal
       const userId = crypto.randomUUID();
       try {
         await sql`
           INSERT INTO users (id, tenant_id, email, first_name, last_name, role)
-          VALUES (${userId}, ${auth.tenantId!}, ${email}, ${firstName}, ${lastName}, 'employee')
+          VALUES (${userId}, ${auth.tenantId!}, ${joiningEmail}, ${firstName}, ${lastName}, 'employee')
           ON CONFLICT (email) DO NOTHING
         `;
-      } catch (userErr) {
-        // Ignore errors if user already exists
+      } catch {
+        /* user may already exist */
       }
 
       return json(mapEmployee(rows[0]), 201);

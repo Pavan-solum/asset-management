@@ -1,14 +1,5 @@
 import type { User, UserRole } from '../types';
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  platform_admin: 'Platform Admin',
-  tenant_admin: 'Tenant Admin',
-  hr_admin: 'HR Admin',
-  finance_admin: 'Finance Admin',
-  it_admin: 'IT Admin',
-  viewer: 'Viewer',
-  employee: 'Employee',
-};
+import { ROLE_LABELS } from '../constants/roles';
 
 export function getUserDisplayName(user: Pick<User, 'firstName' | 'lastName'> | null | undefined): string {
   if (!user) return '';

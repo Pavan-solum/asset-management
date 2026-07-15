@@ -116,7 +116,12 @@ export function EmployeeDetailPage() {
               <CardContent>
                 <Typography variant="h6" gutterBottom fontWeight={700}>Employee Details</Typography>
                 <Divider sx={{ mb: 1 }} />
-                <DetailRow label="Email" value={employee.email} />
+                <DetailRow label="Joining email" value={employee.joiningEmail || employee.email} />
+                <DetailRow
+                  label="Official email"
+                  value={employee.officialEmail ?? 'Not assigned yet — joining email used for sign-in'}
+                />
+                <DetailRow label="Sign-in email" value={employee.email} />
                 <DetailRow label="Department" value={department?.name ?? '—'} />
                 <DetailRow label="Hire Date" value={formatDate(employee.hireDate)} />
                 <DetailRow label="Status" value={<Chip label={employee.status} size="small" color={employee.status === 'active' ? 'success' : 'default'} variant="outlined" />} />
@@ -219,7 +224,7 @@ export function EmployeeDetailPage() {
               </Stack>
               <Stack direction="row" spacing={2} alignItems="center">
                 <Chip label={`Total Approved: ${formatCurrency(totalExpensesApproved)}`} color="success" variant="outlined" />
-                <Button size="small" onClick={() => navigate('/finance')}>View Finance →</Button>
+                <Button size="small" onClick={() => navigate('/it-spend?tab=expenses')}>View IT Spend →</Button>
               </Stack>
             </Stack>
             <Divider sx={{ mb: 2 }} />

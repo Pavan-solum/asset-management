@@ -30,6 +30,7 @@ import CodeIcon from '@mui/icons-material/Code';
 import BuildIcon from '@mui/icons-material/Build';
 import AutoGraphIcon from '@mui/icons-material/AutoGraph';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import HomeIcon from '@mui/icons-material/Home';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTenant, useAuthUser, usePermissions } from '../../hooks/storeHooks';
@@ -51,8 +52,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'Overview',
     items: [
-      { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> },
-      { to: '/analytics', label: 'AI & Analytics', icon: <AutoGraphIcon fontSize="small" /> },
+      { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon fontSize="small" />, permission: 'module:assets' },
+      { to: '/analytics', label: 'AI & Analytics', icon: <AutoGraphIcon fontSize="small" />, permission: 'module:assets' },
       { to: '/requests', label: 'Requests', icon: <AssignmentIcon fontSize="small" />, permission: 'request:review' },
     ],
   },
@@ -67,9 +68,9 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: 'Finance & Maintenance',
+    label: 'Spend & Maintenance',
     items: [
-      { to: '/finance', label: 'Finance', icon: <AttachMoneyIcon fontSize="small" />, permission: 'module:finance' },
+      { to: '/it-spend', label: 'IT Spend', icon: <AttachMoneyIcon fontSize="small" />, permission: 'module:finance' },
       { to: '/software', label: 'Software SAM', icon: <CodeIcon fontSize="small" />, permission: 'module:assets' },
       { to: '/maintenance', label: 'Maintenance', icon: <BuildIcon fontSize="small" />, permission: 'module:assets' },
     ],
@@ -77,9 +78,9 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'Organization',
     items: [
-      { to: '/employees', label: 'Employees', icon: <PeopleIcon fontSize="small" /> },
-      { to: '/departments', label: 'Departments', icon: <BusinessIcon fontSize="small" /> },
-      { to: '/vendors', label: 'Vendors', icon: <StoreIcon fontSize="small" /> },
+      { to: '/employees', label: 'Employees', icon: <PeopleIcon fontSize="small" />, permission: 'employee:read' },
+      { to: '/departments', label: 'Departments', icon: <BusinessIcon fontSize="small" />, permission: 'employee:read' },
+      { to: '/vendors', label: 'Vendors', icon: <StoreIcon fontSize="small" />, permission: 'vendor:write' },
     ],
   },
   {
@@ -87,6 +88,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { to: '/endpoints', label: 'Endpoint Security', icon: <SecurityIcon fontSize="small" />, permission: 'module:assets' },
       { to: '/audit', label: 'Audit Logs', icon: <HistoryIcon fontSize="small" />, permission: 'audit:read' },
+      { to: '/settings/users', label: 'Team accounts', icon: <ManageAccountsIcon fontSize="small" />, permission: 'user:manage' },
       { to: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" />, permission: 'settings:write' },
     ],
   },

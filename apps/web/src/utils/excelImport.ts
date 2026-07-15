@@ -374,13 +374,15 @@ export class ImportEmployeeRegistry {
     const existingCreated = this.created.get(key);
     if (existingCreated) return existingCreated;
 
+    const importEmail = buildImportEmail(parsed, this.created.size + 1);
     const employee: Employee = {
       id: `emp-import-${String(this.created.size + 1).padStart(3, '0')}`,
       tenantId: this.tenantId,
       employeeNumber: `EMP-IMP-${String(this.created.size + 1).padStart(3, '0')}`,
       firstName: parsed.firstName,
       lastName: parsed.lastName,
-      email: buildImportEmail(parsed, this.created.size + 1),
+      email: importEmail,
+      joiningEmail: importEmail,
       jobTitle: 'Staff',
       departmentId: 'dept-ops',
       status: 'active',

@@ -1,6 +1,7 @@
 import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { mapAssetRequest, type DbAssetRequest } from '../_lib/mappers';
 import { requireAuth, canReviewRequests, insertAuditLog, type AuthUser } from '../_lib/auth';
+import { resolveEmployeeIdByLoginEmail } from '../_lib/employee-auth';
 
 export const config = { runtime: 'edge' };
 
@@ -16,13 +17,8 @@ async function resolveEmployeeId(auth: AuthUser): Promise<string | Response> {
   }
 
   try {
-    const rows = (await sql`
-      SELECT id FROM employees
-      WHERE tenant_id = ${auth.tenantId!} AND lower(email) = ${auth.email.toLowerCase()}
-      LIMIT 1
-    `) as { id: string }[];
-
-    if (rows.length > 0) return rows[0].id;
+    const employeeId = await resolveEmployeeIdByLoginEmail(sql, auth.tenantId!, auth.email);
+    if (employeeId) return employeeId;
   } catch {
     return error('Employee record not found for this account', 403);
   }

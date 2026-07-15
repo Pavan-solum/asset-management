@@ -13,12 +13,18 @@ import {
   ListItem,
   ListItemText,
   Alert,
+  Stack,
+  LinearProgress,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn';
 import QrCodeIcon from '@mui/icons-material/QrCode';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/storeHooks';
 import { usePermissions } from '../../hooks/storeHooks';
@@ -28,6 +34,8 @@ import { AssignAssetDialog, ReturnAssetDialog } from './AssignAssetDialog';
 import { AssetEditDialog } from './AssetEditDialog';
 import { formatCurrency, formatDate, formatDateTime, getEmployeeName } from '../../utils/format';
 import { CATEGORY_LABELS } from '../../data/demoData';
+import { assetFinancials } from '../finance/itSpendMetrics';
+import { itSpendUrl } from '../../constants/routes';
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -49,6 +57,7 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 export function AssetDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const theme = useTheme();
   const { can } = usePermissions();
   const asset = useAppSelector((s) => s.assets.items.find((a) => a.id === id));
   const employees = useAppSelector((s) => s.employees.items);
@@ -76,6 +85,8 @@ export function AssetDetailPage() {
     ? employees.find((e) => e.id === asset.assignedEmployeeId)
     : null;
   const vendor = vendors.find((v) => v.id === asset.vendorId);
+  const financials = assetFinancials(asset);
+  const canViewItSpend = can('module:finance');
 
   return (
     <Box>
@@ -191,18 +202,72 @@ export function AssetDetailPage() {
         <Grid item xs={12} md={5}>
           <Card sx={{ mb: 2 }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Financial
-              </Typography>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                <Typography variant="h6">Financials</Typography>
+                {canViewItSpend && (
+                  <Button
+                    size="small"
+                    endIcon={<OpenInNewIcon />}
+                    onClick={() => navigate(itSpendUrl('valuation'))}
+                    sx={{ textTransform: 'none', fontWeight: 600 }}
+                  >
+                    IT Spend
+                  </Button>
+                )}
+              </Stack>
               <Divider sx={{ mb: 1 }} />
               <DetailRow label="Purchase Date" value={formatDate(asset.purchaseDate)} />
               <DetailRow label="Purchase Cost" value={formatCurrency(asset.purchaseCost)} />
               <DetailRow label="Current Value" value={formatCurrency(asset.currentValue)} />
-              <DetailRow label="Repair Charges" value={formatCurrency(asset.repairCost ?? 0)} />
-              <DetailRow
-                label="Depreciation"
-                value={asset.purchaseCost > 0 ? `${Math.round((1 - asset.currentValue / asset.purchaseCost) * 100)}%` : '—'}
-              />
+              <DetailRow label="Repair Charges" value={formatCurrency(financials.repairCost)} />
+              <DetailRow label="Total Cost (TCO)" value={formatCurrency(financials.totalCostOfOwnership)} />
+              <Box sx={{ py: 1.5 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={0.75}>
+                  <Typography variant="body2" color="text.secondary">
+                    Depreciation
+                  </Typography>
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <TrendingDownIcon sx={{ fontSize: 16, color: 'warning.main' }} />
+                    <Typography variant="body2" fontWeight={600}>
+                      {financials.depreciationPct}%
+                    </Typography>
+                  </Stack>
+                </Stack>
+                <LinearProgress
+                  variant="determinate"
+                  value={financials.depreciationPct}
+                  color="warning"
+                  sx={{ height: 6, borderRadius: 3 }}
+                />
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {formatCurrency(financials.depreciation)} written down from purchase cost
+                </Typography>
+              </Box>
+              {canViewItSpend && (
+                <Box
+                  sx={{
+                    mt: 1,
+                    p: 1.5,
+                    borderRadius: 2,
+                    bgcolor: alpha(theme.palette.primary.main, 0.06),
+                    border: '1px solid',
+                    borderColor: alpha(theme.palette.primary.main, 0.15),
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary">
+                    Portfolio reports, budgets, and expense approvals live in the{' '}
+                    <Link
+                      component={RouterLink}
+                      to={itSpendUrl()}
+                      underline="hover"
+                      fontWeight={600}
+                    >
+                      IT Spend module
+                    </Link>
+                    .
+                  </Typography>
+                </Box>
+              )}
             </CardContent>
           </Card>
 

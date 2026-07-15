@@ -16,15 +16,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { createUser } from '../../store/usersSlice';
 import { PageHeader } from '../../components/PageHeader';
+import { assignableRolesFor, ROLE_LABELS } from '../../constants/roles';
 import type { User, UserRole } from '../../types';
 
-const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
-  { value: 'platform_admin', label: 'Platform Admin (Assetly)' },
-  { value: 'tenant_admin', label: 'Tenant Admin' },
-  { value: 'it_admin', label: 'IT Admin' },
-  { value: 'viewer', label: 'Viewer' },
-  { value: 'employee', label: 'Employee' },
-];
+const ROLE_OPTIONS = assignableRolesFor('platform_admin').map((value) => ({
+  value,
+  label: ROLE_LABELS[value],
+}));
 
 export function CreateUserPage() {
   const dispatch = useAppDispatch();

@@ -1,4 +1,5 @@
 
+import { activeEmployeeLoginEmail } from './employee-auth';
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -68,6 +69,8 @@ export interface DbEmployee {
   first_name: string;
   last_name: string;
   email: string;
+  joining_email?: string | null;
+  official_email?: string | null;
   job_title: string | null;
   department_id: string | null;
   status: string;
@@ -204,13 +207,21 @@ export function mapUser(row: DbUser) {
   };
 }
 
+import { activeEmployeeLoginEmail } from './employee-auth';
+
 export function mapEmployee(row: DbEmployee) {
+  const joiningEmail = (row.joining_email ?? row.email ?? '').trim();
+  const officialEmail = row.official_email?.trim() || undefined;
+  const loginEmail = activeEmployeeLoginEmail(row);
+
   return {
     id: row.id,
     employeeNumber: row.employee_number ?? '',
     firstName: row.first_name,
     lastName: row.last_name,
-    email: row.email,
+    email: loginEmail,
+    joiningEmail,
+    officialEmail,
     jobTitle: row.job_title ?? '',
     departmentId: row.department_id ?? '',
     status: row.status,

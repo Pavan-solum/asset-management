@@ -39,6 +39,13 @@ export function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Unknown routes: login when signed out, portal home when signed in. */
+export function AuthRedirect() {
+  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const role = useAppSelector((s) => s.auth.user?.role);
+  return <Navigate to={isAuthenticated ? getHomeRouteForRole(role) : '/login'} replace />;
+}
+
 export function AdminRoute({ children }: { children: React.ReactNode }) {
   const role = useAppSelector((s) => s.auth.user?.role);
   if (isEmployeeRole(role)) return <Navigate to="/portal" replace />;

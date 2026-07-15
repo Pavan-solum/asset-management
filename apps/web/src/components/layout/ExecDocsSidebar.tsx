@@ -43,7 +43,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'Operations',
     items: [
-      { to: '/exec-docs/finance', label: 'Finance', icon: <AccountBalanceWalletOutlinedIcon fontSize="small" /> },
+      { to: '/exec-docs/finance', label: 'IT Finance', icon: <AccountBalanceWalletOutlinedIcon fontSize="small" /> },
       { to: '/exec-docs/meetings', label: 'Meetings', icon: <CalendarMonthOutlinedIcon fontSize="small" /> },
       { to: '/exec-docs/compliance', label: 'Compliance', icon: <RuleFolderOutlinedIcon fontSize="small" /> },
     ],
