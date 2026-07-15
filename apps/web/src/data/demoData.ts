@@ -99,6 +99,40 @@ export const DEMO_USERS: Record<string, { password: string; user: User }> = {
       employeeId: 'emp-001',
     },
   },
+  'itadmin2@solumtechnologies.com': {
+    password: 'Demo@123456',
+    user: {
+      id: 'user-itadmin-2',
+      tenantId: '11111111-1111-1111-1111-111111111111',
+      email: 'itadmin2@solumtechnologies.com',
+      firstName: 'Alex',
+      lastName: 'Thompson',
+      role: 'it_admin',
+    },
+  },
+  'hradmin2@solumtechnologies.com': {
+    password: 'Demo@123456',
+    user: {
+      id: 'user-hradmin-2',
+      tenantId: '11111111-1111-1111-1111-111111111111',
+      email: 'hradmin2@solumtechnologies.com',
+      firstName: 'Jordan',
+      lastName: 'Smith',
+      role: 'hr_admin',
+    },
+  },
+  'mike.johnson@solumtechnologies.com': {
+    password: 'Demo@123456',
+    user: {
+      id: 'user-employee-mike',
+      tenantId: '11111111-1111-1111-1111-111111111111',
+      email: 'mike.johnson@solumtechnologies.com',
+      firstName: 'Mike',
+      lastName: 'Johnson',
+      role: 'employee',
+      employeeId: 'emp-002',
+    },
+  },
 };
 
 export const DEMO_DEPARTMENTS: Department[] = [
@@ -120,16 +154,17 @@ export const DEMO_VENDORS: Vendor[] = [
 ];
 
 const employeeData: Omit<Employee, 'id' | 'tenantId'>[] = [
-  { employeeNumber: 'EMP-001', firstName: 'Sarah',    lastName: 'Chen',     email: 'sarah.chen@solumtechnologies.com',    jobTitle: 'Senior Software Engineer', departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2023-07-24' },
-  { employeeNumber: 'EMP-002', firstName: 'Mike',     lastName: 'Johnson',  email: 'mike.johnson@solumtechnologies.com',   jobTitle: 'DevOps Engineer',          departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2023-06-01' },
-  { employeeNumber: 'EMP-003', firstName: 'Emily',    lastName: 'Davis',    email: 'emily.davis@solumtechnologies.com',    jobTitle: 'HR Manager',               departmentId: '22222222-2222-2222-2222-222222222202', status: 'active', hireDate: '2022-03-10' },
-  { employeeNumber: 'EMP-004', firstName: 'James',    lastName: 'Wilson',   email: 'james.wilson@solumtechnologies.com',   jobTitle: 'Sales Director',           departmentId: '22222222-2222-2222-2222-222222222203', status: 'active', hireDate: '2021-08-20' },
-  { employeeNumber: 'EMP-005', firstName: 'Priya',    lastName: 'Patel',    email: 'priya.patel@solumtechnologies.com',    jobTitle: 'Financial Analyst',        departmentId: '22222222-2222-2222-2222-222222222204', status: 'active', hireDate: '2024-02-01' },
-  { employeeNumber: 'EMP-006', firstName: 'David',    lastName: 'Brown',    email: 'david.brown@solumtechnologies.com',    jobTitle: 'Backend Developer',        departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2023-11-15' },
-  { employeeNumber: 'EMP-007', firstName: 'Anna',     lastName: 'Martinez', email: 'anna.martinez@solumtechnologies.com',  jobTitle: 'Frontend Developer',       departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2024-04-01' },
-  { employeeNumber: 'EMP-008', firstName: 'Robert',   lastName: 'Taylor',   email: 'robert.taylor@solumtechnologies.com',  jobTitle: 'Account Executive',        departmentId: '22222222-2222-2222-2222-222222222203', status: 'active', hireDate: '2023-01-10' },
-  { employeeNumber: 'EMP-009', firstName: 'Jennifer', lastName: 'Lee',      email: 'jennifer.lee@solumtechnologies.com',   jobTitle: 'Operations Manager',       departmentId: '22222222-2222-2222-2222-222222222205', status: 'active', hireDate: '2022-07-01' },
-  { employeeNumber: 'EMP-010', firstName: 'Chris',    lastName: 'Anderson', email: 'chris.anderson@solumtechnologies.com', jobTitle: 'QA Engineer',              departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2024-06-15' },
+  { employeeNumber: 'EMP-001', firstName: 'Sarah',    lastName: 'Chen',     joiningEmail: 'sarah.chen@solumtechnologies.com',    email: 'sarah.chen@solumtechnologies.com',    jobTitle: 'Senior Software Engineer', departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2023-07-24' },
+  { employeeNumber: 'EMP-002', firstName: 'Mike',     lastName: 'Johnson',  joiningEmail: 'mike.johnson@solumtechnologies.com',   email: 'mike.johnson@solumtechnologies.com',   jobTitle: 'DevOps Engineer',          departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2023-06-01' },
+  { employeeNumber: 'EMP-003', firstName: 'Emily',    lastName: 'Davis',    joiningEmail: 'emily.davis@solumtechnologies.com',    email: 'emily.davis@solumtechnologies.com',    jobTitle: 'HR Manager',               departmentId: '22222222-2222-2222-2222-222222222202', status: 'active', hireDate: '2022-03-10' },
+  { employeeNumber: 'EMP-004', firstName: 'James',    lastName: 'Wilson',   joiningEmail: 'james.wilson@solumtechnologies.com',   email: 'james.wilson@solumtechnologies.com',   jobTitle: 'Sales Director',           departmentId: '22222222-2222-2222-2222-222222222203', status: 'active', hireDate: '2021-08-20' },
+  { employeeNumber: 'EMP-005', firstName: 'Priya',    lastName: 'Patel',    joiningEmail: 'priya.patel@solumtechnologies.com',    email: 'priya.patel@solumtechnologies.com',    jobTitle: 'Financial Analyst',        departmentId: '22222222-2222-2222-2222-222222222204', status: 'active', hireDate: '2024-02-01' },
+  { employeeNumber: 'EMP-006', firstName: 'David',    lastName: 'Brown',    joiningEmail: 'david.brown@solumtechnologies.com',    email: 'david.brown@solumtechnologies.com',    jobTitle: 'Backend Developer',        departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2023-11-15' },
+  { employeeNumber: 'EMP-007', firstName: 'Anna',     lastName: 'Martinez', joiningEmail: 'anna.martinez@solumtechnologies.com',  email: 'anna.martinez@solumtechnologies.com',  jobTitle: 'Frontend Developer',       departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2024-04-01' },
+  { employeeNumber: 'EMP-008', firstName: 'Robert',   lastName: 'Taylor',   joiningEmail: 'robert.taylor@solumtechnologies.com',  email: 'robert.taylor@solumtechnologies.com',  jobTitle: 'Account Executive',        departmentId: '22222222-2222-2222-2222-222222222203', status: 'active', hireDate: '2023-01-10' },
+  { employeeNumber: 'EMP-009', firstName: 'Jennifer', lastName: 'Lee',      joiningEmail: 'jennifer.lee@solumtechnologies.com',   email: 'jennifer.lee@solumtechnologies.com',   jobTitle: 'Operations Manager',       departmentId: '22222222-2222-2222-2222-222222222205', status: 'active', hireDate: '2022-07-01' },
+  { employeeNumber: 'EMP-010', firstName: 'Chris',    lastName: 'Anderson', joiningEmail: 'chris.anderson@solumtechnologies.com', email: 'chris.anderson@solumtechnologies.com', jobTitle: 'QA Engineer',              departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2024-06-15' },
+  { employeeNumber: 'EMP-011', firstName: 'Tom',      lastName: 'Reed',     joiningEmail: 'tom.reed.joining@example.com',           email: 'tom.reed.joining@example.com',           jobTitle: 'Junior Developer',         departmentId: '22222222-2222-2222-2222-222222222201', status: 'active', hireDate: '2026-07-01' },
 ];
 
 export const DEMO_EMPLOYEES: Employee[] = employeeData.map((e, i) => ({

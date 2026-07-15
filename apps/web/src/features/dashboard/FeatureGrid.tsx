@@ -25,11 +25,11 @@ const features = [
     path: '/lifecycle',
   },
   {
-    title: 'Finance',
-    description: 'Cost & value',
+    title: 'IT Spend',
+    description: 'Valuation & budgets',
     icon: <AttachMoneyIcon fontSize="small" />,
     color: '#FFB300', // Amber/Gold color
-    path: '/finance',
+    path: '/it-spend',
   },
   {
     title: 'Software SAM',

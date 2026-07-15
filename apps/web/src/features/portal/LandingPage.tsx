@@ -15,18 +15,17 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
-  Button,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import PeopleIcon from '@mui/icons-material/People';
 import InventoryIcon from '@mui/icons-material/Inventory2';
 import FolderIcon from '@mui/icons-material/Folder';
 import LogoutIcon from '@mui/icons-material/Logout';
-import LoginIcon from '@mui/icons-material/Login';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DevicesIcon from '@mui/icons-material/Devices';
-import { useAppDispatch, useAuthUser, usePermissions } from '../../hooks/storeHooks';
+import { useAppDispatch, useAuthUser, usePermissions, useTenant } from '../../hooks/storeHooks';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { logout } from '../../store/authSlice';
 import { ThemeModeToggle } from '../../components/ThemeModeToggle';
@@ -37,23 +36,14 @@ interface ModuleCardProps {
   description: string;
   icon: React.ReactNode;
   path: string;
-  locked?: boolean;
 }
 
-function ModuleCard({ title, description, icon, path, locked }: ModuleCardProps) {
+function ModuleCard({ title, description, icon, path }: ModuleCardProps) {
   const navigate = useNavigate();
-
-  const handleClick = () => {
-    if (locked) {
-      navigate('/login', { state: { from: path } });
-    } else {
-      navigate(path);
-    }
-  };
 
   return (
     <Card
-      onClick={handleClick}
+      onClick={() => navigate(path)}
       elevation={0}
       sx={{
         height: '100%',
@@ -88,6 +78,7 @@ function ModuleCard({ title, description, icon, path, locked }: ModuleCardProps)
 
 export function LandingPage() {
   const user = useAuthUser();
+  const tenant = useTenant();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -106,6 +97,17 @@ export function LandingPage() {
   };
 
   const allModules = [
+    ...(user?.role === 'platform_admin'
+      ? [
+          {
+            title: 'Assetly System Admin',
+            description: 'Manage all organizations, global users, and platform configuration.',
+            icon: <AdminPanelSettingsIcon sx={{ fontSize: 48 }} />,
+            path: '/system-admin/organizations',
+            permission: undefined,
+          },
+        ]
+      : []),
     ...(user?.role === 'employee'
       ? [
           {
@@ -139,21 +141,15 @@ export function LandingPage() {
       permission: 'module:docs' as const,
     },
     {
-      title: 'Finance & Expenses',
-      description: 'Automate expense tracking, approvals, and payroll records.',
+      title: 'IT Spend',
+      description: 'Asset valuation, CapEx budgets, and expense claim approvals.',
       icon: <AccountBalanceIcon sx={{ fontSize: 48 }} />,
-      path: '/finance',
+      path: '/it-spend',
       permission: 'module:finance' as const,
     },
   ];
 
-  // When not logged in: show all default (non-employee) modules as locked.
-  // When logged in: show only the modules the user has permission to access.
-  const modules = !user
-    ? allModules.filter(m => m.permission !== undefined).map(m => ({ ...m, locked: true }))
-    : allModules
-        .filter(m => !m.permission || can(m.permission))
-        .map(m => ({ ...m, locked: false }));
+  const modules = allModules.filter((m) => !m.permission || can(m.permission));
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -187,89 +183,76 @@ export function LandingPage() {
           
           <ThemeModeToggle />
 
-          {user ? (
-            <>
-              <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ ml: 1.5 }}>
-                <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', fontSize: '0.8rem' }}>
-                  {initials}
-                </Avatar>
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={() => setAnchorEl(null)}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                slotProps={{
-                  paper: {
-                    sx: { minWidth: 200, mt: 1, borderRadius: 2 },
-                  },
-                }}
-              >
-                <Box sx={{ px: 2, py: 1 }}>
-                  <Typography variant="body2" fontWeight={600}>
-                    {displayName}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {user.email}
-                  </Typography>
-                </Box>
-                <Divider />
-                {user.role === 'employee' ? (
-                  <MenuItem onClick={() => { setAnchorEl(null); navigate('/portal'); }}>
-                    <ListItemIcon>
-                      <DevicesIcon fontSize="small" />
-                    </ListItemIcon>
-                    Employee Portal
-                  </MenuItem>
-                ) : (
-                  <MenuItem onClick={() => { setAnchorEl(null); navigate('/dashboard'); }}>
-                    <ListItemIcon>
-                      <DashboardIcon fontSize="small" />
-                    </ListItemIcon>
-                    Admin Dashboard
-                  </MenuItem>
-                )}
-                <MenuItem onClick={handleLogout}>
-                  <ListItemIcon>
-                    <LogoutIcon fontSize="small" />
-                  </ListItemIcon>
-                  Sign out
-                </MenuItem>
-              </Menu>
-            </>
-          ) : (
-            <Button
-              variant="outlined"
-              size="small"
-              color="primary"
-              startIcon={<LoginIcon />}
-              onClick={() => navigate('/login')}
-              sx={{ ml: 1.5, borderRadius: 2 }}
-            >
-              Sign In
-            </Button>
-          )}
+          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ ml: 1.5 }}>
+            <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', fontSize: '0.8rem' }}>
+              {initials}
+            </Avatar>
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={() => setAnchorEl(null)}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            slotProps={{
+              paper: {
+                sx: { minWidth: 200, mt: 1, borderRadius: 2 },
+              },
+            }}
+          >
+            <Box sx={{ px: 2, py: 1 }}>
+              <Typography variant="body2" fontWeight={600}>
+                {displayName}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {user?.email}
+              </Typography>
+            </Box>
+            <Divider />
+            {user?.role === 'employee' ? (
+              <MenuItem onClick={() => { setAnchorEl(null); navigate('/portal'); }}>
+                <ListItemIcon>
+                  <DevicesIcon fontSize="small" />
+                </ListItemIcon>
+                Employee Portal
+              </MenuItem>
+            ) : (
+              <MenuItem onClick={() => { setAnchorEl(null); navigate('/'); }}>
+                <ListItemIcon>
+                  <DashboardIcon fontSize="small" />
+                </ListItemIcon>
+                Module Portal
+              </MenuItem>
+            )}
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
+              Sign out
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 
       <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 2, md: 4 } }}>
-        <Box sx={{ mb: 6, textAlign: 'center', pt: 4 }}>
-          <Box 
-            component="img" 
-            src="/logo.png" 
-            alt="Asset Manager Logo" 
-            sx={{ 
-              height: 100, mb: 3, objectFit: 'contain', 
-              mixBlendMode: isDarkMode ? 'screen' : 'multiply',
-              filter: isDarkMode ? 'invert(1) hue-rotate(180deg)' : 'none'
-            }} 
-          />
-          <Typography variant="h3" fontWeight={800} gutterBottom sx={{ letterSpacing: '-0.02em', color: 'text.primary' }}>
-            Unified Corporate Portal
+        <Box sx={{ mb: 5, textAlign: 'center', pt: { xs: 3, md: 5 } }}>
+          <Typography
+            variant="h3"
+            fontWeight={800}
+            gutterBottom
+            sx={{ letterSpacing: '-0.02em', color: 'text.primary' }}
+          >
+            Welcome back, {displayName.split(' ')[0]}
           </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 800, mx: 'auto' }}>
-            {user ? `Welcome back, ${getUserDisplayName(user)}.` : 'Welcome.'} Select a module below to access your business operations.
+          {tenant?.name && (
+            <Typography variant="subtitle1" color="text.secondary" fontWeight={600} sx={{ mb: 1 }}>
+              {tenant.name}
+            </Typography>
+          )}
+          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: 'auto' }}>
+            {modules.length === 1
+              ? '1 module available — select it below to get started.'
+              : `${modules.length} modules available — select one below to get started.`}
           </Typography>
         </Box>
 
@@ -280,14 +263,6 @@ export function LandingPage() {
             </Grid>
           ))}
         </Grid>
-
-        {!user && (
-          <Box sx={{ mt: 4, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Sign in to access your organisation's modules.
-            </Typography>
-          </Box>
-        )}
       </Box>
     </Box>
   );

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
   Box,
-  Button,
   Card,
   CardContent,
   TextField,
@@ -9,8 +8,6 @@ import {
   Alert,
   InputAdornment,
   IconButton,
-  Divider,
-  Chip,
   Stack,
   alpha,
   useMediaQuery,
@@ -25,10 +22,9 @@ import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { clearError, setSession, setLoginError, setPendingSession } from '../../store/authSlice';
-import { APP_NAME, APP_TAGLINE, COMPANY_EMAIL_DOMAIN, COMPANY_NAME } from '../../constants/brand';
+import { APP_NAME, APP_TAGLINE, COMPANY_NAME } from '../../constants/brand';
 import { ThemeModeToggle } from '../../components/ThemeModeToggle';
 import { LoadingButton } from '../../components/Loader';
-import { withMinDelay } from '../../hooks/useAsyncAction';
 import { isApiEnabled } from '../../services/api/config';
 import { apiLogin, changePassword } from '../../services/api/auth';
 import { ApiError, checkApiHealth, loginErrorMessage } from '../../services/api/client';
@@ -332,13 +328,14 @@ export function LoginPage() {
                 />
                 <TextField
                   fullWidth
-                  label="Password (optional for new employees)"
+                  label="Password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   margin="normal"
                   autoComplete="current-password"
                   disabled={loading}
+                  helperText="Optional for first-time employee sign-in"
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">

@@ -5,7 +5,7 @@ import { ExecDocsLayout } from './components/layout/ExecDocsLayout';
 import { EmployeePortalLayout } from './components/layout/EmployeePortalLayout';
 import { DataBootstrap } from './components/DataBootstrap';
 import { GlobalLoadingBar } from './components/Loader';
-import { ProtectedRoute, PublicRoute, AdminRoute, EmployeeRoute, SystemAdminRoute, ModuleRoute } from './components/ProtectedRoute';
+import { ProtectedRoute, PublicRoute, AdminRoute, EmployeeRoute, SystemAdminRoute, ModuleRoute, AuthRedirect } from './components/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { HRPage } from './features/hr/HRPage';
@@ -25,6 +25,7 @@ import { DepartmentsPage } from './features/departments/DepartmentsPage';
 import { VendorsPage } from './features/vendors/VendorsPage';
 import { AuditPage } from './features/audit/AuditPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { TenantUsersPage } from './features/settings/TenantUsersPage';
 import { DevicesPage } from './features/devices/DevicesPage';
 import { NetworkDevicesPage } from './features/network/NetworkDevicesPage';
 import { NetworkDeviceDetailPage } from './features/network/NetworkDeviceDetailPage';
@@ -65,7 +66,14 @@ export default function App() {
           </PublicRoute>
         }
       />
-      <Route path="/" element={<LandingPage />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <LandingPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/lookup/:id" element={<AssetLookupPage />} />
       <Route
         element={
@@ -109,7 +117,7 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="dashboard" element={<ModuleRoute module="module:assets"><DashboardPage /></ModuleRoute>} />
         
         {/* Assets & IT Module */}
         <Route path="assets" element={<ModuleRoute module="module:assets"><AssetsPage /></ModuleRoute>} />
@@ -124,18 +132,20 @@ export default function App() {
         <Route path="maintenance" element={<ModuleRoute module="module:assets"><MaintenancePage /></ModuleRoute>} />
         <Route path="mobile" element={<ModuleRoute module="module:assets"><MobilePage /></ModuleRoute>} />
 
-        {/* Finance Module */}
-        <Route path="finance" element={<ModuleRoute module="module:finance"><FinancePage /></ModuleRoute>} />
+        {/* IT Spend module (asset financials, budgets, expense approvals) */}
+        <Route path="it-spend" element={<ModuleRoute module="module:finance"><FinancePage /></ModuleRoute>} />
+        <Route path="finance" element={<Navigate to="/it-spend" replace />} />
 
         {/* Shared / General admin routes (visible to multiple admins depending on permissions) */}
-        <Route path="employees" element={<EmployeesPage />} />
-        <Route path="employees/:id" element={<EmployeeDetailPage />} />
-        <Route path="departments" element={<DepartmentsPage />} />
-        <Route path="vendors" element={<VendorsPage />} />
-        <Route path="requests" element={<RequestsPage />} />
-        <Route path="audit" element={<AuditPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="employees" element={<ModuleRoute module="employee:read"><EmployeesPage /></ModuleRoute>} />
+        <Route path="employees/:id" element={<ModuleRoute module="employee:read"><EmployeeDetailPage /></ModuleRoute>} />
+        <Route path="departments" element={<ModuleRoute module="employee:read"><DepartmentsPage /></ModuleRoute>} />
+        <Route path="vendors" element={<ModuleRoute module="vendor:write"><VendorsPage /></ModuleRoute>} />
+        <Route path="requests" element={<ModuleRoute module="request:review"><RequestsPage /></ModuleRoute>} />
+        <Route path="audit" element={<ModuleRoute module="audit:read"><AuditPage /></ModuleRoute>} />
+        <Route path="settings" element={<ModuleRoute module="settings:write"><SettingsPage /></ModuleRoute>} />
+        <Route path="settings/users" element={<ModuleRoute module="user:manage"><TenantUsersPage /></ModuleRoute>} />
+        <Route path="analytics" element={<ModuleRoute module="module:assets"><AnalyticsPage /></ModuleRoute>} />
       </Route>
 
       <Route
@@ -176,7 +186,7 @@ export default function App() {
         <Route path="compliance" element={<CompliancePage />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<AuthRedirect />} />
     </Routes>
     </>
   );

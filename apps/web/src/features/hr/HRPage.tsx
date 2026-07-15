@@ -95,7 +95,7 @@ export function HRPage() {
     { label: 'Onboarding', desc: `${stats.activeOnboardings} active onboardings`, icon: <RocketLaunchIcon />, color: '#4facfe', to: '/hr/onboarding', badge: stats.activeOnboardings },
     { label: 'Performance', desc: `${stats.pendingReviews} reviews in progress`, icon: <EmojiEventsIcon />, color: '#43e97b', to: '/hr/performance', badge: stats.pendingReviews },
     { label: 'Company Policies', desc: `${stats.policiesNeedingAck} active policies`, icon: <GavelIcon />, color: '#fa709a', to: '/hr/policies', badge: 0 },
-    { label: 'Expense Claims', desc: `${stats.pendingExpenses} awaiting approval`, icon: <AttachMoneyIcon />, color: '#f7971e', to: '/finance', badge: stats.pendingExpenses },
+    { label: 'Expense Claims', desc: `${stats.pendingExpenses} awaiting approval`, icon: <AttachMoneyIcon />, color: '#f7971e', to: '/it-spend?tab=expenses', badge: stats.pendingExpenses },
     { label: 'Employees', desc: `${stats.activeEmp} active employees`, icon: <PeopleIcon />, color: '#a18cd1', to: '/hr/employees', badge: 0 },
     { label: 'IT Assets', desc: `${stats.assignedAssets} assigned assets`, icon: <LaptopIcon />, color: '#0ba360', to: '/assets', badge: 0 },
   ];

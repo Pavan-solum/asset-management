@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -38,13 +38,14 @@ import ReceiptIcon from '@mui/icons-material/Receipt';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import PaidIcon from '@mui/icons-material/Paid';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../hooks/storeHooks';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { formatCurrency, formatDate, getEmployeeName } from '../../utils/format';
 import { CATEGORY_LABELS } from '../../data/demoData';
 import { updateExpenseStatus } from '../../store/expensesSlice';
+import { IT_SPEND_TABS, type ItSpendTab } from '../../constants/routes';
 import {
   BarChart,
   Bar,
@@ -67,6 +68,7 @@ const DEFAULT_BUDGET = 50000;
 
 export function FinancePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useAppDispatch();
   const assets = useAppSelector((s) => s.assets.items);
   const employees = useAppSelector((s) => s.employees.items);
@@ -77,6 +79,19 @@ export function FinancePage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [expenseFilter, setExpenseFilter] = useState<string>('all');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab') as ItSpendTab | null;
+    if (tab && tab in IT_SPEND_TABS) {
+      setActiveTab(IT_SPEND_TABS[tab]);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (_: React.SyntheticEvent, val: number) => {
+    setActiveTab(val);
+    const tabKey = (Object.entries(IT_SPEND_TABS).find(([, idx]) => idx === val)?.[0] ?? 'valuation') as ItSpendTab;
+    setSearchParams({ tab: tabKey }, { replace: true });
+  };
 
   const employeeMap = useMemo(
     () => Object.fromEntries(employees.map((e) => [e.id, e])),
@@ -269,8 +284,12 @@ export function FinancePage() {
   return (
     <Box>
       <PageHeader
-        title="Finance"
-        subtitle="Manage asset costs, value, depreciation, and expenditures"
+        title="IT Spend"
+        subtitle="Asset valuation, CapEx budgets, and expense approvals"
+        breadcrumbs={[
+          { label: 'Dashboard', to: '/dashboard' },
+          { label: 'IT Spend' },
+        ]}
       />
 
       {assets.length === 0 ? (
@@ -285,7 +304,7 @@ export function FinancePage() {
         <>
           <Tabs
             value={activeTab}
-            onChange={(_, val) => setActiveTab(val)}
+            onChange={handleTabChange}
             sx={{ mt: 2, borderBottom: 1, borderColor: 'divider' }}
           >
             <Tab label="Asset Valuation" icon={<AttachMoneyIcon fontSize="small" />} iconPosition="start" />

@@ -8,11 +8,12 @@ import {
   TextField,
   Grid,
   MenuItem,
+  Alert,
+  Typography,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { LoadingButton } from '../../components/Loader';
 import { reloadFromApi } from '../../components/DataBootstrap';
-import { isApiEnabled } from '../../services/api/config';
 import { createEmployee, updateEmployee as updateEmployeeApi } from '../../services/api/entities';
 import type { Employee, EmployeeStatus } from '../../types';
 
@@ -31,7 +32,8 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
     employeeNumber: '',
     firstName: '',
     lastName: '',
-    email: '',
+    joiningEmail: '',
+    officialEmail: '',
     jobTitle: '',
     departmentId: '',
     status: 'active' as EmployeeStatus,
@@ -44,7 +46,8 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
         employeeNumber: employee.employeeNumber,
         firstName: employee.firstName,
         lastName: employee.lastName,
-        email: employee.email,
+        joiningEmail: employee.joiningEmail || employee.email,
+        officialEmail: employee.officialEmail ?? '',
         jobTitle: employee.jobTitle,
         departmentId: employee.departmentId,
         status: employee.status,
@@ -55,7 +58,8 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
         employeeNumber: '',
         firstName: '',
         lastName: '',
-        email: '',
+        joiningEmail: '',
+        officialEmail: '',
         jobTitle: '',
         departmentId: departments[0]?.id ?? '',
         status: 'active',
@@ -65,14 +69,27 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
   }, [open, employee, departments]);
 
   const handleSave = async () => {
-    if (!user || loading || !form.firstName || !form.email) return;
+    if (!user || loading || !form.firstName || !form.joiningEmail) return;
     setLoading(true);
-    const userName = `${user.firstName} ${user.lastName}`;
     try {
       if (employee) {
-        await updateEmployeeApi(employee.id, form);
+        await updateEmployeeApi(employee.id, {
+          employeeNumber: form.employeeNumber,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          officialEmail: form.officialEmail.trim() || undefined,
+          jobTitle: form.jobTitle,
+          departmentId: form.departmentId,
+          status: form.status,
+          hireDate: form.hireDate,
+        });
       } else {
-        await createEmployee({ ...form, id: crypto.randomUUID() });
+        await createEmployee({
+          ...form,
+          joiningEmail: form.joiningEmail.trim().toLowerCase(),
+          email: form.joiningEmail.trim().toLowerCase(),
+          id: crypto.randomUUID(),
+        });
       }
       await reloadFromApi(dispatch);
       onClose();
@@ -80,6 +97,8 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
       setLoading(false);
     }
   };
+
+  const signInEmail = form.officialEmail.trim() || form.joiningEmail.trim();
 
   return (
     <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
@@ -92,9 +111,48 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
           <Grid item xs={12} sm={6}>
             <TextField fullWidth label="Last name" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
           </Grid>
+
           <Grid item xs={12}>
-            <TextField fullWidth label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <TextField
+              fullWidth
+              required
+              label="Joining email"
+              type="email"
+              value={form.joiningEmail}
+              onChange={(e) => setForm({ ...form, joiningEmail: e.target.value })}
+              disabled={Boolean(employee)}
+              helperText={
+                employee
+                  ? 'Email provided when the employee joined. Sign-in moves to official email once assigned.'
+                  : 'Use the email the employee provided when joining. They sign in with this until an official company email is assigned.'
+              }
+            />
           </Grid>
+
+          {employee && (
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Official company email"
+                type="email"
+                value={form.officialEmail}
+                onChange={(e) => setForm({ ...form, officialEmail: e.target.value })}
+                helperText="When saved, this becomes the only sign-in email. The joining email loses portal access."
+              />
+            </Grid>
+          )}
+
+          {employee && signInEmail && (
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ py: 0.5 }}>
+                <Typography variant="body2">
+                  Current sign-in email: <strong>{signInEmail}</strong>
+                  {!form.officialEmail.trim() && ' (joining email until official email is set)'}
+                </Typography>
+              </Alert>
+            </Grid>
+          )}
+
           <Grid item xs={12} sm={6}>
             <TextField fullWidth label="Employee #" value={form.employeeNumber} onChange={(e) => setForm({ ...form, employeeNumber: e.target.value })} />
           </Grid>
@@ -115,7 +173,12 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>Cancel</Button>
-        <LoadingButton variant="contained" onClick={() => void handleSave()} loading={loading} disabled={!form.firstName || !form.email}>
+        <LoadingButton
+          variant="contained"
+          onClick={() => void handleSave()}
+          loading={loading}
+          disabled={!form.firstName || !form.joiningEmail}
+        >
           Save
         </LoadingButton>
       </DialogActions>
