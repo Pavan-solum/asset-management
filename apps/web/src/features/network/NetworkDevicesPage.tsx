@@ -6,7 +6,6 @@ import {
   Grid,
   IconButton,
   InputAdornment,
-  LinearProgress,
   MenuItem,
   Stack,
   Table,
@@ -29,10 +28,8 @@ import SensorsOffIcon from '@mui/icons-material/SensorsOff';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
-import { NetworkStatusChip } from '../../components/NetworkStatusChip';
 import { generateDemoNetworkDevices, NETWORK_DEVICE_TYPE_LABELS } from '../../data/demoData';
 import { replaceAllNetworkDevices } from '../../store/networkDevicesSlice';
-import { formatDateTime } from '../../utils/format';
 import type { NetworkDeviceType } from '../../types';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
@@ -229,9 +226,6 @@ export function NetworkDevicesPage() {
                     <TableCell>Type</TableCell>
                     <TableCell>IP Address</TableCell>
                     <TableCell>Location</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Uptime</TableCell>
-                    <TableCell>Last Seen</TableCell>
                     <TableCell align="center">Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -265,29 +259,6 @@ export function NetworkDevicesPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>{device.location}</TableCell>
-                      <TableCell>
-                        <NetworkStatusChip status={device.status} />
-                      </TableCell>
-                      <TableCell sx={{ minWidth: 100 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <LinearProgress
-                            variant="determinate"
-                            value={device.uptimePercent}
-                            sx={{ flex: 1, height: 6, borderRadius: 1 }}
-                            color={
-                              device.uptimePercent >= 99
-                                ? 'success'
-                                : device.uptimePercent >= 90
-                                  ? 'warning'
-                                  : 'error'
-                            }
-                          />
-                          <Typography variant="caption">{device.uptimePercent}%</Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                        {formatDateTime(device.lastSeenAt)}
-                      </TableCell>
                       <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                         <Tooltip title="View details">
                           <IconButton
