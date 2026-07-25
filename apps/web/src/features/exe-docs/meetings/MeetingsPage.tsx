@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Grid, CircularProgress, Typography, alpha } from '@mui/material';
+import { Box, Button, Grid, alpha } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { PageHeader } from '../../../components/PageHeader';
 import { ExecutiveInsightsBanner } from './modal/ExecutiveInsightsBanner';
@@ -8,12 +8,12 @@ import { MeetingCard, MeetingData } from './modal/MeetingCard';
 import { NewMeetingModal } from './modal/NewMeetingModal';
 import { UpcomingMeetingDetailsModal } from './modal/UpcomingMeetingDetailsModal';
 import { ReadReportModal } from './modal/ReadReportModal';
+import { generateDemoMeetings } from '../../../data/execDocsDemo';
 
 
 export function MeetingsPage() {
   const navigate = useNavigate();
-  const [meetings, setMeetings] = useState<MeetingData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [meetings, setMeetings] = useState<MeetingData[]>(() => generateDemoMeetings());
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed'>('upcoming');
 
   // Dialog states
@@ -22,12 +22,6 @@ export function MeetingsPage() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<MeetingData | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<MeetingData | null>(null);
-  useEffect(() => {
-    // In a production environment, you would fetch meetings from your API
-    // e.g., apiFetch('/api/exec-docs/meetings')
-    setMeetings([]);
-    setLoading(false);
-  }, []);
 
   const handleOpenNewMeeting = () => {
     setEditingMeeting(null);
@@ -77,26 +71,6 @@ export function MeetingsPage() {
       setIsAgendaOpen(true);
     }
   };
-
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '400px',
-          gap: 2,
-        }}
-      >
-        <CircularProgress size={40} thickness={4} sx={{ color: '#1565C0' }} />
-        <Typography variant="body2" color="text.secondary" fontWeight={500}>
-          Loading meetings...
-        </Typography>
-      </Box>
-    );
-  }
 
   // Filter meetings based on tab selection
   const filteredMeetings = meetings.filter((meeting) => {

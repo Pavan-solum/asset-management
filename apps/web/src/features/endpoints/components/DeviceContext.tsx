@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Chip, CircularProgress, Button, Grid } from '@mui/material';
+import { Box, Typography, Paper, Chip, Button, Grid } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import { apiFetch } from '../../../services/api/client';
+import { PanelLoader } from '../../../components/Loader';
 import type { DeviceContextData } from '../../../types';
 
 export function DeviceContext({ endpointId }: { endpointId: string }) {
@@ -28,11 +29,8 @@ export function DeviceContext({ endpointId }: { endpointId: string }) {
 
   if (loading) {
     return (
-      <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <CircularProgress size={24} />
-          <Typography>Loading device context...</Typography>
-        </Box>
+      <Paper variant="outlined" sx={{ mb: 3, overflow: 'hidden' }}>
+        <PanelLoader message="Loading device context…" minHeight={120} />
       </Paper>
     );
   }

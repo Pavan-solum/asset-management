@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Chip, Switch, FormControlLabel,
-  CircularProgress, Button, Table, TableBody, TableCell,
+  Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Collapse
 } from '@mui/material';
 import { apiFetch } from '../../../services/api/client';
+import { PanelLoader } from '../../../components/Loader';
 import type { InstalledApp } from '../../../types';
 
 export function InstalledApps({ endpointId }: { endpointId: string }) {
@@ -33,11 +34,8 @@ export function InstalledApps({ endpointId }: { endpointId: string }) {
 
   if (loading) {
     return (
-      <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <CircularProgress size={24} />
-          <Typography>Loading apps...</Typography>
-        </Box>
+      <Paper variant="outlined" sx={{ mb: 3, overflow: 'hidden' }}>
+        <PanelLoader message="Loading installed apps…" minHeight={140} />
       </Paper>
     );
   }

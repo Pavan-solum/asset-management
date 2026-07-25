@@ -48,7 +48,12 @@ export function AssetLookupPage() {
   const asset = isApiEnabled() ? remoteAsset : reduxAsset;
 
   if (loading) {
-    return <PageLoader message="Loading asset details…" />;
+    return (
+      <PageLoader
+        message="Looking up this asset…"
+        hint="Fetching tag, warranty, and assignment details."
+      />
+    );
   }
 
   if (!asset || notFound) {

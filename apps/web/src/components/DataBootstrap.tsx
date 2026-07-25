@@ -30,7 +30,7 @@ function hydrateFromSync(dispatch: AppDispatch, data: Awaited<ReturnType<typeof 
 }
 
 export async function reloadFromApi(dispatch: AppDispatch): Promise<void> {
-  dispatch(startLoading('Refreshing data…'));
+      dispatch(startLoading('Refreshing your workspace…'));
   try {
     const data = await fetchSync();
     hydrateFromSync(dispatch, data);
