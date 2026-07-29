@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -13,7 +12,6 @@ import {
 } from '@mui/material';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import { Link as RouterLink } from 'react-router-dom';
-import StorageIcon from '@mui/icons-material/Storage';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
@@ -23,7 +21,6 @@ import { PageHeader } from '../../components/PageHeader';
 import { useThemeMode } from '../../context/ThemeModeContext';
 import { APP_NAME } from '../../constants/brand';
 import { isApiEnabled } from '../../services/api/config';
-import { checkApiHealth } from '../../services/api/client';
 import { BillingCard } from './BillingCard';
 import { ChangePasswordCard } from './ChangePasswordCard';
 import {
@@ -41,15 +38,6 @@ export function SettingsPage() {
   const canViewBilling = isApiEnabled() && (can('settings:write') || role === 'platform_admin');
   const { mode, toggleMode } = useThemeMode();
   const isDark = mode === 'dark';
-  const [dbConnected, setDbConnected] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (!isApiEnabled()) {
-      setDbConnected(null);
-      return;
-    }
-    checkApiHealth().then((health) => setDbConnected(health.ok));
-  }, []);
 
   return (
     <Box>
@@ -153,8 +141,8 @@ export function SettingsPage() {
         )}
 
         <SettingsSection
-          title="Preferences & system"
-          description="Appearance and backend connectivity"
+          title="Preferences"
+          description="Appearance and display options"
         />
 
         <SettingsCardGridItem>
@@ -198,48 +186,6 @@ export function SettingsPage() {
                   Language, date format, and display density options will appear here in a future update.
                 </Typography>
               </Box>
-            </Box>
-          </SettingsCard>
-        </SettingsCardGridItem>
-
-        <SettingsCardGridItem>
-          <SettingsCard
-            title="Backend"
-            subtitle="API and database status"
-            icon={<StorageIcon fontSize="small" />}
-          >
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <Box>
-                <SettingRow
-                  label="API mode"
-                  value={
-                    <Chip
-                      label={isApiEnabled() ? 'Postgres (enabled)' : 'Local demo (in-memory)'}
-                      color={isApiEnabled() ? 'success' : 'default'}
-                      size="small"
-                    />
-                  }
-                />
-                {isApiEnabled() && (
-                  <SettingRow
-                    label="Database"
-                    value={
-                      dbConnected === null ? (
-                        'Checking…'
-                      ) : (
-                        <Chip
-                          label={dbConnected ? 'Connected' : 'Disconnected'}
-                          color={dbConnected ? 'success' : 'error'}
-                          size="small"
-                        />
-                      )
-                    }
-                  />
-                )}
-              </Box>
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 3 }}>
-                See docs/12-backend-setup.md for Neon or Supabase setup.
-              </Typography>
             </Box>
           </SettingsCard>
         </SettingsCardGridItem>

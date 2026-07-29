@@ -13,7 +13,12 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   if (isApiEnabled() && !bootstrapReady && !isEmployeeRole(role)) {
-    return <PageLoader message="Loading your workspace…" />;
+    return (
+      <PageLoader
+        message="Loading your workspace…"
+        hint="Syncing assets, people, and recent activity for your organization."
+      />
+    );
   }
   return <>{children}</>;
 }

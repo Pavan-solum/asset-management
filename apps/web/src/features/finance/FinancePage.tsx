@@ -104,8 +104,6 @@ export function FinancePage() {
   }, [assets, page, rowsPerPage]);
 
   const totalPurchaseCost = useMemo(() => assets.reduce((sum, a) => sum + a.purchaseCost, 0), [assets]);
-  const totalCurrentValue = useMemo(() => assets.reduce((sum, a) => sum + a.currentValue, 0), [assets]);
-  const totalDepreciation = totalPurchaseCost - totalCurrentValue;
 
   // Annual Budget & Expenditure Tab Calculations
   const yearlyData = useMemo(() => {
@@ -320,14 +318,6 @@ export function FinancePage() {
                   <Typography variant="body2" color="text.secondary">Total Purchase Cost</Typography>
                   <Typography variant="h5" fontWeight={700}>{formatCurrency(totalPurchaseCost)}</Typography>
                 </Card>
-                <Card sx={{ p: 2, flex: 1, borderLeft: '4px solid #2E7D32' }}>
-                  <Typography variant="body2" color="text.secondary">Current Book Value</Typography>
-                  <Typography variant="h5" fontWeight={700}>{formatCurrency(totalCurrentValue)}</Typography>
-                </Card>
-                <Card sx={{ p: 2, flex: 1, borderLeft: '4px solid #D32F2F' }}>
-                  <Typography variant="body2" color="text.secondary">Total Depreciation</Typography>
-                  <Typography variant="h5" fontWeight={700}>{formatCurrency(totalDepreciation)}</Typography>
-                </Card>
               </Box>
 
               <Card>
@@ -339,16 +329,12 @@ export function FinancePage() {
                         <TableCell>Category</TableCell>
                         <TableCell>Purchase Date</TableCell>
                         <TableCell align="right">Purchase Cost</TableCell>
-                        <TableCell align="right">Current Value</TableCell>
                         <TableCell align="right">Repair Cost</TableCell>
-                        <TableCell align="right">Depreciation</TableCell>
                         <TableCell align="center">Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {paginated.map((asset) => {
-                        const depreciation = asset.purchaseCost - asset.currentValue;
-                        return (
+                      {paginated.map((asset) => (
                           <TableRow
                             key={asset.id}
                             hover
@@ -366,11 +352,7 @@ export function FinancePage() {
                             <TableCell>{CATEGORY_LABELS[asset.category] || asset.category}</TableCell>
                             <TableCell>{formatDate(asset.purchaseDate) || '—'}</TableCell>
                             <TableCell align="right">{formatCurrency(asset.purchaseCost)}</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 500 }}>{formatCurrency(asset.currentValue)}</TableCell>
                             <TableCell align="right">{formatCurrency(asset.repairCost ?? 0)}</TableCell>
-                            <TableCell align="right" sx={{ color: 'error.main' }}>
-                              {depreciation > 0 ? `-${formatCurrency(depreciation)}` : '—'}
-                            </TableCell>
                             <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                               <Tooltip title="View asset">
                                 <IconButton size="small" onClick={() => navigate(`/assets/${asset.id}`)}>
@@ -379,8 +361,7 @@ export function FinancePage() {
                               </Tooltip>
                             </TableCell>
                           </TableRow>
-                        );
-                      })}
+                      ))}
                     </TableBody>
                   </Table>
                 </TableContainer>

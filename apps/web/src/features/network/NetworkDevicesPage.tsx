@@ -1,12 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Card,
   Chip,
+  Grid,
   IconButton,
   InputAdornment,
-  LinearProgress,
   MenuItem,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -17,16 +18,21 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useTheme,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import RouterIcon from '@mui/icons-material/Router';
+import SensorsIcon from '@mui/icons-material/Sensors';
+import SensorsOffIcon from '@mui/icons-material/SensorsOff';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { useNavigate } from 'react-router-dom';
-import { useAppSelector } from '../../hooks/storeHooks';
-import { NetworkStatusChip } from '../../components/NetworkStatusChip';
-import { NETWORK_DEVICE_TYPE_LABELS } from '../../data/demoData';
-import { formatDateTime } from '../../utils/format';
+import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
+import { generateDemoNetworkDevices, NETWORK_DEVICE_TYPE_LABELS } from '../../data/demoData';
+import { replaceAllNetworkDevices } from '../../store/networkDevicesSlice';
 import type { NetworkDeviceType } from '../../types';
+import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
 
 const typeIcons: Record<NetworkDeviceType, string> = {
   cctv: '📹',
@@ -38,7 +44,9 @@ const typeIcons: Record<NetworkDeviceType, string> = {
 };
 
 export function NetworkDevicesPage() {
+  const theme = useTheme();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const devices = useAppSelector((s) => s.networkDevices.items);
 
   const [search, setSearch] = useState('');
@@ -46,6 +54,13 @@ export function NetworkDevicesPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Re-seed if persisted store still has an empty list (pre-demo UI).
+  useEffect(() => {
+    if (devices.length === 0) {
+      dispatch(replaceAllNetworkDevices(generateDemoNetworkDevices()));
+    }
+  }, [devices.length, dispatch]);
 
   const filtered = useMemo(() => {
     return devices.filter((d) => {
@@ -73,19 +88,65 @@ export function NetworkDevicesPage() {
   }, [devices]);
 
   const onlineCount = devices.filter((d) => d.status === 'online').length;
+  const offlineCount = devices.filter((d) => d.status === 'offline').length;
+  const warningCount = devices.filter(
+    (d) => d.status === 'warning' || d.status === 'maintenance',
+  ).length;
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Network Devices
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            CCTV, WiFi routers, switches, gateways & firewalls · {onlineCount}/{devices.length} online
-          </Typography>
-        </Box>
-      </Box>
+      <PageHeader
+        title="Network Devices"
+        subtitle={`CCTV, WiFi, switches, gateways & firewalls · ${onlineCount}/${devices.length} online`}
+      />
+
+      <Grid container spacing={2} sx={{ mb: 2.5 }}>
+        <Grid item xs={12} sm={4}>
+          <Card variant="outlined" sx={{ borderLeft: `4px solid ${theme.palette.success.main}` }}>
+            <Box sx={{ p: 2 }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <SensorsIcon color="success" fontSize="small" />
+                <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                  Online
+                </Typography>
+              </Stack>
+              <Typography variant="h5" fontWeight={800} sx={{ mt: 0.5 }}>
+                {onlineCount}
+              </Typography>
+            </Box>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <Card variant="outlined" sx={{ borderLeft: `4px solid ${theme.palette.error.main}` }}>
+            <Box sx={{ p: 2 }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <SensorsOffIcon color="error" fontSize="small" />
+                <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                  Offline
+                </Typography>
+              </Stack>
+              <Typography variant="h5" fontWeight={800} sx={{ mt: 0.5 }}>
+                {offlineCount}
+              </Typography>
+            </Box>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <Card variant="outlined" sx={{ borderLeft: `4px solid ${theme.palette.warning.main}` }}>
+            <Box sx={{ p: 2 }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <WarningAmberIcon color="warning" fontSize="small" />
+                <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                  Warning / maintenance
+                </Typography>
+              </Stack>
+              <Typography variant="h5" fontWeight={800} sx={{ mt: 0.5 }}>
+                {warningCount}
+              </Typography>
+            </Box>
+          </Card>
+        </Grid>
+      </Grid>
 
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
         {(Object.keys(NETWORK_DEVICE_TYPE_LABELS) as NetworkDeviceType[]).map((type) => (
@@ -148,101 +209,94 @@ export function NetworkDevicesPage() {
       </Card>
 
       <Card>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Device Tag</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>IP Address</TableCell>
-                <TableCell>Location</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Uptime</TableCell>
-                <TableCell>Last Seen</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginated.map((device) => (
-                <TableRow
-                  key={device.id}
-                  hover
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/network-devices/${device.id}`)}
-                >
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <RouterIcon fontSize="small" color="action" />
-                      <Typography variant="body2" fontWeight={600}>
-                        {device.deviceTag}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>{device.name}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={NETWORK_DEVICE_TYPE_LABELS[device.type]}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" fontFamily="monospace">
-                      {device.ipAddress}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>{device.location}</TableCell>
-                  <TableCell>
-                    <NetworkStatusChip status={device.status} />
-                  </TableCell>
-                  <TableCell sx={{ minWidth: 100 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <LinearProgress
-                        variant="determinate"
-                        value={device.uptimePercent}
-                        sx={{ flex: 1, height: 6, borderRadius: 1 }}
-                        color={
-                          device.uptimePercent >= 99
-                            ? 'success'
-                            : device.uptimePercent >= 90
-                              ? 'warning'
-                              : 'error'
-                        }
-                      />
-                      <Typography variant="caption">{device.uptimePercent}%</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                    {formatDateTime(device.lastSeenAt)}
-                  </TableCell>
-                  <TableCell align="center" onClick={(e) => e.stopPropagation()}>
-                    <Tooltip title="View details">
-                      <IconButton
-                        size="small"
-                        onClick={() => navigate(`/network-devices/${device.id}`)}
-                      >
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          component="div"
-          count={filtered.length}
-          page={page}
-          onPageChange={(_, p) => setPage(p)}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
-            setPage(0);
-          }}
-          rowsPerPageOptions={[10, 25, 50]}
-        />
+        {devices.length === 0 ? (
+          <EmptyState
+            icon={<RouterIcon />}
+            title="No network devices"
+            description="Demo inventory will appear here once loaded."
+          />
+        ) : (
+          <>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Device Tag</TableCell>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Type</TableCell>
+                    <TableCell>IP Address</TableCell>
+                    <TableCell>Location</TableCell>
+                    <TableCell align="center">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginated.map((device) => (
+                    <TableRow
+                      key={device.id}
+                      hover
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/network-devices/${device.id}`)}
+                    >
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <RouterIcon fontSize="small" color="action" />
+                          <Typography variant="body2" fontWeight={600}>
+                            {device.deviceTag}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>{device.name}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={NETWORK_DEVICE_TYPE_LABELS[device.type]}
+                          size="small"
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontFamily="monospace">
+                          {device.ipAddress}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{device.location}</TableCell>
+                      <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+                        <Tooltip title="View details">
+                          <IconButton
+                            size="small"
+                            onClick={() => navigate(`/network-devices/${device.id}`)}
+                          >
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filtered.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9}>
+                        <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                          No devices match your filters.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={filtered.length}
+              page={page}
+              onPageChange={(_, p) => setPage(p)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[10, 25, 50]}
+            />
+          </>
+        )}
       </Card>
     </Box>
   );

@@ -57,7 +57,7 @@ export function LeavesPage() {
 
   useEffect(() => {
     if (isApiEnabled()) {
-      dispatch(startLoading('Loading HR data...'));
+      dispatch(startLoading('Loading leave requests…'));
       fetchLeaveRequests()
         .then(data => dispatch(setLeaveRequests(data)))
         .catch(console.error)

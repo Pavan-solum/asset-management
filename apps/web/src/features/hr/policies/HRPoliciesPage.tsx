@@ -1,26 +1,28 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   Box, Typography, Paper, Grid, Card, CardContent, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, MenuItem, Stack, Avatar, Chip,
-  IconButton, Button, Tabs, Tab, Divider, alpha, useTheme, LinearProgress,
-  List, ListItem, ListItemText, ListItemAvatar, ListItemSecondaryAction, Tooltip
+  IconButton, Button, Tabs, Tab, Divider, alpha, LinearProgress,
+  List, ListItem, ListItemText, ListItemAvatar, ListItemSecondaryAction, Tooltip,
+  Alert,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import GavelIcon from '@mui/icons-material/Gavel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
 import SecurityIcon from '@mui/icons-material/Security';
 import WorkIcon from '@mui/icons-material/Work';
-import MoneyIcon from '@mui/icons-material/Money';
+import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import WifiIcon from '@mui/icons-material/Wifi';
 import PeopleIcon from '@mui/icons-material/People';
 import PolicyIcon from '@mui/icons-material/Policy';
-import { useNavigate } from 'react-router-dom';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import { useAppDispatch, useAppSelector } from '../../../hooks/storeHooks';
-import { addCompanyPolicy, updateCompanyPolicy, archiveCompanyPolicy, acknowledgePolicy, CompanyPolicy, PolicyCategory } from '../../../store/hrSlice';
+import { addCompanyPolicy, archiveCompanyPolicy, acknowledgePolicy, CompanyPolicy, PolicyCategory } from '../../../store/hrSlice';
 import { PageHeader } from '../../../components/PageHeader';
+import { extractPolicyTextFromFile } from '../../../utils/policyFileExtract';
 
 const CATEGORY_META: Record<PolicyCategory, { label: string; color: string; icon: React.ReactNode }> = {
   general: { label: 'General', color: '#667eea', icon: <PolicyIcon /> },
@@ -28,29 +30,57 @@ const CATEGORY_META: Record<PolicyCategory, { label: string; color: string; icon
   safety: { label: 'Safety', color: '#4facfe', icon: <SecurityIcon /> },
   leave: { label: 'Leave', color: '#43e97b', icon: <WorkIcon /> },
   it: { label: 'IT', color: '#f7971e', icon: <WifiIcon /> },
-  finance: { label: 'Finance', color: '#fa709a', icon: <MoneyIcon /> },
+  finance: { label: 'Finance', color: '#fa709a', icon: <CurrencyRupeeIcon /> },
   remote_work: { label: 'Remote Work', color: '#a18cd1', icon: <WorkIcon /> },
 };
 
 const CATEGORY_OPTIONS: PolicyCategory[] = ['general', 'conduct', 'safety', 'leave', 'it', 'finance', 'remote_work'];
 
+const EMPTY_POLICY_FORM = {
+  title: '',
+  category: 'general' as PolicyCategory,
+  version: '1.0',
+  effectiveDate: new Date().toISOString().split('T')[0],
+  content: '',
+  requiresAcknowledgement: false,
+  status: 'active' as 'active' | 'archived',
+};
+
+function guessCategoryFromName(name: string): PolicyCategory {
+  const n = name.toLowerCase();
+  if (/(leave|pto|time[\s_-]?off|vacation|maternity|paternity|sick)/.test(n)) return 'leave';
+  if (/(remote|wfh|hybrid|flexible)/.test(n)) return 'remote_work';
+  if (/(security|it[\s_-]|acceptable[\s_-]?use|password)/.test(n)) return 'it';
+  if (/(expense|finance|reimburse|travel)/.test(n)) return 'finance';
+  if (/(safety|health|ehs)/.test(n)) return 'safety';
+  if (/(conduct|harassment|ethics|code)/.test(n)) return 'conduct';
+  return 'general';
+}
+
+function titleFromFileName(fileName: string): string {
+  return fileName
+    .replace(/\.(txt|md|markdown|docx|pdf)$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function HRPoliciesPage() {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
-  const theme = useTheme();
   const employees = useAppSelector(s => s.employees.items);
   const companyPolicies = useAppSelector(s => s.hr.companyPolicies);
   const currentUser = useAppSelector(s => s.auth.user);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState<PolicyCategory | 'all'>('all');
   const [selectedPolicy, setSelectedPolicy] = useState<CompanyPolicy | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [policyForm, setPolicyForm] = useState({
-    title: '', category: 'general' as PolicyCategory, version: '1.0',
-    effectiveDate: new Date().toISOString().split('T')[0],
-    content: '', requiresAcknowledgement: false, status: 'active' as 'active' | 'archived',
-  });
+  const [policyForm, setPolicyForm] = useState(EMPTY_POLICY_FORM);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const activePolicies = useMemo(() => companyPolicies.filter(p => p.status === 'active'), [companyPolicies]);
   const archivedPolicies = useMemo(() => companyPolicies.filter(p => p.status === 'archived'), [companyPolicies]);
@@ -61,18 +91,54 @@ export function HRPoliciesPage() {
     return pool.filter(p => p.category === categoryFilter);
   }, [activePolicies, archivedPolicies, categoryFilter, activeTab]);
 
-  const getEmpName = (id: string) => { const e = employees.find(x => x.id === id); return e ? `${e.firstName} ${e.lastName}` : 'Unknown'; };
-
   const getAckStats = (policy: CompanyPolicy) => {
     const acknowledged = policy.acknowledgements.length;
     const total = employees.filter(e => e.status === 'active').length;
     return { acknowledged, total, pct: total > 0 ? Math.round((acknowledged / total) * 100) : 0 };
   };
 
+  const resetAddDialog = () => {
+    setPolicyForm({ ...EMPTY_POLICY_FORM, effectiveDate: new Date().toISOString().split('T')[0] });
+    setUploadedFileName(null);
+    setUploadError(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const openAddDialog = () => {
+    resetAddDialog();
+    setAddDialogOpen(true);
+  };
+
+  const handleFileSelected = async (file: File | null) => {
+    setUploadError(null);
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const text = await extractPolicyTextFromFile(file);
+      setUploadedFileName(file.name);
+      setPolicyForm((prev) => ({
+        ...prev,
+        title: prev.title.trim() || titleFromFileName(file.name),
+        category: prev.title.trim() ? prev.category : guessCategoryFromName(file.name),
+        content: text,
+      }));
+      setAddDialogOpen(true);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Could not read that file.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleAddPolicy = () => {
+    if (!policyForm.title.trim() || !policyForm.content.trim()) {
+      setUploadError('Title and policy content are required.');
+      return;
+    }
     dispatch(addCompanyPolicy(policyForm));
     setAddDialogOpen(false);
-    setPolicyForm({ title: '', category: 'general', version: '1.0', effectiveDate: new Date().toISOString().split('T')[0], content: '', requiresAcknowledgement: false, status: 'active' });
+    resetAddDialog();
   };
 
   const handleAcknowledge = (policyId: string) => {
@@ -121,9 +187,35 @@ export function HRPoliciesPage() {
             <MenuItem value="all">All Categories</MenuItem>
             {CATEGORY_OPTIONS.map(c => <MenuItem key={c} value={c}>{CATEGORY_META[c].label}</MenuItem>)}
           </TextField>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddDialogOpen(true)}>New Policy</Button>
+          <Button
+            variant="outlined"
+            startIcon={<UploadFileIcon />}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            sx={{ textTransform: 'none', fontWeight: 600 }}
+          >
+            {uploading ? 'Reading file…' : 'Upload policy file'}
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openAddDialog}>New Policy</Button>
         </Stack>
       </Stack>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.md,.markdown,.docx,.pdf,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        hidden
+        onChange={(e) => {
+          handleFileSelected(e.target.files?.[0] ?? null);
+          e.target.value = '';
+        }}
+      />
+
+      {uploadError && !addDialogOpen && (
+        <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setUploadError(null)}>
+          {uploadError}
+        </Alert>
+      )}
 
       {/* Policy Cards Grid */}
       <Grid container spacing={2.5}>
@@ -257,10 +349,64 @@ export function HRPoliciesPage() {
       </Dialog>
 
       {/* Add Policy Dialog */}
-      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={addDialogOpen}
+        onClose={() => { setAddDialogOpen(false); resetAddDialog(); }}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle sx={{ fontWeight: 700 }}>Create Company Policy</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                border: '1px dashed',
+                borderColor: 'divider',
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.03),
+              }}
+            >
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }} justifyContent="space-between">
+                <Box>
+                  <Typography variant="body2" fontWeight={700}>Upload from file</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Supports .txt, .md, Word (.docx), and PDF — text is extracted for the chatbot.
+                  </Typography>
+                </Box>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<UploadFileIcon />}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  sx={{ textTransform: 'none', fontWeight: 600, flexShrink: 0 }}
+                >
+                  {uploading ? 'Reading…' : 'Choose file'}
+                </Button>
+              </Stack>
+              {uploadedFileName && (
+                <Chip
+                  icon={<InsertDriveFileIcon />}
+                  label={uploadedFileName}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ mt: 1.5 }}
+                  onDelete={() => {
+                    setUploadedFileName(null);
+                    setPolicyForm((p) => ({ ...p, content: '' }));
+                  }}
+                />
+              )}
+            </Box>
+
+            {uploadError && (
+              <Alert severity="warning" onClose={() => setUploadError(null)}>
+                {uploadError}
+              </Alert>
+            )}
+
             <TextField fullWidth label="Policy Title" value={policyForm.title} onChange={e => setPolicyForm(p => ({ ...p, title: e.target.value }))} required />
             <Stack direction="row" spacing={2}>
               <TextField select fullWidth label="Category" value={policyForm.category} onChange={e => setPolicyForm(p => ({ ...p, category: e.target.value as PolicyCategory }))}>
@@ -269,7 +415,15 @@ export function HRPoliciesPage() {
               <TextField fullWidth label="Version" value={policyForm.version} onChange={e => setPolicyForm(p => ({ ...p, version: e.target.value }))} />
             </Stack>
             <TextField fullWidth label="Effective Date" type="date" InputLabelProps={{ shrink: true }} value={policyForm.effectiveDate} onChange={e => setPolicyForm(p => ({ ...p, effectiveDate: e.target.value }))} />
-            <TextField fullWidth label="Policy Content" multiline rows={6} value={policyForm.content} onChange={e => setPolicyForm(p => ({ ...p, content: e.target.value }))} placeholder="Enter the full policy content..." />
+            <TextField
+              fullWidth
+              label="Policy Content"
+              multiline
+              rows={8}
+              value={policyForm.content}
+              onChange={e => setPolicyForm(p => ({ ...p, content: e.target.value }))}
+              placeholder="Paste policy text, or upload a .txt / .md / .docx / .pdf file above…"
+            />
             <TextField select fullWidth label="Requires Acknowledgement" value={policyForm.requiresAcknowledgement ? 'yes' : 'no'} onChange={e => setPolicyForm(p => ({ ...p, requiresAcknowledgement: e.target.value === 'yes' }))}>
               <MenuItem value="yes">Yes — employees must sign</MenuItem>
               <MenuItem value="no">No — informational only</MenuItem>
@@ -277,8 +431,14 @@ export function HRPoliciesPage() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={() => setAddDialogOpen(false)} color="inherit">Cancel</Button>
-          <Button onClick={handleAddPolicy} variant="contained">Publish Policy</Button>
+          <Button onClick={() => { setAddDialogOpen(false); resetAddDialog(); }} color="inherit">Cancel</Button>
+          <Button
+            onClick={handleAddPolicy}
+            variant="contained"
+            disabled={!policyForm.title.trim() || !policyForm.content.trim()}
+          >
+            Publish Policy
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
