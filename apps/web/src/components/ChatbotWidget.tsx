@@ -25,9 +25,10 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import LaptopMacIcon from '@mui/icons-material/LaptopMac';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import { useLocation } from 'react-router-dom';
-import { useAuthUser } from '../hooks/storeHooks';
+import { useAuthUser, useAppSelector } from '../hooks/storeHooks';
 import { apiFetch } from '../services/api/client';
 import { isApiEnabled } from '../services/api/config';
+import { mockHrAnswer } from '../utils/hrPolicyChat';
 import {
   REQUEST_STATUS_COLORS,
   REQUEST_STATUS_LABELS,
@@ -45,6 +46,8 @@ export function ChatbotWidget() {
   const theme = useTheme();
   const user = useAuthUser();
   const location = useLocation();
+  const companyPolicies = useAppSelector((s) => s.hr.companyPolicies);
+  const leavePolicies = useAppSelector((s) => s.hr.policies);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -100,18 +103,48 @@ export function ChatbotWidget() {
   if (!user) return null;
 
   const isEmployee = user.role === 'employee';
+  const isHrArea = location.pathname.startsWith('/hr');
 
-  const suggestionChips = isEmployee
-    ? [
-        { label: '🔍 Track my requests', text: 'Show my active requests' },
-        { label: '💻 Show my assets', text: 'What assets are assigned to me?' },
-        { label: '🗺️ Where am I?', text: 'Where am I right now?' },
-      ]
-    : [
-        { label: '📊 All device requests', text: 'Show all device requests' },
-        { label: '🔍 Search laptop inventory', text: 'Search laptop inventory' },
-        { label: '🗺️ Where am I?', text: 'Where am I right now?' },
-      ];
+  const hrSuggestionChips = [
+    { label: '🏖️ Sick leave rules', text: 'What are the sick leave rules and do I need a medical certificate?' },
+    { label: '🏠 WFH policy', text: 'How many WFH days am I allowed under the remote work policy?' },
+    { label: '📋 Leave allowances', text: 'List leave types and how many days I get for each' },
+  ];
+
+  const suggestionChips = isHrArea
+    ? hrSuggestionChips
+    : isEmployee
+      ? [
+          { label: '🔍 Track my requests', text: 'Show my active requests' },
+          { label: '💻 Show my assets', text: 'What assets are assigned to me?' },
+          { label: '📄 Ask HR policy', text: 'What does the leave policy say about annual leave?' },
+        ]
+      : [
+          { label: '📊 All device requests', text: 'Show all device requests' },
+          { label: '🔍 Search laptop inventory', text: 'Search laptop inventory' },
+          { label: '📄 Ask HR policy', text: 'Summarize the leave and time-off policy' },
+        ];
+
+  const portalHrPayload = {
+    hrPolicies: companyPolicies
+      .filter((p) => p.status === 'active')
+      .map((p) => ({
+        id: p.id,
+        title: p.title,
+        category: p.category,
+        version: p.version,
+        effectiveDate: p.effectiveDate,
+        content: p.content,
+        status: p.status,
+      })),
+    leavePolicies: leavePolicies.map((p) => ({
+      id: p.id,
+      name: p.name,
+      code: p.code,
+      maxDays: p.maxDays,
+      description: p.description,
+    })),
+  };
 
   const handleSend = async (textToSend: string) => {
     if (!textToSend.trim()) return;
@@ -140,13 +173,16 @@ export function ChatbotWidget() {
           body: JSON.stringify({
             message: textToSend,
             history: historyPayload,
-            currentPath: location.pathname, // 3. Context Awareness: Send active path
+            currentPath: location.pathname,
+            ...portalHrPayload,
           }),
         });
         responseText = response.text;
       } else {
-        await new Promise((res) => setTimeout(res, 1200));
-        responseText = `API is disabled. Enable VITE_USE_API=true to query live data! Current path is ${location.pathname}.`;
+        await new Promise((res) => setTimeout(res, 400));
+        responseText =
+          mockHrAnswer(textToSend, portalHrPayload.hrPolicies, portalHrPayload.leavePolicies) ||
+          `I'm running in local demo mode. Ask about HR policies or leave (e.g. sick leave, WFH), or enable \`VITE_USE_API=true\` with a free \`GEMINI_API_KEY\` for full AI. Current path: ${location.pathname}.`;
       }
 
       setMessages((prev) => [
@@ -592,7 +628,13 @@ export function ChatbotWidget() {
             }}
           >
             <InputBase
-              placeholder={isListening ? 'Listening… Speak now' : 'Ask a question or request device…'}
+              placeholder={
+                isListening
+                  ? 'Listening… Speak now'
+                  : isHrArea
+                    ? 'Ask about leave, WFH, or HR policies…'
+                    : 'Ask a question, HR policy, or device request…'
+              }
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
