@@ -12,8 +12,14 @@ import {
 
 export const config = { runtime: 'edge' };
 
-/** Free-tier Flash model (override with GEMINI_MODEL). */
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+/** Free-tier friendly default (2.0-flash often has limit: 0 on free tier). */
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const GEMINI_FALLBACK_MODELS = [
+  GEMINI_MODEL,
+  'gemini-2.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-flash-latest',
+].filter((m, i, arr) => arr.indexOf(m) === i);
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -340,6 +346,21 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
     let finalResponseText = '';
     let currentContents = [...contents];
     const maxLoops = 3;
+    let activeModel = GEMINI_FALLBACK_MODELS[0];
+    let modelIndex = 0;
+
+    const callGemini = async (model: string, payload: unknown) => {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      );
+      const errText = res.ok ? '' : await res.text();
+      return { res, errText };
+    };
 
     for (let loop = 0; loop < maxLoops; loop++) {
       const payload = {
@@ -348,14 +369,30 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
         tools
       };
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      let { res, errText } = await callGemini(activeModel, payload);
+
+      // Free-tier quota / unavailable model → try next model, then portal search
+      while (!res.ok && (res.status === 429 || res.status === 404) && modelIndex < GEMINI_FALLBACK_MODELS.length - 1) {
+        modelIndex += 1;
+        activeModel = GEMINI_FALLBACK_MODELS[modelIndex];
+        ({ res, errText } = await callGemini(activeModel, payload));
+      }
 
       if (!res.ok) {
-        const errText = await res.text();
+        if (res.status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(errText)) {
+          const hrAnswer = mockHrAnswer(userMessage, hrPolicies, leavePolicies);
+          if (hrAnswer) {
+            return json({
+              text:
+                `${hrAnswer}\n\n_Note: Gemini free-tier quota was exceeded, so this answer used portal policy search instead._`,
+            });
+          }
+          return json({
+            text:
+              'Gemini free-tier quota is exhausted right now. Wait a minute and try again, or ask an HR policy question — I can still answer from documents in [HR Policies](/hr/policies) without AI.\n\n' +
+              'Tip: set `GEMINI_MODEL=gemini-2.5-flash-lite` in `.env` (often has more free quota than `gemini-2.0-flash`).',
+          });
+        }
         throw new Error(`Gemini API error: ${errText}`);
       }
 
@@ -403,7 +440,14 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
 
     return json({ text: finalResponseText });
   } catch (err: any) {
-    return json({ text: `AI integration error: ${err.message || 'Unknown error'}` });
+    const msg = String(err?.message || 'Unknown error');
+    if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg)) {
+      return json({
+        text:
+          'Gemini free-tier quota is exhausted. Please wait ~30 seconds and try again, or ask about leave / WFH / company policies — I can answer from portal documents without AI.',
+      });
+    }
+    return json({ text: `AI integration error: ${msg}` });
   }
 }
 

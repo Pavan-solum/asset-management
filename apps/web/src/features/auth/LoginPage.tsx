@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   TextField,
   Typography,
   Alert,
+  Divider,
   InputAdornment,
   IconButton,
   Stack,
@@ -19,7 +21,8 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import SecurityIcon from '@mui/icons-material/Security';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
-import { useNavigate, useLocation } from 'react-router-dom';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { clearError, setSession, setLoginError, setPendingSession } from '../../store/authSlice';
 import { APP_NAME, APP_TAGLINE, COMPANY_NAME } from '../../constants/brand';
@@ -30,7 +33,11 @@ import { apiLogin, changePassword } from '../../services/api/auth';
 import { ApiError, checkApiHealth, loginErrorMessage } from '../../services/api/client';
 import { getHomeRouteForRole } from '../../utils/routing';
 
-
+/** Public portfolio demo — keep in sync with api/_lib/demo-users.ts */
+const DEMO_LOGIN = {
+  email: 'admin@solumtechnologies.com',
+  password: 'Demo@123456',
+} as const;
 
 const features = [
   { icon: <Inventory2Icon fontSize="small" />, text: 'Track assets, warranties & assignments' },
@@ -44,9 +51,12 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [apiWarning, setApiWarning] = useState<string | null>(null);
+  const demoAutoStarted = useRef(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isWide = useMediaQuery(theme.breakpoints.up('md'));
   const error = useAppSelector((s) => s.auth.error);
@@ -69,6 +79,91 @@ export function LoginPage() {
       setApiWarning(result.ok ? null : (result.message ?? 'Backend unavailable'));
     });
   }, []);
+
+  const completeLogin = async (loginEmail: string, loginPassword: string) => {
+    const data = await apiLogin(loginEmail, loginPassword);
+    if (data.requirePasswordSetup) {
+      (window as any).__pendingUser = data.user;
+      (window as any).__pendingTenant = data.tenant;
+      (window as any).__pendingToken = data.token;
+      (await import('../../services/api/auth')).storeToken(data.token);
+      dispatch(setPendingSession({ user: data.user, tenant: data.tenant, token: data.token }));
+      return;
+    }
+    dispatch(
+      setSession({
+        user: data.user,
+        tenant: data.tenant,
+        token: data.token,
+      }),
+    );
+  };
+
+  const handleDemoLogin = async () => {
+    dispatch(clearError());
+    setEmail(DEMO_LOGIN.email);
+    setPassword(DEMO_LOGIN.password);
+    setDemoLoading(true);
+    try {
+      await completeLogin(DEMO_LOGIN.email, DEMO_LOGIN.password);
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? loginErrorMessage(err.status, err.message)
+          : 'Demo sign-in failed';
+      dispatch(setLoginError(msg));
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
+  // Portfolio deep link: /login?demo=1 auto-enters the demo tenant
+  useEffect(() => {
+    if (demoAutoStarted.current || isAuthenticated || requirePasswordSetup) return;
+    if (searchParams.get('demo') !== '1') return;
+    demoAutoStarted.current = true;
+    setSearchParams({}, { replace: true });
+
+    let cancelled = false;
+    (async () => {
+      dispatch(clearError());
+      setEmail(DEMO_LOGIN.email);
+      setPassword(DEMO_LOGIN.password);
+      setDemoLoading(true);
+      try {
+        const data = await apiLogin(DEMO_LOGIN.email, DEMO_LOGIN.password);
+        if (cancelled) return;
+        if (data.requirePasswordSetup) {
+          (window as any).__pendingUser = data.user;
+          (window as any).__pendingTenant = data.tenant;
+          (window as any).__pendingToken = data.token;
+          (await import('../../services/api/auth')).storeToken(data.token);
+          dispatch(setPendingSession({ user: data.user, tenant: data.tenant, token: data.token }));
+        } else {
+          dispatch(
+            setSession({
+              user: data.user,
+              tenant: data.tenant,
+              token: data.token,
+            }),
+          );
+        }
+      } catch (err) {
+        if (cancelled) return;
+        const msg =
+          err instanceof ApiError
+            ? loginErrorMessage(err.status, err.message)
+            : 'Demo sign-in failed';
+        dispatch(setLoginError(msg));
+      } finally {
+        if (!cancelled) setDemoLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setSearchParams, isAuthenticated, requirePasswordSetup, dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,24 +196,7 @@ export function LoginPage() {
 
     setLoading(true);
     try {
-      const data = await apiLogin(email, password);
-      if (data.requirePasswordSetup) {
-        // Store pending session data for use after password is set
-        (window as any).__pendingUser = data.user;
-        (window as any).__pendingTenant = data.tenant;
-        (window as any).__pendingToken = data.token;
-        // Store the token so changePassword API call is authenticated
-        (await import('../../services/api/auth')).storeToken(data.token);
-        dispatch(setPendingSession({ user: data.user, tenant: data.tenant, token: data.token }));
-      } else {
-        dispatch(
-          setSession({
-            user: data.user,
-            tenant: data.tenant,
-            token: data.token,
-          }),
-        );
-      }
+      await completeLogin(email, password);
     } catch (err) {
       const msg =
         err instanceof ApiError
@@ -315,6 +393,37 @@ export function LoginPage() {
               </Box>
             ) : (
               <Box component="form" onSubmit={handleSubmit}>
+                <Button
+                  type="button"
+                  fullWidth
+                  variant="outlined"
+                  size="large"
+                  startIcon={<PlayArrowIcon />}
+                  onClick={() => void handleDemoLogin()}
+                  disabled={loading || demoLoading || Boolean(apiWarning)}
+                  sx={{ py: 1.5, mb: 2 }}
+                >
+                  {demoLoading ? 'Opening demo…' : 'Try Demo'}
+                </Button>
+
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  <Typography variant="body2" component="div">
+                    Portfolio visitors can skip the form — or sign in with:
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.75, fontFamily: 'monospace' }}>
+                    {DEMO_LOGIN.email}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                    {DEMO_LOGIN.password}
+                  </Typography>
+                </Alert>
+
+                <Divider sx={{ my: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    or sign in with your account
+                  </Typography>
+                </Divider>
+
                 <TextField
                   fullWidth
                   label="Email"
@@ -324,7 +433,7 @@ export function LoginPage() {
                   margin="normal"
                   required
                   autoComplete="email"
-                  disabled={loading}
+                  disabled={loading || demoLoading}
                 />
                 <TextField
                   fullWidth
@@ -334,7 +443,7 @@ export function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   margin="normal"
                   autoComplete="current-password"
-                  disabled={loading}
+                  disabled={loading || demoLoading}
                   helperText="Optional for first-time employee sign-in"
                   InputProps={{
                     endAdornment: (
@@ -358,6 +467,7 @@ export function LoginPage() {
                   sx={{ mt: 3, py: 1.5 }}
                   loading={loading}
                   loadingLabel="Signing in…"
+                  disabled={demoLoading}
                 >
                   Sign In
                 </LoadingButton>
