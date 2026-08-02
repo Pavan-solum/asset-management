@@ -1,9 +1,8 @@
 import { neon } from '@neondatabase/serverless';
+import { resolveAllowedOrigin } from './security';
 
-
-
-/** Restrict to your production domain via ALLOWED_ORIGIN env var. Defaults to * in dev. */
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? '*';
+/** Restrict to your production domain via ALLOWED_ORIGIN (or APP_URL). Defaults to * in local dev only. */
+const ALLOWED_ORIGIN = resolveAllowedOrigin();
 
 // ── SQL client helpers ────────────────────────────────────────────────────────
 
@@ -66,7 +65,7 @@ export function json(data: unknown, status = 200) {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Agent-Token',
     },
   });
 }
@@ -81,7 +80,7 @@ export function corsPreflight() {
     headers: {
       'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Agent-Token',
     },
   });
 }

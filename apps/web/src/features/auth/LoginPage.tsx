@@ -32,6 +32,7 @@ import { isApiEnabled } from '../../services/api/config';
 import { apiLogin, changePassword } from '../../services/api/auth';
 import { ApiError, checkApiHealth, loginErrorMessage } from '../../services/api/client';
 import { getHomeRouteForRole } from '../../utils/routing';
+import { apiUrl } from '../../services/api/config';
 
 /** Public portfolio demo — keep in sync with api/_lib/demo-users.ts */
 const DEMO_LOGIN = {
@@ -52,6 +53,9 @@ export function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [demoAuthEnabled, setDemoAuthEnabled] = useState(
+    import.meta.env.VITE_DEMO_AUTH === 'true',
+  );
   const [apiWarning, setApiWarning] = useState<string | null>(null);
   const demoAutoStarted = useRef(false);
   const dispatch = useAppDispatch();
@@ -78,6 +82,15 @@ export function LoginPage() {
     void checkApiHealth().then((result) => {
       setApiWarning(result.ok ? null : (result.message ?? 'Backend unavailable'));
     });
+    void fetch(apiUrl('/api/auth/demo-status'))
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as { enabled?: boolean };
+        if (typeof data.enabled === 'boolean') setDemoAuthEnabled(data.enabled);
+      })
+      .catch(() => {
+        /* keep VITE_DEMO_AUTH fallback */
+      });
   }, []);
 
   const completeLogin = async (loginEmail: string, loginPassword: string) => {
@@ -117,8 +130,9 @@ export function LoginPage() {
     }
   };
 
-  // Portfolio deep link: /login?demo=1 auto-enters the demo tenant
+  // Portfolio deep link: /login?demo=1 auto-enters the demo tenant (when demo auth is enabled)
   useEffect(() => {
+    if (!demoAuthEnabled) return;
     if (demoAutoStarted.current || isAuthenticated || requirePasswordSetup) return;
     if (searchParams.get('demo') !== '1') return;
     demoAutoStarted.current = true;
@@ -163,7 +177,7 @@ export function LoginPage() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, setSearchParams, isAuthenticated, requirePasswordSetup, dispatch]);
+  }, [demoAuthEnabled, searchParams, setSearchParams, isAuthenticated, requirePasswordSetup, dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -393,36 +407,40 @@ export function LoginPage() {
               </Box>
             ) : (
               <Box component="form" onSubmit={handleSubmit}>
-                <Button
-                  type="button"
-                  fullWidth
-                  variant="outlined"
-                  size="large"
-                  startIcon={<PlayArrowIcon />}
-                  onClick={() => void handleDemoLogin()}
-                  disabled={loading || demoLoading || Boolean(apiWarning)}
-                  sx={{ py: 1.5, mb: 2 }}
-                >
-                  {demoLoading ? 'Opening demo…' : 'Try Demo'}
-                </Button>
+                {demoAuthEnabled && (
+                  <>
+                    <Button
+                      type="button"
+                      fullWidth
+                      variant="outlined"
+                      size="large"
+                      startIcon={<PlayArrowIcon />}
+                      onClick={() => void handleDemoLogin()}
+                      disabled={loading || demoLoading || Boolean(apiWarning)}
+                      sx={{ py: 1.5, mb: 2 }}
+                    >
+                      {demoLoading ? 'Opening demo…' : 'Try Demo'}
+                    </Button>
 
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  <Typography variant="body2" component="div">
-                    Portfolio visitors can skip the form — or sign in with:
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 0.75, fontFamily: 'monospace' }}>
-                    {DEMO_LOGIN.email}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                    {DEMO_LOGIN.password}
-                  </Typography>
-                </Alert>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <Typography variant="body2" component="div">
+                        Portfolio visitors can skip the form — or sign in with:
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 0.75, fontFamily: 'monospace' }}>
+                        {DEMO_LOGIN.email}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                        {DEMO_LOGIN.password}
+                      </Typography>
+                    </Alert>
 
-                <Divider sx={{ my: 2 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    or sign in with your account
-                  </Typography>
-                </Divider>
+                    <Divider sx={{ my: 2 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        or sign in with your account
+                      </Typography>
+                    </Divider>
+                  </>
+                )}
 
                 <TextField
                   fullWidth
@@ -442,9 +460,9 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   margin="normal"
+                  required
                   autoComplete="current-password"
                   disabled={loading || demoLoading}
-                  helperText="Optional for first-time employee sign-in"
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">

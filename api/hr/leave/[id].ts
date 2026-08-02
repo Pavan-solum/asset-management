@@ -1,5 +1,5 @@
 import { getTenantSql, json, error, corsPreflight, parseBody } from '../../_lib/db';
-import { requireAuth, insertAuditLog } from '../../_lib/auth';
+import { requireAuth, insertAuditLog, canManageHrLeave } from '../../_lib/auth';
 
 export const config = { runtime: 'edge' };
 
@@ -9,7 +9,6 @@ export default async function handler(req: Request) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
-  if (auth instanceof Response) return auth;
 
   const url = new URL(req.url);
   const segments = url.pathname.split('/');
@@ -17,12 +16,16 @@ export default async function handler(req: Request) {
   if (!id || id === 'leave') return error('ID required', 400);
 
   const sql = await getTenantSql(auth.tenantId!);
+  const isHrAdmin = canManageHrLeave(auth.role);
+  const selfEmployeeId = auth.employeeId ?? null;
 
   try {
     if (req.method === 'PUT') {
+      if (!isHrAdmin) return error('Forbidden — only HR admins can approve or reject leave', 403);
+
       const body = await parseBody<Record<string, unknown>>(req);
       const status = String(body.status ?? '').trim();
-      
+
       if (!['approved', 'rejected'].includes(status)) {
         return error('Invalid status update', 400);
       }
@@ -37,6 +40,7 @@ export default async function handler(req: Request) {
       if (rows.length === 0) return error('Not found', 404);
 
       await insertAuditLog({
+        tenantId: auth.tenantId,
         userId: auth.sub,
         userName: `${auth.firstName} ${auth.lastName}`,
         action: 'UPDATE',
@@ -62,6 +66,23 @@ export default async function handler(req: Request) {
     }
 
     if (req.method === 'DELETE') {
+      const existing = await sql`
+        SELECT employee_id, status FROM hr_leave_requests
+        WHERE id = ${id} AND tenant_id = ${auth.tenantId!} AND deleted_at IS NULL
+        LIMIT 1
+      ` as { employee_id: string; status: string }[];
+
+      if (existing.length === 0) return error('Not found', 404);
+
+      if (!isHrAdmin) {
+        if (!selfEmployeeId || existing[0].employee_id !== selfEmployeeId) {
+          return error('Forbidden', 403);
+        }
+        if (existing[0].status !== 'pending') {
+          return error('Forbidden — only pending requests can be cancelled', 403);
+        }
+      }
+
       const rows = await sql`
         UPDATE hr_leave_requests
         SET deleted_at = NOW(), updated_at = NOW()
@@ -72,6 +93,7 @@ export default async function handler(req: Request) {
       if (rows.length === 0) return error('Not found', 404);
 
       await insertAuditLog({
+        tenantId: auth.tenantId,
         userId: auth.sub,
         userName: `${auth.firstName} ${auth.lastName}`,
         action: 'DELETE',

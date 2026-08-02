@@ -1,5 +1,5 @@
 import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
-import { requireAuth, insertAuditLog } from '../_lib/auth';
+import { requireAuth, insertAuditLog, canManageHrLeave } from '../_lib/auth';
 
 export const config = { runtime: 'edge' };
 
@@ -9,14 +9,20 @@ export default async function handler(req: Request) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
-  if (auth instanceof Response) return auth;
 
   const sql = await getTenantSql(auth.tenantId!);
+  const isHrAdmin = canManageHrLeave(auth.role);
+  const selfEmployeeId = auth.employeeId ?? null;
 
   try {
     if (req.method === 'GET') {
       const url = new URL(req.url);
       const employeeId = url.searchParams.get('employeeId');
+
+      if (!isHrAdmin) {
+        if (!selfEmployeeId) return error('Forbidden', 403);
+        if (employeeId && employeeId !== selfEmployeeId) return error('Forbidden', 403);
+      }
 
       let rows;
       if (employeeId) {
@@ -25,10 +31,16 @@ export default async function handler(req: Request) {
           WHERE tenant_id = ${auth.tenantId!} AND employee_id = ${employeeId} AND deleted_at IS NULL
           ORDER BY created_at DESC
         ` as Record<string, any>[];
-      } else {
+      } else if (isHrAdmin) {
         rows = await sql`
           SELECT * FROM hr_leave_requests 
           WHERE tenant_id = ${auth.tenantId!} AND deleted_at IS NULL
+          ORDER BY created_at DESC
+        ` as Record<string, any>[];
+      } else {
+        rows = await sql`
+          SELECT * FROM hr_leave_requests 
+          WHERE tenant_id = ${auth.tenantId!} AND employee_id = ${selfEmployeeId} AND deleted_at IS NULL
           ORDER BY created_at DESC
         ` as Record<string, any>[];
       }
@@ -60,6 +72,12 @@ export default async function handler(req: Request) {
         return error('Missing required fields for leave request', 400);
       }
 
+      if (!isHrAdmin) {
+        if (!selfEmployeeId || employeeId !== selfEmployeeId) {
+          return error('Forbidden — you can only create leave for yourself', 403);
+        }
+      }
+
       const id = crypto.randomUUID();
       const rows = await sql`
         INSERT INTO hr_leave_requests (
@@ -71,6 +89,7 @@ export default async function handler(req: Request) {
       ` as Record<string, any>[];
 
       await insertAuditLog({
+        tenantId: auth.tenantId,
         userId: auth.sub,
         userName: `${auth.firstName} ${auth.lastName}`,
         action: 'CREATE',

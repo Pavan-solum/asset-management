@@ -13,6 +13,7 @@ import { createCheckoutSession, createStripeCustomer } from './stripe';
 import { createRazorpaySubscription } from './razorpay';
 import { createBillingPortalSession } from './stripe';
 import { appBaseUrl, applyPlanToTenant, getTenantSubscription } from './subscription';
+import { isBillingDemoModeEnabled } from './security';
 
 export interface TenantBillingContext {
   tenantId: string;
@@ -75,6 +76,11 @@ export async function startBillingCheckout(
   if (!ctx) throw new Error('Tenant not found');
 
   if (!isLiveBillingAvailable(ctx)) {
+    if (!isBillingDemoModeEnabled()) {
+      throw new Error(
+        'Billing is not configured for this tenant. Set Stripe/Razorpay keys, or BILLING_DEMO_MODE=true for demos only.',
+      );
+    }
     await applyPlanToTenant(tenantId, tier, 'active');
     return {
       mode: 'demo',

@@ -1,5 +1,10 @@
 import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
-import { requireAuth, type AuthUser } from '../_lib/auth';
+import {
+  requireAuth,
+  canReviewRequests,
+  canSearchAssets,
+  type AuthUser,
+} from '../_lib/auth';
 import { resolveEmployeeIdByLoginEmail } from '../_lib/employee-auth';
 import {
   getHrPolicy,
@@ -153,11 +158,11 @@ async function executeTool(
       return await submitDeviceRequest(employeeId, tenantId, args);
     }
     if (name === 'list_all_requests') {
-      if (role === 'employee') return { error: 'Unauthorized' };
+      if (!canReviewRequests(role)) return { error: 'Unauthorized' };
       return await listAllRequests(tenantId);
     }
     if (name === 'search_assets') {
-      if (role === 'employee') return { error: 'Unauthorized' };
+      if (!canSearchAssets(role)) return { error: 'Unauthorized' };
       return await searchAssets(tenantId, args);
     }
     if (name === 'search_hr_policies') {
@@ -351,10 +356,13 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
 
     const callGemini = async (model: string, payload: unknown) => {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey!,
+          },
           body: JSON.stringify(payload),
         },
       );

@@ -1,12 +1,12 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { getSql, error } from './db';
 import { DEMO_USERS } from './demo-users';
+import { getJwtSecretKey, isDemoAuthEnabled } from './security';
 
 const PBKDF2_ITERATIONS = 100_000;
 const PBKDF2_PREFIX = 'pbkdf2v1:';
 
-const secret = () =>
-  new TextEncoder().encode(process.env.JWT_SECRET ?? 'assetly-dev-secret-change-in-production');
+const secret = () => getJwtSecretKey();
 
 export interface AuthUser extends JWTPayload {
   sub: string;
@@ -69,10 +69,16 @@ async function verifyPbkdf2Hash(password: string, stored: string): Promise<boole
 }
 
 async function legacySha256Hash(password: string): Promise<string> {
-  const pepper = process.env.JWT_SECRET ?? 'assetly-dev-secret-change-in-production';
+  const pepper = process.env.JWT_SECRET || 'assetly-dev-secret-change-in-production';
   const data = new TextEncoder().encode(`${password}:${pepper}`);
   const hash = await crypto.subtle.digest('SHA-256', data);
   return btoa(String.fromCharCode(...new Uint8Array(hash)));
+}
+
+function matchDemoPassword(email: string, password: string): boolean {
+  if (!isDemoAuthEnabled()) return false;
+  const cred = DEMO_USERS[email.toLowerCase()];
+  return Boolean(cred && cred.password === password);
 }
 
 export async function verifyPassword(email: string, password: string): Promise<boolean> {
@@ -86,9 +92,7 @@ export async function verifyPassword(email: string, password: string): Promise<b
     if (rows.length > 0) {
       const stored = rows[0].password_hash;
       if (stored === 'seed-placeholder') {
-        const cred = DEMO_USERS[normalized];
-        if (cred && cred.password === password) {
-          // Auto-upgrade seed-placeholder to PBKDF2
+        if (matchDemoPassword(normalized, password)) {
           try {
             const hash = await hashPassword(password);
             await sql`
@@ -110,11 +114,10 @@ export async function verifyPassword(email: string, password: string): Promise<b
       return (await legacySha256Hash(password)) === stored;
     }
   } catch {
-    /* user_passwords table may not exist yet — fall back to demo credentials */
+    /* user_passwords table may not exist yet — fall back to demo credentials when enabled */
   }
 
-  const cred = DEMO_USERS[normalized];
-  return Boolean(cred && cred.password === password);
+  return matchDemoPassword(normalized, password);
 }
 
 export async function signAuthToken(user: {
@@ -173,11 +176,30 @@ export function canManageBilling(role: string | undefined): boolean {
 }
 
 export function canReviewRequests(role: string | undefined): boolean {
-  return role === 'tenant_admin' || role === 'it_admin';
+  return role === 'tenant_admin' || role === 'it_admin' || role === 'platform_admin';
+}
+
+export function canManageEndpoints(role: string | undefined): boolean {
+  return role === 'tenant_admin' || role === 'it_admin' || role === 'platform_admin';
+}
+
+export function canManageHrLeave(role: string | undefined): boolean {
+  return role === 'tenant_admin' || role === 'hr_admin' || role === 'platform_admin';
+}
+
+export function canSearchAssets(role: string | undefined): boolean {
+  return (
+    role === 'tenant_admin' ||
+    role === 'it_admin' ||
+    role === 'platform_admin' ||
+    role === 'finance_admin' ||
+    role === 'viewer'
+  );
 }
 
 export function isPublicApiRoute(pathname: string, method: string): boolean {
   if (pathname === '/api/health') return true;
+  if (pathname === '/api/auth/demo-status' && method === 'GET') return true;
   if (pathname === '/api/billing/webhooks' && method === 'POST') return true;
   if (pathname === '/api/billing/webhooks-razorpay' && method === 'POST') return true;
   if (pathname === '/api/auth/login' && method === 'POST') return true;
