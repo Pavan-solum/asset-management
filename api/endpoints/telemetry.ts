@@ -1,18 +1,14 @@
 import { getSql, json, error, corsPreflight } from '../_lib/db';
+import { assertAgentAuthorized } from '../_lib/security';
 
 export const config = { runtime: 'edge' };
-
-function verifyAgentToken(req: Request): boolean {
-  const secret = process.env.AGENT_SECRET;
-  if (!secret) return true;
-  return req.headers.get('X-Agent-Token') === secret;
-}
 
 export default async function handler(req: Request) {
   if (req.method === 'OPTIONS') return corsPreflight();
   if (req.method !== 'POST') return error('Method not allowed', 405);
 
-  if (!verifyAgentToken(req)) return error('Unauthorized', 401);
+  const agentAuth = assertAgentAuthorized(req, error);
+  if (agentAuth) return agentAuth;
 
   try {
     const body = await req.json() as Record<string, unknown>;

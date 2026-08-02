@@ -1,6 +1,7 @@
 import { json, error, corsPreflight, parseBody, getSql } from '../_lib/db';
 import { DEMO_USERS } from '../_lib/demo-users';
 import { signAuthToken, verifyPassword, insertAuditLog } from '../_lib/auth';
+import { isDemoAuthEnabled } from '../_lib/security';
 import { mapTenant, type DbUser, type DbTenant } from '../_lib/mappers';
 
 export const config = { runtime: 'edge' };
@@ -15,6 +16,7 @@ export default async function handler(req: Request) {
     const password = String(body.password ?? '');
 
     if (!email) return error('Email is required', 400);
+    if (!password) return error('Email and password are required', 400);
 
     let userRecord: any = null;
     const SYSTEM_TENANT = {
@@ -23,9 +25,8 @@ export default async function handler(req: Request) {
       slug: 'system',
       plan: 'Enterprise',
     };
-    let tenantRecord: any = SYSTEM_TENANT; // Default for platform admin
+    let tenantRecord: any = SYSTEM_TENANT;
 
-    // 1. Try to find the user in the database
     try {
       const sql = getSql();
       const users = await sql`SELECT * FROM users WHERE email = ${email}` as DbUser[];
@@ -39,8 +40,7 @@ export default async function handler(req: Request) {
           lastName: u.last_name || '',
           role: u.role,
         };
-        
-        // Fetch their tenant — required for DB users
+
         const tenants = await sql`SELECT * FROM tenants WHERE id = ${u.tenant_id}` as DbTenant[];
         if (tenants.length > 0) {
           tenantRecord = mapTenant(tenants[0]);
@@ -49,46 +49,19 @@ export default async function handler(req: Request) {
         }
       }
     } catch {
-      // Ignore DB errors (e.g. table doesn't exist yet) and fallback to demo
+      // Ignore DB errors and optionally fall back to demo users
     }
 
-    // 2. Fallback to DEMO_USERS if not in DB
     if (!userRecord) {
+      if (!isDemoAuthEnabled()) return error('Invalid email or password', 401);
       const cred = DEMO_USERS[email];
       if (!cred) return error('Invalid email or password', 401);
       userRecord = cred.user;
     }
 
-    // 3. Check if this is a new employee with no password set — allow passwordless first-time login
-    if (!password && userRecord.role === 'employee') {
-      try {
-        const sql = getSql();
-        const rows = await sql`
-          SELECT password_hash FROM user_passwords WHERE email = ${email}
-        ` as { password_hash: string }[];
-        const hasPassword = rows.length > 0 && rows[0].password_hash && rows[0].password_hash !== 'seed-placeholder';
-        if (!hasPassword) {
-          // First-time login — prompt them to set a password
-          const token = await signAuthToken(userRecord);
-          return json({
-            token,
-            user: userRecord,
-            tenant: tenantRecord,
-            requirePasswordSetup: true,
-          });
-        }
-      } catch {
-        // If DB unavailable, fall through to normal auth
-      }
-    }
-
-    // 4. Password is required for all other cases
-    if (!password) return error('Email and password are required', 400);
-
     const valid = await verifyPassword(email, password);
     if (!valid) return error('Invalid email or password', 401);
 
-    // Check if the user is forced to reset their password
     let mustChange = false;
     try {
       const sql = getSql();

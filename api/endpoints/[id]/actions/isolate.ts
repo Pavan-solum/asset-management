@@ -1,5 +1,5 @@
 import { getTenantSql, json, error, corsPreflight } from '../../../_lib/db';
-import { requireAuth } from '../../../_lib/auth';
+import { requireAuth, canManageEndpoints } from '../../../_lib/auth';
 
 export const config = { runtime: 'edge' };
 
@@ -9,8 +9,8 @@ export default async function handler(req: Request) {
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
-  if (!auth.tenantId! && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
-  if (auth instanceof Response) return auth;
+  if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
+  if (!canManageEndpoints(auth.role)) return error('Forbidden', 403);
 
   try {
     const url = new URL(req.url);
@@ -22,7 +22,6 @@ export default async function handler(req: Request) {
     const tenantId = auth.tenantId!;
     const sql = await getTenantSql(tenantId);
 
-    // Verify the endpoint belongs to this tenant before queuing a command
     const [ep] = await sql`SELECT id FROM endpoints WHERE id = ${id} AND tenant_id = ${tenantId} LIMIT 1`;
     if (!ep) return error('Endpoint not found', 404);
 
@@ -37,7 +36,7 @@ export default async function handler(req: Request) {
       job_id: inserted.id,
       status: 'queued',
       isolation_status: 'isolated',
-      isolated_at: inserted.created_at
+      isolated_at: inserted.created_at,
     });
   } catch (e) {
     return error(e instanceof Error ? e.message : 'Failed to isolate device', 500);
