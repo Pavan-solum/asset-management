@@ -215,19 +215,34 @@ export function EndpointsPage() {
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const token = useAppSelector((state) => state.auth.token);
+  const { user, tenant } = useAppSelector((state) => state.auth);
 
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch('/api/agent/download', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to download agent');
+      // 1. Fetch static agent binary directly from CDN asset path (bypasses Vercel serverless body limit)
+      let response = await fetch('/downloads/EndpointSecurityClient_Prod.exe');
+      if (!response.ok) {
+        // Fallback to API route if direct static fetch fails
+        response = await fetch('/api/agent/download');
+      }
+      if (!response.ok) throw new Error('Failed to download agent executable');
       
-      const blob = await response.blob();
+      const arrayBuffer = await response.arrayBuffer();
+
+      // 2. Extract tenant ID from auth state
+      const tenantId = user?.tenantId || tenant?.id || '11111111-1111-1111-1111-111111111111';
+
+      // 3. Append binary signature ___TENANT_ID___:{tenantId}
+      const signature = `___TENANT_ID___:${tenantId}`;
+      const signatureBytes = new TextEncoder().encode(signature);
+
+      const finalBytes = new Uint8Array(arrayBuffer.byteLength + signatureBytes.byteLength);
+      finalBytes.set(new Uint8Array(arrayBuffer), 0);
+      finalBytes.set(signatureBytes, arrayBuffer.byteLength);
+
+      // 4. Trigger browser download
+      const blob = new Blob([finalBytes], { type: 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -238,7 +253,7 @@ export function EndpointsPage() {
       document.body.removeChild(a);
     } catch (err) {
       console.error('Download error:', err);
-      alert('Failed to download agent');
+      alert('Failed to download agent. Please check your network connection and try again.');
     } finally {
       setIsDownloading(false);
     }

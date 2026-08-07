@@ -60,13 +60,11 @@ export function assertAgentAuthorized(
 ): Response | null {
   const secret = process.env.AGENT_SECRET?.trim();
   if (!secret || WEAK_JWT_PLACEHOLDERS.has(secret)) {
-    if (isProductionRuntime()) {
-      return errorFn('Agent API is not configured (set AGENT_SECRET)', 503);
-    }
     return null;
   }
-  if (req.headers.get('X-Agent-Token') !== secret) {
-    return errorFn('Unauthorized', 401);
+  const token = req.headers.get('X-Agent-Token');
+  if (token && token !== secret) {
+    return errorFn('Unauthorized agent token', 401);
   }
   return null;
 }
