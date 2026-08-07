@@ -76,9 +76,9 @@ export function InstalledApps({ endpointId }: { endpointId: string }) {
             <TableBody>
               {apps.map((app) => (
                 <TableRow key={app.id}>
-                  <TableCell>{app.app_name}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{app.app_name}</TableCell>
                   <TableCell>{app.version || '-'}</TableCell>
-                  <TableCell>{app.publisher || '-'}</TableCell>
+                  <TableCell color="text.secondary">{app.publisher || '-'}</TableCell>
                   <TableCell>{app.install_date ? new Date(app.install_date).toLocaleDateString() : '-'}</TableCell>
                   <TableCell>
                     {app.cve_count > 0 ? (
@@ -88,13 +88,60 @@ export function InstalledApps({ endpointId }: { endpointId: string }) {
                           color="error"
                           size="small"
                           onClick={() => setExpandedCve(expandedCve === app.id ? null : app.id)}
-                          sx={{ cursor: 'pointer' }}
+                          sx={{ cursor: 'pointer', fontWeight: 700 }}
                         />
                         <Collapse in={expandedCve === app.id} timeout="auto" unmountOnExit>
-                          <Box mt={1} p={1} bgcolor="error.light" borderRadius={1}>
-                            <Typography variant="caption" color="error.contrastText">
-                              {(app.cve_ids || []).join(', ')}
+                          <Box mt={1.5} p={1.5} sx={{ bgcolor: 'error.50', border: '1px solid', borderColor: 'error.200', borderRadius: 1.5 }}>
+                            <Typography variant="caption" fontWeight={700} color="error.dark" display="block" mb={1}>
+                              Detected Security Vulnerabilities:
                             </Typography>
+                            {Array.isArray((app as any).cve_details) && (app as any).cve_details.length > 0 ? (
+                              (app as any).cve_details.map((detail: any, idx: number) => (
+                                <Box key={idx} sx={{ mb: idx < (app as any).cve_details.length - 1 ? 1 : 0, p: 1, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
+                                    <Typography
+                                      component="a"
+                                      href={`https://nvd.nist.gov/vuln/detail/${detail.id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      variant="caption"
+                                      fontWeight={700}
+                                      color="primary.main"
+                                      sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                                    >
+                                      {detail.id} ↗
+                                    </Typography>
+                                    <Chip
+                                      label={detail.severity}
+                                      size="small"
+                                      color={detail.severity === 'CRITICAL' ? 'error' : detail.severity === 'HIGH' ? 'warning' : 'default'}
+                                      sx={{ fontSize: '0.65rem', height: 18, fontWeight: 700 }}
+                                    />
+                                  </Box>
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    {detail.description}
+                                  </Typography>
+                                </Box>
+                              ))
+                            ) : (
+                              <Typography variant="caption" color="text.primary">
+                                {(app.cve_ids || []).map(cve => (
+                                  <Chip
+                                    key={cve}
+                                    component="a"
+                                    href={`https://nvd.nist.gov/vuln/detail/${cve}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    label={`${cve} ↗`}
+                                    size="small"
+                                    color="error"
+                                    variant="outlined"
+                                    clickable
+                                    sx={{ mr: 0.5, mb: 0.5, fontSize: '0.7rem' }}
+                                  />
+                                ))}
+                              </Typography>
+                            )}
                           </Box>
                         </Collapse>
                       </Box>
