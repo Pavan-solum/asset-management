@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, Collapse, IconButton, Grid, Divider,
   Tabs, Tab, Button, alpha, useTheme, LinearProgress,
-  Tooltip, Stack, Avatar, Card, CardContent
+  Tooltip, Stack, Avatar, Card, CardContent, Menu, MenuItem
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -15,6 +15,8 @@ import GppBadIcon from '@mui/icons-material/GppBad';
 import GppMaybeIcon from '@mui/icons-material/GppMaybe';
 import GppGoodIcon from '@mui/icons-material/GppGood';
 import ComputerIcon from '@mui/icons-material/Computer';
+import AppleIcon from '@mui/icons-material/Apple';
+import TerminalIcon from '@mui/icons-material/Terminal';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import LockIcon from '@mui/icons-material/Lock';
 import UpdateIcon from '@mui/icons-material/Update';
@@ -347,6 +349,7 @@ export function EndpointsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadAnchor, setDownloadAnchor] = useState<null | HTMLElement>(null);
   const { user, tenant } = useAppSelector((state) => state.auth);
 
   const fetchEndpoints = async () => {
@@ -364,19 +367,29 @@ export function EndpointsPage() {
 
   useEffect(() => { fetchEndpoints(); }, []);
 
-  const handleDownload = async () => {
+  const handleDownloadPlatform = async (platform: 'win' | 'macos' | 'linux') => {
+    setDownloadAnchor(null);
     setIsDownloading(true);
     try {
-      let response = await fetch('/downloads/EndpointSecurityClient_Prod.exe');
-      if (!response.ok) response = await fetch('/api/agent/download');
-      if (!response.ok) throw new Error('Failed to download');
+      const fileNameMap = {
+        win: { path: '/downloads/EndpointSecurityClient_Prod.exe', out: 'AssetManager_Agent.exe' },
+        macos: { path: '/downloads/EndpointSecurityClient_macOS', out: 'AssetManager_Agent_macOS' },
+        linux: { path: '/downloads/EndpointSecurityClient_Linux', out: 'AssetManager_Agent_Linux' },
+      };
+
+      const target = fileNameMap[platform];
+      let response = await fetch(target.path);
+      if (!response.ok && platform === 'win') response = await fetch('/api/agent/download');
+      if (!response.ok) throw new Error(`Failed to download ${platform} agent executable`);
+
       const arrayBuffer = await response.arrayBuffer();
       const tenantId = user?.tenantId || tenant?.id || '11111111-1111-1111-1111-111111111111';
       const sig = new TextEncoder().encode(`___TENANT_ID___:${tenantId}`);
       const out = new Uint8Array(arrayBuffer.byteLength + sig.byteLength);
       out.set(new Uint8Array(arrayBuffer), 0); out.set(sig, arrayBuffer.byteLength);
+
       const url = window.URL.createObjectURL(new Blob([out], { type: 'application/octet-stream' }));
-      const a = document.createElement('a'); a.href = url; a.download = 'AssetManager_Agent.exe';
+      const a = document.createElement('a'); a.href = url; a.download = target.out;
       document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url); document.body.removeChild(a);
     } catch { alert('Failed to download agent. Please check your connection and try again.'); }
     finally { setIsDownloading(false); }
@@ -405,15 +418,39 @@ export function EndpointsPage() {
             <Typography variant="h5" fontWeight={800} letterSpacing={-0.5}>Endpoint Security</Typography>
           </Box>
           <Typography variant="body2" color="text.secondary">
-            Real-time protection status, threat intelligence, and device health for all registered endpoints.
+            Real-time protection status, threat intelligence, and device health for all registered endpoints across Windows, macOS, and Linux.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.5}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchEndpoints} disabled={loading}>Refresh</Button>
-          <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleDownload} disabled={isDownloading}
-            sx={{ background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)', fontWeight: 700 }}>
-            {isDownloading ? 'Preparing\u2026' : 'Deploy Agent'}
+          <Button
+            variant="contained"
+            startIcon={<DownloadIcon />}
+            onClick={(e) => setDownloadAnchor(e.currentTarget)}
+            disabled={isDownloading}
+            sx={{ background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)', fontWeight: 700 }}
+          >
+            {isDownloading ? 'Preparing…' : 'Deploy Agent ▾'}
           </Button>
+          <Menu
+            anchorEl={downloadAnchor}
+            open={Boolean(downloadAnchor)}
+            onClose={() => setDownloadAnchor(null)}
+            PaperProps={{ sx: { minWidth: 200, mt: 1 } }}
+          >
+            <MenuItem onClick={() => handleDownloadPlatform('win')}>
+              <ComputerIcon sx={{ mr: 1.5, color: '#0078d4' }} fontSize="small" />
+              Windows Agent (.exe)
+            </MenuItem>
+            <MenuItem onClick={() => handleDownloadPlatform('macos')}>
+              <AppleIcon sx={{ mr: 1.5, color: '#555' }} fontSize="small" />
+              macOS Agent (Darwin)
+            </MenuItem>
+            <MenuItem onClick={() => handleDownloadPlatform('linux')}>
+              <TerminalIcon sx={{ mr: 1.5, color: '#e95420' }} fontSize="small" />
+              Linux Agent (ELF)
+            </MenuItem>
+          </Menu>
         </Stack>
       </Box>
 
@@ -464,8 +501,8 @@ export function EndpointsPage() {
                 <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
                   <ShieldIcon sx={{ fontSize: 48, color: 'text.disabled', display: 'block', mx: 'auto', mb: 1.5 }} />
                   <Typography variant="h6" color="text.secondary" gutterBottom>No Endpoints Registered</Typography>
-                  <Typography variant="body2" color="text.disabled" mb={2}>Deploy the security agent on your Windows devices to start monitoring.</Typography>
-                  <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleDownload}>Deploy Agent</Button>
+                  <Typography variant="body2" color="text.disabled" mb={2}>Deploy the security agent on your Windows, macOS, or Linux devices to start monitoring.</Typography>
+                  <Button variant="contained" startIcon={<DownloadIcon />} onClick={(e) => setDownloadAnchor(e.currentTarget)}>Deploy Agent ▾</Button>
                 </TableCell>
               </TableRow>
             ) : (

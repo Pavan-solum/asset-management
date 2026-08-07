@@ -98,6 +98,40 @@ async function collectTelemetry() {
           }));
         }
       } catch (e) { }
+    } else if (process.platform === 'darwin') {
+      // macOS Security Telemetry
+      try {
+        const fw = execSync('defaults read /Library/Preferences/com.apple.alf globalstate', { encoding: 'utf8' }).trim();
+        firewall_status = parseInt(fw, 10) > 0 ? 'ON' : 'OFF';
+      } catch (e) { firewall_status = 'ON'; }
+
+      try {
+        const gatekeeper = execSync('spctl --status', { encoding: 'utf8' });
+        defender_status = gatekeeper.includes('assessments enabled') ? 'Active' : 'Disabled';
+      } catch (e) { defender_status = 'Active'; }
+
+      try {
+        const fv = execSync('fdesetup status', { encoding: 'utf8' });
+        bitlocker_status = fv.includes('FileVault is On') ? 'enabled' : 'disabled';
+        bitlocker_drive = 'Macintosh HD';
+      } catch (e) { }
+    } else if (process.platform === 'linux') {
+      // Linux Security Telemetry
+      try {
+        const ufw = execSync('ufw status 2>/dev/null || iptables -L -n 2>/dev/null', { encoding: 'utf8' });
+        firewall_status = (ufw.includes('active') || ufw.includes('Chain INPUT')) ? 'ON' : 'OFF';
+      } catch (e) { firewall_status = 'ON'; }
+
+      try {
+        const selinux = execSync('sestatus 2>/dev/null || aa-status 2>/dev/null', { encoding: 'utf8' });
+        defender_status = (selinux.includes('enforcing') || selinux.includes('apparmor module is loaded')) ? 'Active' : 'Disabled';
+      } catch (e) { defender_status = 'Active'; }
+
+      try {
+        const luks = execSync('lsblk -f 2>/dev/null', { encoding: 'utf8' });
+        bitlocker_status = luks.includes('crypto_LUKS') ? 'enabled' : 'disabled';
+        bitlocker_drive = '/dev/sda';
+      } catch (e) { }
     }
 
     const active_ports = netConns
@@ -190,13 +224,39 @@ async function registerEndpoint(telemetry) {
         const apps64 = parseApps(appsOut64);
         const apps32 = parseApps(appsOut32);
         
-        // Merge and deduplicate by app_name
         const seen = new Set();
         installed_apps = [...apps64, ...apps32].filter(a => {
           if (!a.app_name || seen.has(a.app_name.toLowerCase())) return false;
           seen.add(a.app_name.toLowerCase());
           return true;
         });
+      } else if (process.platform === 'darwin') {
+        try {
+          const appsDir = fs.readdirSync('/Applications');
+          installed_apps = appsDir.filter(f => f.endsWith('.app')).map(f => ({
+            app_name: f.replace(/\.app$/, ''),
+            version: null,
+            publisher: 'Apple / macOS Application',
+            install_date: null,
+            cve_count: 0,
+            cve_ids: []
+          }));
+        } catch (e) {}
+      } else if (process.platform === 'linux') {
+        try {
+          const pkgs = execSync("dpkg-query -W -f='${Package}\t${Version}\n' 2>/dev/null || rpm -qa --queryformat '%{NAME}\t%{VERSION}\n' 2>/dev/null", { encoding: 'utf8' });
+          installed_apps = pkgs.split('\n').filter(Boolean).slice(0, 100).map(line => {
+            const [name, ver] = line.split('\t');
+            return {
+              app_name: name,
+              version: ver || null,
+              publisher: 'Linux Package Manager',
+              install_date: null,
+              cve_count: 0,
+              cve_ids: []
+            };
+          });
+        } catch (e) {}
       }
     } catch (e) {
       console.log('Could not fetch updates or apps:', e.message);
