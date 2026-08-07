@@ -16,12 +16,23 @@ export default async function handler(req: Request) {
       return new Response('User must belong to a tenant', { status: 400 });
     }
 
-    const exePath = resolve(process.cwd(), 'apps/client/EndpointSecurityClient_Prod.exe');
+    // On serverless environments like Vercel, returning binaries > 4.5MB from function response causes HTTP 500 payload errors.
+    // We redirect to the static CDN asset path.
+    const relativeStaticUrl = '/downloads/EndpointSecurityClient_Prod.exe';
+
+    let exePath = resolve(process.cwd(), 'apps/client/EndpointSecurityClient_Prod.exe');
     if (!existsSync(exePath)) {
-      return new Response('Base agent executable not found', { status: 404 });
+      exePath = resolve(process.cwd(), 'apps/web/public/downloads/EndpointSecurityClient_Prod.exe');
+    }
+
+    if (!existsSync(exePath)) {
+      return Response.redirect(new URL(relativeStaticUrl, req.url).toString(), 302);
     }
 
     const baseExeBuffer = readFileSync(exePath);
+    if (baseExeBuffer.length > 4 * 1024 * 1024) {
+      return Response.redirect(new URL(relativeStaticUrl, req.url).toString(), 302);
+    }
     
     // Create the signature buffer: ___TENANT_ID___:{tenantId}
     const signature = `___TENANT_ID___:${tenantId}`;
@@ -41,9 +52,6 @@ export default async function handler(req: Request) {
 
   } catch (error: any) {
     console.error('Download error:', error);
-    return new Response(JSON.stringify({ error: error.message || 'Server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.redirect(new URL('/downloads/EndpointSecurityClient_Prod.exe', req.url).toString(), 302);
   }
 }

@@ -341,6 +341,14 @@ async function main() {
           fs.mkdirSync(TARGET_FOLDER, { recursive: true });
         }
         
+        // Stop existing scheduled task & terminate old running binary if locked
+        try {
+          execSync('schtasks /end /tn "AssetManagerAgent"', { stdio: 'ignore' });
+        } catch (e) {}
+        try {
+          execSync(`taskkill /f /fi "PID ne ${process.pid}" /im "AssetManager_Agent.exe"`, { stdio: 'ignore' });
+        } catch (e) {}
+
         // Copy binary
         console.log(`Copying agent to ${TARGET_PATH}...`);
         fs.copyFileSync(currentExe, TARGET_PATH);
