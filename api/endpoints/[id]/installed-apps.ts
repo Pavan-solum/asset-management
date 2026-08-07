@@ -1,5 +1,6 @@
 import { getTenantSql, json, error, corsPreflight } from '../../_lib/db';
 import { requireAuth } from '../../_lib/auth';
+import { evaluateAppCves } from '../../_lib/cve';
 
 export const config = { runtime: 'edge' };
 
@@ -10,7 +11,6 @@ export default async function handler(req: Request) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   if (!auth.tenantId! && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
-  if (auth instanceof Response) return auth;
 
   try {
     const url = new URL(req.url);
@@ -27,24 +27,29 @@ export default async function handler(req: Request) {
     const [ep] = await sql`SELECT id FROM endpoints WHERE id = ${id} AND tenant_id = ${tenantId} LIMIT 1`;
     if (!ep) return error('Endpoint not found', 404);
 
-    let apps;
-    if (vulnerableParam === 'true') {
-      apps = await sql`
-        SELECT id, app_name, version, publisher, install_date, cve_count, cve_ids
-        FROM endpoint_installed_apps
-        WHERE endpoint_id = ${id} AND cve_count > 0
-        ORDER BY app_name ASC
-      `;
-    } else {
-      apps = await sql`
-        SELECT id, app_name, version, publisher, install_date, cve_count, cve_ids
-        FROM endpoint_installed_apps
-        WHERE endpoint_id = ${id}
-        ORDER BY app_name ASC
-      `;
-    }
+    const rawApps = await sql`
+      SELECT id, app_name, version, publisher, install_date, cve_count, cve_ids
+      FROM endpoint_installed_apps
+      WHERE endpoint_id = ${id}
+      ORDER BY app_name ASC
+    ` as any[];
 
-    return json({ apps });
+    // Dynamically enrich apps with CVE engine results
+    const apps = rawApps.map(app => {
+      const evalResult = evaluateAppCves(app.app_name, app.version);
+      const cve_count = Math.max(app.cve_count || 0, evalResult.cve_count);
+      const cve_ids = Array.from(new Set([...(app.cve_ids || []), ...evalResult.cve_ids]));
+      return {
+        ...app,
+        cve_count,
+        cve_ids,
+        cve_details: evalResult.details,
+      };
+    });
+
+    const filtered = vulnerableParam === 'true' ? apps.filter(a => a.cve_count > 0) : apps;
+
+    return json({ apps: filtered });
   } catch (e) {
     return error(e instanceof Error ? e.message : 'Failed to fetch installed apps', 500);
   }

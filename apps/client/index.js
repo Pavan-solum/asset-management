@@ -112,8 +112,15 @@ async function collectTelemetry() {
         state: c.state
       }));
 
-    // Get default network interface MAC and IP
-    const defaultNet = Array.isArray(network) ? network.find(n => n.ip4) || network[0] : network;
+    // Prefer a LAN interface (10.x, 192.168.x, 172.16-31.x) over VPN/virtual adapters
+    const isLanIp = (ip) => {
+      if (!ip) return false;
+      return ip.startsWith('10.') ||
+             ip.startsWith('192.168.') ||
+             /^172\.(1[6-9]|2\d|3[01])\./.test(ip);
+    };
+    const lanIface = Array.isArray(network) ? network.find(n => n.ip4 && isLanIp(n.ip4)) : null;
+    const defaultNet = lanIface || (Array.isArray(network) ? network.find(n => n.ip4 && !n.ip4.startsWith('127.') && !n.ip4.startsWith('169.')) || network.find(n => n.ip4) || network[0] : network);
 
     return {
       hostname: osInfo.hostname,
@@ -164,11 +171,13 @@ async function registerEndpoint(telemetry) {
           .filter(l => l.includes('[') && l.includes(']: KB'))
           .map(l => l.split(']: ')[1].trim());
 
-        const appsOut = execSync('powershell -NoProfile -Command "Get-ItemProperty HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Where-Object { $_.DisplayName } | ConvertTo-Json"', { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 });
-        if (appsOut.trim()) {
-          const parsedApps = JSON.parse(appsOut);
-          const aArray = Array.isArray(parsedApps) ? parsedApps : [parsedApps];
-          installed_apps = aArray.map((a) => ({
+        const appsOut64 = execSync('powershell -NoProfile -Command "Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Where-Object { $_.DisplayName } | ConvertTo-Json"', { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 });
+        const appsOut32 = execSync('powershell -NoProfile -Command "Get-ItemProperty HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Where-Object { $_.DisplayName } | ConvertTo-Json"', { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 });
+        
+        const parseApps = (raw) => {
+          if (!raw || !raw.trim()) return [];
+          const parsed = JSON.parse(raw);
+          return (Array.isArray(parsed) ? parsed : [parsed]).map((a) => ({
             app_name: a.DisplayName,
             version: a.DisplayVersion || null,
             publisher: a.Publisher || null,
@@ -176,7 +185,18 @@ async function registerEndpoint(telemetry) {
             cve_count: 0,
             cve_ids: []
           }));
-        }
+        };
+        
+        const apps64 = parseApps(appsOut64);
+        const apps32 = parseApps(appsOut32);
+        
+        // Merge and deduplicate by app_name
+        const seen = new Set();
+        installed_apps = [...apps64, ...apps32].filter(a => {
+          if (!a.app_name || seen.has(a.app_name.toLowerCase())) return false;
+          seen.add(a.app_name.toLowerCase());
+          return true;
+        });
       }
     } catch (e) {
       console.log('Could not fetch updates or apps:', e.message);
@@ -195,7 +215,10 @@ async function registerEndpoint(telemetry) {
       ram_total_gb,
       storage_total_gb,
       windows_updates,
-      installed_apps
+      installed_apps,
+      firewall_status: telemetry.firewall_status,
+      defender_status: telemetry.defender_status,
+      antivirus_updated_at: telemetry.antivirus_updated_at
     });
 
     endpointId = response.data.endpoint.id;
