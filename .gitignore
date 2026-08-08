@@ -4,6 +4,9 @@ node_modules/
 # Build output
 dist/
 apps/web/dist/
+apps/client-gui/dist/
+apps/client-gui/node_modules/
+apps/web/public/downloads/build-output/
 
 # Environment & secrets
 .env

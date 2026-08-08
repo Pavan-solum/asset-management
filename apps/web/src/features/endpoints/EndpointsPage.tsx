@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, Collapse, IconButton, Grid, Divider,
   Tabs, Tab, Button, alpha, useTheme, LinearProgress,
-  Tooltip, Stack, Avatar, Card, CardContent
+  Tooltip, Stack, Avatar, Card, CardContent, Menu, MenuItem
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -15,6 +15,9 @@ import GppBadIcon from '@mui/icons-material/GppBad';
 import GppMaybeIcon from '@mui/icons-material/GppMaybe';
 import GppGoodIcon from '@mui/icons-material/GppGood';
 import ComputerIcon from '@mui/icons-material/Computer';
+import AppleIcon from '@mui/icons-material/Apple';
+import TerminalIcon from '@mui/icons-material/Terminal';
+import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import LockIcon from '@mui/icons-material/Lock';
 import UpdateIcon from '@mui/icons-material/Update';
@@ -347,6 +350,7 @@ export function EndpointsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadAnchor, setDownloadAnchor] = useState<null | HTMLElement>(null);
   const { user, tenant } = useAppSelector((state) => state.auth);
 
   const fetchEndpoints = async () => {
@@ -364,19 +368,32 @@ export function EndpointsPage() {
 
   useEffect(() => { fetchEndpoints(); }, []);
 
-  const handleDownload = async () => {
+  const handleDownloadPlatform = async (platform: 'win' | 'macos' | 'linux') => {
+    setDownloadAnchor(null);
     setIsDownloading(true);
     try {
-      let response = await fetch('/downloads/EndpointSecurityClient_Prod.exe');
-      if (!response.ok) response = await fetch('/api/agent/download');
-      if (!response.ok) throw new Error('Failed to download');
+      const fileNameMap = {
+        win: { path: '/downloads/EndpointSecurityClient_Prod.exe', fallback: '/downloads/build-output/EndpointSecurityClient_Prod.exe', out: 'AssetManager_SecurityClient.exe' },
+        macos: { path: '/downloads/EndpointSecurityClient_macOS', out: 'AssetManager_SecurityClient_macOS' },
+        linux: { path: '/downloads/EndpointSecurityClient_Linux', out: 'AssetManager_SecurityClient_Linux' },
+      };
+
+      const target = fileNameMap[platform] as { path: string; fallback?: string; out: string };
+      let response = await fetch(target.path);
+      // Try build-output subdirectory (new Electron GUI build)
+      if (!response.ok && target.fallback) response = await fetch(target.fallback);
+      // Fall back to legacy API endpoint
+      if (!response.ok && platform === 'win') response = await fetch('/api/agent/download');
+      if (!response.ok) throw new Error(`Failed to download ${platform} agent executable`);
+
       const arrayBuffer = await response.arrayBuffer();
       const tenantId = user?.tenantId || tenant?.id || '11111111-1111-1111-1111-111111111111';
       const sig = new TextEncoder().encode(`___TENANT_ID___:${tenantId}`);
       const out = new Uint8Array(arrayBuffer.byteLength + sig.byteLength);
       out.set(new Uint8Array(arrayBuffer), 0); out.set(sig, arrayBuffer.byteLength);
+
       const url = window.URL.createObjectURL(new Blob([out], { type: 'application/octet-stream' }));
-      const a = document.createElement('a'); a.href = url; a.download = 'AssetManager_Agent.exe';
+      const a = document.createElement('a'); a.href = url; a.download = target.out;
       document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url); document.body.removeChild(a);
     } catch { alert('Failed to download agent. Please check your connection and try again.'); }
     finally { setIsDownloading(false); }
@@ -390,6 +407,7 @@ export function EndpointsPage() {
     const isAvOutdated = avDate ? (now.getTime() - avDate.getTime()) >= 3 * 24 * 60 * 60 * 1000 : true;
     return { ep, isOffline, score: getSecurityScore(ep, isOffline, isAvOutdated) };
   });
+  const online = enriched.filter(e => !e.isOffline).length;
   const protected_ = enriched.filter(e => e.score >= 80).length;
   const atRisk = enriched.filter(e => e.score >= 50 && e.score < 80).length;
   const critical = enriched.filter(e => e.score < 50).length;
@@ -405,31 +423,72 @@ export function EndpointsPage() {
             <Typography variant="h5" fontWeight={800} letterSpacing={-0.5}>Endpoint Security</Typography>
           </Box>
           <Typography variant="body2" color="text.secondary">
-            Real-time protection status, threat intelligence, and device health for all registered endpoints.
+            Real-time protection status, threat intelligence, and device health for all registered endpoints across Windows, macOS, and Linux.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.5}>
           <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchEndpoints} disabled={loading}>Refresh</Button>
-          <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleDownload} disabled={isDownloading}
-            sx={{ background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)', fontWeight: 700 }}>
-            {isDownloading ? 'Preparing\u2026' : 'Deploy Agent'}
+          <Button
+            variant="contained"
+            startIcon={<DownloadIcon />}
+            onClick={(e) => setDownloadAnchor(e.currentTarget)}
+            disabled={isDownloading}
+            sx={{ background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)', fontWeight: 700 }}
+          >
+            {isDownloading ? 'Preparing…' : 'Deploy Security Client ▾'}
           </Button>
+          <Menu
+            anchorEl={downloadAnchor}
+            open={Boolean(downloadAnchor)}
+            onClose={() => setDownloadAnchor(null)}
+            PaperProps={{ sx: { minWidth: 260, mt: 1 } }}
+          >
+            <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider' }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={700} textTransform="uppercase" letterSpacing={0.5}>
+                Security Client v2.0 — GUI Edition
+              </Typography>
+            </Box>
+            <MenuItem onClick={() => handleDownloadPlatform('win')}>
+              <ComputerIcon sx={{ mr: 1.5, color: '#0078d4' }} fontSize="small" />
+              <Box>
+                <Typography variant="body2" fontWeight={600}>Windows (.exe)</Typography>
+                <Typography variant="caption" color="text.secondary">Electron desktop app</Typography>
+              </Box>
+            </MenuItem>
+            <MenuItem onClick={() => handleDownloadPlatform('macos')}>
+              <AppleIcon sx={{ mr: 1.5, color: '#555' }} fontSize="small" />
+              <Box>
+                <Typography variant="body2" fontWeight={600}>macOS (Darwin)</Typography>
+                <Typography variant="caption" color="text.secondary">Intel &amp; Apple Silicon</Typography>
+              </Box>
+            </MenuItem>
+            <MenuItem onClick={() => handleDownloadPlatform('linux')}>
+              <TerminalIcon sx={{ mr: 1.5, color: '#e95420' }} fontSize="small" />
+              <Box>
+                <Typography variant="body2" fontWeight={600}>Linux (ELF)</Typography>
+                <Typography variant="caption" color="text.secondary">x64 binary</Typography>
+              </Box>
+            </MenuItem>
+          </Menu>
         </Stack>
       </Box>
 
       {/* Summary Cards */}
-      <Grid container spacing={2.5} mb={3}>
-        <Grid item xs={6} sm={3}>
+      <Grid container spacing={2} mb={3}>
+        <Grid item xs={6} sm={2.4}>
+          <StatCard icon={<WifiIcon />} label="Online" value={online} color={theme.palette.info.main} sublabel="Heartbeat active" />
+        </Grid>
+        <Grid item xs={6} sm={2.4}>
           <StatCard icon={<GppGoodIcon />} label="Protected" value={protected_} color={theme.palette.success.main} sublabel="All controls active" />
         </Grid>
-        <Grid item xs={6} sm={3}>
+        <Grid item xs={6} sm={2.4}>
           <StatCard icon={<GppMaybeIcon />} label="At Risk" value={atRisk} color={theme.palette.warning.main} sublabel="Needs attention" />
         </Grid>
-        <Grid item xs={6} sm={3}>
-          <StatCard icon={<GppBadIcon />} label="Critical" value={critical} color={theme.palette.error.main} sublabel="Immediate action required" />
+        <Grid item xs={6} sm={2.4}>
+          <StatCard icon={<GppBadIcon />} label="Critical" value={critical} color={theme.palette.error.main} sublabel="Action required" />
         </Grid>
-        <Grid item xs={6} sm={3}>
-          <StatCard icon={<WifiOffIcon />} label="Offline" value={offline} color={theme.palette.text.secondary} sublabel="No heartbeat > 5 min" />
+        <Grid item xs={6} sm={2.4}>
+          <StatCard icon={<WifiOffIcon />} label="Offline" value={offline} color={theme.palette.text.secondary} sublabel="No heartbeat > 5m" />
         </Grid>
       </Grid>
 
@@ -464,8 +523,8 @@ export function EndpointsPage() {
                 <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
                   <ShieldIcon sx={{ fontSize: 48, color: 'text.disabled', display: 'block', mx: 'auto', mb: 1.5 }} />
                   <Typography variant="h6" color="text.secondary" gutterBottom>No Endpoints Registered</Typography>
-                  <Typography variant="body2" color="text.disabled" mb={2}>Deploy the security agent on your Windows devices to start monitoring.</Typography>
-                  <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleDownload}>Deploy Agent</Button>
+                  <Typography variant="body2" color="text.disabled" mb={2}>Deploy the security agent on your Windows, macOS, or Linux devices to start monitoring.</Typography>
+                  <Button variant="contained" startIcon={<DownloadIcon />} onClick={(e) => setDownloadAnchor(e.currentTarget)}>Deploy Agent ▾</Button>
                 </TableCell>
               </TableRow>
             ) : (

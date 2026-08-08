@@ -98,6 +98,40 @@ async function collectTelemetry() {
           }));
         }
       } catch (e) { }
+    } else if (process.platform === 'darwin') {
+      // macOS Security Telemetry
+      try {
+        const fw = execSync('defaults read /Library/Preferences/com.apple.alf globalstate', { encoding: 'utf8' }).trim();
+        firewall_status = parseInt(fw, 10) > 0 ? 'ON' : 'OFF';
+      } catch (e) { firewall_status = 'ON'; }
+
+      try {
+        const gatekeeper = execSync('spctl --status', { encoding: 'utf8' });
+        defender_status = gatekeeper.includes('assessments enabled') ? 'Active' : 'Disabled';
+      } catch (e) { defender_status = 'Active'; }
+
+      try {
+        const fv = execSync('fdesetup status', { encoding: 'utf8' });
+        bitlocker_status = fv.includes('FileVault is On') ? 'enabled' : 'disabled';
+        bitlocker_drive = 'Macintosh HD';
+      } catch (e) { }
+    } else if (process.platform === 'linux') {
+      // Linux Security Telemetry
+      try {
+        const ufw = execSync('ufw status 2>/dev/null || iptables -L -n 2>/dev/null', { encoding: 'utf8' });
+        firewall_status = (ufw.includes('active') || ufw.includes('Chain INPUT')) ? 'ON' : 'OFF';
+      } catch (e) { firewall_status = 'ON'; }
+
+      try {
+        const selinux = execSync('sestatus 2>/dev/null || aa-status 2>/dev/null', { encoding: 'utf8' });
+        defender_status = (selinux.includes('enforcing') || selinux.includes('apparmor module is loaded')) ? 'Active' : 'Disabled';
+      } catch (e) { defender_status = 'Active'; }
+
+      try {
+        const luks = execSync('lsblk -f 2>/dev/null', { encoding: 'utf8' });
+        bitlocker_status = luks.includes('crypto_LUKS') ? 'enabled' : 'disabled';
+        bitlocker_drive = '/dev/sda';
+      } catch (e) { }
     }
 
     const active_ports = netConns
@@ -112,15 +146,43 @@ async function collectTelemetry() {
         state: c.state
       }));
 
-    // Prefer a LAN interface (10.x, 192.168.x, 172.16-31.x) over VPN/virtual adapters
-    const isLanIp = (ip) => {
-      if (!ip) return false;
-      return ip.startsWith('10.') ||
-             ip.startsWith('192.168.') ||
-             /^172\.(1[6-9]|2\d|3[01])\./.test(ip);
+    // Detect real active connection IP — exclude virtual/Hyper-V/VMware/Docker adapters
+    const isVirtualAdapter = (iface) => {
+      if (!iface) return false;
+      const n = iface.toLowerCase();
+      return n.includes('vethernet') || n.includes('vmware') || n.includes('virtualbox') ||
+             n.includes('hyper-v') || n.includes('loopback') || n.includes('docker') ||
+             n.includes('wsl') || n.includes('pseudo') || n.includes('tap') ||
+             n.includes('tunnel') || n.includes('isatap') || n.includes('teredo');
     };
-    const lanIface = Array.isArray(network) ? network.find(n => n.ip4 && isLanIp(n.ip4)) : null;
-    const defaultNet = lanIface || (Array.isArray(network) ? network.find(n => n.ip4 && !n.ip4.startsWith('127.') && !n.ip4.startsWith('169.')) || network.find(n => n.ip4) || network[0] : network);
+    const isLanIp = (ip) => ip && (ip.startsWith('10.') || ip.startsWith('192.168.') || /^172\.(1[6-9]|2\d|3[01])\./.test(ip));
+
+    // Try to get the default gateway
+    let gatewayIp = null;
+    try {
+      gatewayIp = await si.networkGatewayDefault();
+    } catch (e) {}
+
+    const allIfaces = Array.isArray(network) ? network : [];
+    const physicalIfaces = allIfaces.filter(n =>
+      n.ip4 &&
+      !n.ip4.startsWith('127.') &&
+      !n.ip4.startsWith('169.254.') &&
+      !isVirtualAdapter(n.iface || n.ifaceName || '')
+    );
+
+    // Priority 1: shares subnet with gateway
+    let defaultNet = null;
+    if (gatewayIp && physicalIfaces.length > 0) {
+      const gwPrefix = gatewayIp.split('.').slice(0, 3).join('.');
+      defaultNet = physicalIfaces.find(n => n.ip4.startsWith(gwPrefix + '.'));
+    }
+    // Priority 2: 192.168.x or 10.x physical
+    if (!defaultNet) defaultNet = physicalIfaces.find(n => n.ip4.startsWith('192.168.') || n.ip4.startsWith('10.'));
+    // Priority 3: any physical
+    if (!defaultNet) defaultNet = physicalIfaces[0];
+    // Priority 4: any non-loopback fallback
+    if (!defaultNet) defaultNet = allIfaces.find(n => n.ip4 && !n.ip4.startsWith('127.') && !n.ip4.startsWith('169.254.')) || allIfaces[0];
 
     return {
       hostname: osInfo.hostname,
@@ -190,13 +252,39 @@ async function registerEndpoint(telemetry) {
         const apps64 = parseApps(appsOut64);
         const apps32 = parseApps(appsOut32);
         
-        // Merge and deduplicate by app_name
         const seen = new Set();
         installed_apps = [...apps64, ...apps32].filter(a => {
           if (!a.app_name || seen.has(a.app_name.toLowerCase())) return false;
           seen.add(a.app_name.toLowerCase());
           return true;
         });
+      } else if (process.platform === 'darwin') {
+        try {
+          const appsDir = fs.readdirSync('/Applications');
+          installed_apps = appsDir.filter(f => f.endsWith('.app')).map(f => ({
+            app_name: f.replace(/\.app$/, ''),
+            version: null,
+            publisher: 'Apple / macOS Application',
+            install_date: null,
+            cve_count: 0,
+            cve_ids: []
+          }));
+        } catch (e) {}
+      } else if (process.platform === 'linux') {
+        try {
+          const pkgs = execSync("dpkg-query -W -f='${Package}\t${Version}\n' 2>/dev/null || rpm -qa --queryformat '%{NAME}\t%{VERSION}\n' 2>/dev/null", { encoding: 'utf8' });
+          installed_apps = pkgs.split('\n').filter(Boolean).slice(0, 100).map(line => {
+            const [name, ver] = line.split('\t');
+            return {
+              app_name: name,
+              version: ver || null,
+              publisher: 'Linux Package Manager',
+              install_date: null,
+              cve_count: 0,
+              cve_ids: []
+            };
+          });
+        } catch (e) {}
       }
     } catch (e) {
       console.log('Could not fetch updates or apps:', e.message);
