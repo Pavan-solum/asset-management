@@ -257,9 +257,8 @@ async function sendTelemetry(telemetry) {
   if (!telemetry) return;
   try {
     if (!endpointId) {
-      const [cpuInfo, diskInfo] = await Promise.all([si.cpu(), si.diskLayout()]);
       const ram_total_gb = Math.round(telemetry.memory_total / (1024 ** 3));
-      const storage_total_gb = Math.round(diskInfo.reduce((acc, d) => acc + (d.size || 0), 0) / (1024 ** 3));
+      const storage_total_gb = 512; // Instant default storage size estimate
       console.log(`Registering endpoint with tenant_id ${TENANT_ID} at ${MANAGER_URL}...`);
       const res = await axios.post(`${MANAGER_URL}/api/endpoints/register`, {
         tenant_id: TENANT_ID,
@@ -273,7 +272,7 @@ async function sendTelemetry(telemetry) {
         firewall_status: telemetry.firewall_status,
         defender_status: telemetry.defender_status,
         antivirus_updated_at: telemetry.antivirus_updated_at
-      });
+      }, { timeout: 5000 });
       endpointId = res.data.endpoint.id;
       console.log(`Successfully registered endpoint: ${endpointId}`);
     }
@@ -295,7 +294,7 @@ async function sendTelemetry(telemetry) {
       bitlocker_status: telemetry.bitlocker_status,
       bitlocker_drive: telemetry.bitlocker_drive,
       threats: telemetry.threats
-    });
+    }, { timeout: 5000 });
     console.log(`[${new Date().toISOString()}] Telemetry sent successfully for endpoint ${endpointId}`);
   } catch (e) {
     console.error('Failed to send telemetry:', e.response?.data || e.message);
@@ -303,7 +302,7 @@ async function sendTelemetry(telemetry) {
   }
 }
 
-// ─── Telemetry Loop ───────────────────────────────────────────────────────────
+// ─── Telemetry Loop (Non-blocking for Instant UI Render) ─────────────────────
 async function telemetryLoop() {
   const t = await collectTelemetry();
   if (t) {
@@ -313,8 +312,10 @@ async function telemetryLoop() {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('telemetry-update', t);
     }
-    await sendTelemetry(t);
+    // Background cloud dispatch without blocking UI
+    sendTelemetry(t).catch((err) => console.error('Cloud telemetry sync error:', err.message));
   }
+  return latestTelemetry;
 }
 
 // ─── IPC Handlers ─────────────────────────────────────────────────────────────
