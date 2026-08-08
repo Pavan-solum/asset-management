@@ -27,7 +27,20 @@ try {
       TENANT_ID = signatureMatch[1];
     }
   }
-} catch (e) {}
+let remoteDaemon = null;
+try {
+  remoteDaemon = require('./remote-daemon');
+} catch (e) {
+  console.error('[Main] RemoteDaemon module load warning:', e.message);
+  remoteDaemon = {
+    init: () => {},
+    captureScreenFrame: async () => null,
+    startSession: async () => ({ success: false }),
+    stopSession: async () => ({ success: true }),
+    injectInput: async () => ({ success: false }),
+    executeRemoteCmd: async () => ({ error: 'Remote daemon unavailable' })
+  };
+}
 
 let endpointId = null;
 let latestTelemetry = null;
@@ -426,6 +439,18 @@ app.whenReady().then(async () => {
   }
 
   try { createTray(); } catch (e) {}
+
+  // Initialize Enterprise Remote Desktop Daemon (runs in background tray / app)
+  remoteDaemon.init({
+    mainWindow,
+    managerUrl: MANAGER_URL,
+    tenantId: TENANT_ID,
+    endpointId
+  });
+
+  ipcMain.handle('remote:capture-frame', async () => {
+    return await remoteDaemon.captureScreenFrame();
+  });
 
   // Initial telemetry collection after window loads
   setTimeout(async () => {

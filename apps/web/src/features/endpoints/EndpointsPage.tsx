@@ -33,6 +33,7 @@ import { ThreatPanel } from './components/ThreatPanel';
 import { InstalledApps } from './components/InstalledApps';
 import { DeviceContext } from './components/DeviceContext';
 import { ActionsBar } from './components/ActionsBar';
+import { RemoteDesktopModal } from './components/RemoteDesktopModal';
 import type { Endpoint, ActivePort } from '../../types';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -99,6 +100,7 @@ function StatCard({ icon, label, value, color, sublabel }: { icon: React.ReactNo
 function EndpointRow({ endpoint, onRefresh }: { endpoint: Endpoint; onRefresh: () => void }) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
+  const [remoteOpen, setRemoteOpen] = useState(false);
   const [portTab, setPortTab] = useState('All');
 
   const now = new Date();
@@ -125,6 +127,7 @@ function EndpointRow({ endpoint, onRefresh }: { endpoint: Endpoint; onRefresh: (
 
   return (
     <Fragment>
+      <RemoteDesktopModal open={remoteOpen} endpoint={endpoint} onClose={() => setRemoteOpen(false)} />
       <TableRow
         onClick={() => setOpen(!open)}
         sx={{
@@ -180,23 +183,17 @@ function EndpointRow({ endpoint, onRefresh }: { endpoint: Endpoint; onRefresh: (
               {endpoint.defender_status === 'Active' ? <CheckCircleIcon sx={{ fontSize: 13, color: 'success.main' }} /> : <CancelIcon sx={{ fontSize: 13, color: 'error.main' }} />}
               <Typography variant="caption">Real-Time Protection</Typography>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.7 }}>
-              {!isAvOutdated ? <CheckCircleIcon sx={{ fontSize: 13, color: 'success.main' }} /> : <WarningAmberIcon sx={{ fontSize: 13, color: 'warning.main' }} />}
-              <Typography variant="caption">AV Definitions</Typography>
-            </Box>
           </Stack>
         </TableCell>
-        <TableCell>
-          <Typography variant="body2" color={isOffline ? 'error.main' : 'text.secondary'}>
-            {fmtDate(endpoint.last_seen_at)}
-          </Typography>
+        <TableCell align="right">
+          <Typography variant="body2" color="text.secondary">{fmtDate(endpoint.last_seen_at)}</Typography>
         </TableCell>
       </TableRow>
 
       <TableRow>
-        <TableCell colSpan={6} sx={{ p: 0, borderBottom: open ? undefined : 'none' }}>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ p: 3, bgcolor: alpha(theme.palette.background.default, 0.6) }}>
+            <Box sx={{ py: 3, px: 1 }}>
 
               {/* Security posture summary */}
               <Paper variant="outlined" sx={{
@@ -211,7 +208,7 @@ function EndpointRow({ endpoint, onRefresh }: { endpoint: Endpoint; onRefresh: (
                     ? <Typography variant="body2" color="success.main">All security controls are active and up to date.</Typography>
                     : <Typography variant="body2" color="error.main">Issues: {risks.join(' \u00b7 ')}</Typography>}
                 </Box>
-                <ActionsBar endpointId={endpoint.id} isOffline={isOffline} />
+                <ActionsBar endpointId={endpoint.id} isOffline={isOffline} onRemoteControl={() => setRemoteOpen(true)} />
               </Paper>
 
               {/* Threat Panel + Security Controls */}
