@@ -146,15 +146,43 @@ async function collectTelemetry() {
         state: c.state
       }));
 
-    // Prefer a LAN interface (10.x, 192.168.x, 172.16-31.x) over VPN/virtual adapters
-    const isLanIp = (ip) => {
-      if (!ip) return false;
-      return ip.startsWith('10.') ||
-             ip.startsWith('192.168.') ||
-             /^172\.(1[6-9]|2\d|3[01])\./.test(ip);
+    // Detect real active connection IP — exclude virtual/Hyper-V/VMware/Docker adapters
+    const isVirtualAdapter = (iface) => {
+      if (!iface) return false;
+      const n = iface.toLowerCase();
+      return n.includes('vethernet') || n.includes('vmware') || n.includes('virtualbox') ||
+             n.includes('hyper-v') || n.includes('loopback') || n.includes('docker') ||
+             n.includes('wsl') || n.includes('pseudo') || n.includes('tap') ||
+             n.includes('tunnel') || n.includes('isatap') || n.includes('teredo');
     };
-    const lanIface = Array.isArray(network) ? network.find(n => n.ip4 && isLanIp(n.ip4)) : null;
-    const defaultNet = lanIface || (Array.isArray(network) ? network.find(n => n.ip4 && !n.ip4.startsWith('127.') && !n.ip4.startsWith('169.')) || network.find(n => n.ip4) || network[0] : network);
+    const isLanIp = (ip) => ip && (ip.startsWith('10.') || ip.startsWith('192.168.') || /^172\.(1[6-9]|2\d|3[01])\./.test(ip));
+
+    // Try to get the default gateway
+    let gatewayIp = null;
+    try {
+      gatewayIp = await si.networkGatewayDefault();
+    } catch (e) {}
+
+    const allIfaces = Array.isArray(network) ? network : [];
+    const physicalIfaces = allIfaces.filter(n =>
+      n.ip4 &&
+      !n.ip4.startsWith('127.') &&
+      !n.ip4.startsWith('169.254.') &&
+      !isVirtualAdapter(n.iface || n.ifaceName || '')
+    );
+
+    // Priority 1: shares subnet with gateway
+    let defaultNet = null;
+    if (gatewayIp && physicalIfaces.length > 0) {
+      const gwPrefix = gatewayIp.split('.').slice(0, 3).join('.');
+      defaultNet = physicalIfaces.find(n => n.ip4.startsWith(gwPrefix + '.'));
+    }
+    // Priority 2: 192.168.x or 10.x physical
+    if (!defaultNet) defaultNet = physicalIfaces.find(n => n.ip4.startsWith('192.168.') || n.ip4.startsWith('10.'));
+    // Priority 3: any physical
+    if (!defaultNet) defaultNet = physicalIfaces[0];
+    // Priority 4: any non-loopback fallback
+    if (!defaultNet) defaultNet = allIfaces.find(n => n.ip4 && !n.ip4.startsWith('127.') && !n.ip4.startsWith('169.254.')) || allIfaces[0];
 
     return {
       hostname: osInfo.hostname,

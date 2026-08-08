@@ -21,10 +21,10 @@ export default async function handler(req: Request) {
 
     const sql = getSql();
     
-    // Check if endpoint exists
+    // Check if endpoint exists by MAC or Hostname
     const [existing] = await sql`
       SELECT id FROM endpoints 
-      WHERE tenant_id = ${tenant_id} AND mac_address = ${mac_address}
+      WHERE tenant_id = ${tenant_id} AND (mac_address = ${mac_address} OR hostname = ${hostname})
       LIMIT 1
     `;
 
