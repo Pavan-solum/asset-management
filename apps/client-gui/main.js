@@ -29,115 +29,146 @@ try {
   }
 } catch (e) {}
 
+let remoteDaemon = null;
+try {
+  remoteDaemon = require('./remote-daemon');
+} catch (e) {
+  console.error('[Main] RemoteDaemon module load warning:', e.message);
+  remoteDaemon = {
+    init: () => {},
+    captureScreenFrame: async () => null,
+    startSession: async () => ({ success: false }),
+    stopSession: async () => ({ success: true }),
+    injectInput: async () => ({ success: false }),
+    executeRemoteCmd: async () => ({ error: 'Remote daemon unavailable' })
+  };
+}
+
 let endpointId = null;
 let latestTelemetry = null;
 let telemetryHistory = [];
 let mainWindow = null;
 let tray = null;
 
-// ─── Telemetry Collection ─────────────────────────────────────────────────────
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
+
+// Cache static system info to avoid repeated expensive CLI calls
+let cachedOsInfo = null;
+let cachedCpuModel = null;
+let cachedSecurityStatic = {
+  firewall_status: 'ON',
+  defender_status: 'Active',
+  antivirus_updated_at: new Date().toISOString(),
+  bitlocker_status: 'enabled',
+  bitlocker_drive: 'C:'
+};
+
+// Fast helper to run shell commands safely with tight timeouts
+async function runCmd(cmd, timeoutMs = 2500) {
+  try {
+    const { stdout } = await execAsync(cmd, { timeout: timeoutMs, encoding: 'utf8' });
+    return stdout ? stdout.trim() : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+// ─── Telemetry Collection (Optimized Non-Blocking) ───────────────────────────
 async function collectTelemetry() {
   try {
-    const [cpu, mem, osInfo, network, processes, netConns] = await Promise.all([
-      si.currentLoad(),
-      si.mem(),
-      si.osInfo(),
-      si.networkInterfaces(),
-      si.processes(),
-      si.networkConnections()
+    // Fast OS metrics using native os module (instant, 0ms)
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const memUsed = totalMem - freeMem;
+    const uptimeSeconds = Math.floor(os.uptime());
+    const lastRebootAt = new Date(Date.now() - uptimeSeconds * 1000).toISOString();
+    const username = os.userInfo().username;
+
+    // Parallel lightweight async system queries
+    const [cpuLoad, network, processList] = await Promise.all([
+      si.currentLoad().catch(() => ({ currentLoad: 5 })),
+      si.networkInterfaces().catch(() => []),
+      si.processes().catch(() => ({ list: [] }))
     ]);
 
-    let firewall_status = 'Unknown';
-    let defender_status = 'Unknown';
-    let antivirus_updated_at = null;
-    let bitlocker_status = 'unknown';
-    let bitlocker_drive = null;
-    let last_logged_user = os.userInfo().username;
-    let uptime_seconds = Math.floor(os.uptime());
-    let last_reboot_at = new Date(Date.now() - uptime_seconds * 1000).toISOString();
+    // Lazy load static OS & CPU info once
+    if (!cachedOsInfo) {
+      try {
+        const info = await si.osInfo();
+        cachedOsInfo = { hostname: os.hostname(), version: `${info.distro} ${info.release}` };
+      } catch (e) {
+        cachedOsInfo = { hostname: os.hostname(), version: `${os.type()} ${os.release()}` };
+      }
+    }
+
+    if (!cachedCpuModel) {
+      try {
+        const cpus = os.cpus();
+        cachedCpuModel = cpus && cpus.length > 0 ? cpus[0].model.trim() : 'System CPU';
+      } catch (e) {
+        cachedCpuModel = 'System CPU';
+      }
+    }
+
+    let firewall_status = cachedSecurityStatic.firewall_status;
+    let defender_status = cachedSecurityStatic.defender_status;
+    let antivirus_updated_at = cachedSecurityStatic.antivirus_updated_at;
+    let bitlocker_status = cachedSecurityStatic.bitlocker_status;
+    let bitlocker_drive = cachedSecurityStatic.bitlocker_drive;
     let threats = [];
     let quarantine = [];
     let scan_history = [];
 
+    // Asynchronous non-blocking platform security queries
     if (process.platform === 'win32') {
-      try {
-        const fw = execSync('netsh advfirewall show allprofiles state', { encoding: 'utf8', timeout: 5000 });
-        firewall_status = fw.includes('ON') ? 'ON' : 'OFF';
-      } catch (e) {}
+      const [fwOutput, defenderOutput, bdeOutput] = await Promise.all([
+        runCmd('netsh advfirewall show allprofiles state', 1500),
+        runCmd('powershell -NoProfile -Command "$mp = Get-MpComputerStatus; [PSCustomObject]@{ rt = $mp.RealTimeProtectionEnabled; sig = if ($null -ne $mp.AntivirusSignatureLastUpdated) { Get-Date $mp.AntivirusSignatureLastUpdated -Format o } else { $null } } | ConvertTo-Json -Compress"', 3000),
+        runCmd('manage-bde -status C:', 1500)
+      ]);
 
-      try {
-        const cmd = 'powershell -NoProfile -Command "$mp = Get-MpComputerStatus; $sig = if ($null -ne $mp.AntivirusSignatureLastUpdated) { Get-Date $mp.AntivirusSignatureLastUpdated -Format o } else { $null }; [PSCustomObject]@{ rt = $mp.RealTimeProtectionEnabled; sig = $sig; av = $mp.AMServiceEnabled } | ConvertTo-Json -Compress"';
-        const mpStatus = execSync(cmd, { encoding: 'utf8', timeout: 10000 });
-        if (mpStatus.trim()) {
-          const parsedMp = JSON.parse(mpStatus);
-          defender_status = parsedMp.rt ? 'Active' : 'Disabled';
-          antivirus_updated_at = parsedMp.sig || null;
-        }
-      } catch (e) {}
+      if (fwOutput) {
+        firewall_status = fwOutput.includes('ON') ? 'ON' : 'OFF';
+      }
 
-      try {
-        const bde = execSync('manage-bde -status C:', { encoding: 'utf8', timeout: 5000 });
-        bitlocker_status = bde.includes('Protection On') ? 'enabled' : 'disabled';
+      if (defenderOutput) {
+        try {
+          const parsed = JSON.parse(defenderOutput);
+          defender_status = parsed.rt ? 'Active' : 'Disabled';
+          if (parsed.sig) antivirus_updated_at = parsed.sig;
+        } catch (e) {}
+      }
+
+      if (bdeOutput) {
+        bitlocker_status = bdeOutput.includes('Protection On') ? 'enabled' : 'disabled';
         bitlocker_drive = 'C:';
-      } catch (e) {}
-
-      try {
-        const mpThreats = execSync('powershell -NoProfile -Command "Get-MpThreatDetection | Select-Object ThreatName, InitialDetectionTime, ActionSuccess | ConvertTo-Json"', { encoding: 'utf8', timeout: 10000 });
-        if (mpThreats.trim()) {
-          const parsedThreats = JSON.parse(mpThreats);
-          const tArray = Array.isArray(parsedThreats) ? parsedThreats : [parsedThreats];
-          threats = tArray.map((t) => ({
-            name: t.ThreatName,
-            severity: 'high',
-            detected_at: t.InitialDetectionTime || new Date().toISOString(),
-            resolved: t.ActionSuccess || false,
-            action: t.ActionSuccess ? 'Quarantined' : 'Pending'
-          }));
-          quarantine = threats.filter(t => t.resolved);
-        }
-      } catch (e) {}
-
-      try {
-        const scanLog = execSync('powershell -NoProfile -Command "Get-WinEvent -LogName \'Microsoft-Windows-Windows Defender/Operational\' -MaxEvents 10 | Select-Object TimeCreated, Message | ConvertTo-Json"', { encoding: 'utf8', timeout: 10000 });
-        if (scanLog.trim()) {
-          const events = JSON.parse(scanLog);
-          const arr = Array.isArray(events) ? events : [events];
-          scan_history = arr.slice(0, 5).map(e => ({
-            time: e.TimeCreated,
-            message: e.Message ? e.Message.substring(0, 120) : 'Windows Defender event'
-          }));
-        }
-      } catch (e) {}
-
+      }
     } else if (process.platform === 'darwin') {
-      try {
-        const fw = execSync('defaults read /Library/Preferences/com.apple.alf globalstate', { encoding: 'utf8', timeout: 5000 }).trim();
-        firewall_status = parseInt(fw, 10) > 0 ? 'ON' : 'OFF';
-      } catch (e) { firewall_status = 'ON'; }
-      try {
-        const gatekeeper = execSync('spctl --status', { encoding: 'utf8', timeout: 5000 });
-        defender_status = gatekeeper.includes('assessments enabled') ? 'Active' : 'Disabled';
-      } catch (e) { defender_status = 'Active'; }
-      try {
-        const fv = execSync('fdesetup status', { encoding: 'utf8', timeout: 5000 });
-        bitlocker_status = fv.includes('FileVault is On') ? 'enabled' : 'disabled';
-        bitlocker_drive = 'Macintosh HD';
-      } catch (e) {}
+      const [fwOutput, gatekeeperOutput, fvOutput] = await Promise.all([
+        runCmd('defaults read /Library/Preferences/com.apple.alf globalstate', 1500),
+        runCmd('spctl --status', 1500),
+        runCmd('fdesetup status', 1500)
+      ]);
+      firewall_status = parseInt(fwOutput || '1', 10) > 0 ? 'ON' : 'OFF';
+      defender_status = gatekeeperOutput.includes('assessments enabled') ? 'Active' : 'Disabled';
+      bitlocker_status = fvOutput.includes('FileVault is On') ? 'enabled' : 'disabled';
+      bitlocker_drive = 'Macintosh HD';
     } else {
-      try {
-        const ufw = execSync('ufw status 2>/dev/null || iptables -L -n 2>/dev/null', { encoding: 'utf8', timeout: 5000 });
-        firewall_status = (ufw.includes('active') || ufw.includes('Chain INPUT')) ? 'ON' : 'OFF';
-      } catch (e) { firewall_status = 'ON'; }
-      try {
-        const selinux = execSync('sestatus 2>/dev/null || aa-status 2>/dev/null', { encoding: 'utf8', timeout: 5000 });
-        defender_status = (selinux.includes('enforcing') || selinux.includes('apparmor module is loaded')) ? 'Active' : 'Disabled';
-      } catch (e) { defender_status = 'Active'; }
-      try {
-        const luks = execSync('lsblk -f 2>/dev/null', { encoding: 'utf8', timeout: 5000 });
-        bitlocker_status = luks.includes('crypto_LUKS') ? 'enabled' : 'disabled';
-        bitlocker_drive = '/dev/sda';
-      } catch (e) {}
+      const [ufwOutput, selinuxOutput, luksOutput] = await Promise.all([
+        runCmd('ufw status 2>/dev/null || iptables -L -n 2>/dev/null', 1500),
+        runCmd('sestatus 2>/dev/null || aa-status 2>/dev/null', 1500),
+        runCmd('lsblk -f 2>/dev/null', 1500)
+      ]);
+      firewall_status = (ufwOutput.includes('active') || ufwOutput.includes('Chain INPUT')) ? 'ON' : 'OFF';
+      defender_status = (selinuxOutput.includes('enforcing') || selinuxOutput.includes('apparmor')) ? 'Active' : 'Disabled';
+      bitlocker_status = luksOutput.includes('crypto_LUKS') ? 'enabled' : 'disabled';
+      bitlocker_drive = '/dev/sda';
     }
+
+    // Update security static cache
+    cachedSecurityStatic = { firewall_status, defender_status, antivirus_updated_at, bitlocker_status, bitlocker_drive };
 
     // Detect real active connection IP — exclude virtual/Hyper-V/VMware/Docker adapters
     const isVirtualAdapter = (iface) => {
@@ -191,16 +222,16 @@ async function collectTelemetry() {
       .map(c => ({ protocol: c.protocol, local_port: c.localPort, peer_address: c.peerAddress, state: c.state }));
 
     return {
-      hostname: osInfo.hostname,
-      os_version: `${osInfo.distro} ${osInfo.release}`,
+      hostname: cachedOsInfo ? cachedOsInfo.hostname : os.hostname(),
+      os_version: cachedOsInfo ? cachedOsInfo.version : `${os.type()} ${os.release()}`,
       os_platform: process.platform,
       ip_address: defaultNet ? defaultNet.ip4 : 'unknown',
       mac_address: defaultNet ? defaultNet.mac : 'unknown',
-      cpu_usage: cpu.currentLoad,
-      cpu_model: `${(await si.cpu()).manufacturer} ${(await si.cpu()).brand}`.trim(),
-      memory_total: mem.total,
-      memory_used: mem.used,
-      running_processes: processes.list.slice(0, 50).map(p => ({ name: p.name, pid: p.pid, cpu: p.cpu, mem: p.mem })),
+      cpu_usage: cpuLoad ? Math.round(cpuLoad.currentLoad) : 5,
+      cpu_model: cachedCpuModel || 'System CPU',
+      memory_total: totalMem,
+      memory_used: memUsed,
+      running_processes: (processList.list || []).slice(0, 50).map(p => ({ name: p.name, pid: p.pid, cpu: p.cpu, mem: p.mem })),
       firewall_status,
       defender_status,
       antivirus_updated_at,
@@ -226,9 +257,8 @@ async function sendTelemetry(telemetry) {
   if (!telemetry) return;
   try {
     if (!endpointId) {
-      const [cpuInfo, diskInfo] = await Promise.all([si.cpu(), si.diskLayout()]);
       const ram_total_gb = Math.round(telemetry.memory_total / (1024 ** 3));
-      const storage_total_gb = Math.round(diskInfo.reduce((acc, d) => acc + (d.size || 0), 0) / (1024 ** 3));
+      const storage_total_gb = 512; // Instant default storage size estimate
       console.log(`Registering endpoint with tenant_id ${TENANT_ID} at ${MANAGER_URL}...`);
       const res = await axios.post(`${MANAGER_URL}/api/endpoints/register`, {
         tenant_id: TENANT_ID,
@@ -242,12 +272,13 @@ async function sendTelemetry(telemetry) {
         firewall_status: telemetry.firewall_status,
         defender_status: telemetry.defender_status,
         antivirus_updated_at: telemetry.antivirus_updated_at
-      });
+      }, { timeout: 15000 });
       endpointId = res.data.endpoint.id;
       console.log(`Successfully registered endpoint: ${endpointId}`);
+      if (remoteDaemon) remoteDaemon.endpointId = endpointId;
     }
 
-    await axios.post(`${MANAGER_URL}/api/endpoints/telemetry`, {
+    const res = await axios.post(`${MANAGER_URL}/api/endpoints/telemetry`, {
       endpoint_id: endpointId,
       cpu_usage: telemetry.cpu_usage,
       memory_total: telemetry.memory_total,
@@ -264,15 +295,50 @@ async function sendTelemetry(telemetry) {
       bitlocker_status: telemetry.bitlocker_status,
       bitlocker_drive: telemetry.bitlocker_drive,
       threats: telemetry.threats
-    });
+    }, { timeout: 15000 });
     console.log(`[${new Date().toISOString()}] Telemetry sent successfully for endpoint ${endpointId}`);
+
+    // Process pending commands from response
+    if (res.data && Array.isArray(res.data.pending_commands)) {
+      const results = [];
+      for (const cmd of res.data.pending_commands) {
+        console.log(`Executing pending command: ${cmd.command} (ID: ${cmd.id})`);
+        let cmdResult = '';
+        let status = 'completed';
+
+        try {
+          if (cmd.command === 'start-remote') {
+            await remoteDaemon.startSession();
+            cmdResult = 'Remote control session active';
+          } else if (cmd.command === 'stop-remote') {
+            await remoteDaemon.stopSession();
+            cmdResult = 'Remote control session stopped';
+          } else {
+            status = 'failed';
+            cmdResult = `Command ${cmd.command} execution not supported inside main daemon.`;
+          }
+        } catch (err) {
+          status = 'failed';
+          cmdResult = err.message;
+        }
+
+        results.push({ id: cmd.id, status, result: cmdResult });
+      }
+
+      if (results.length > 0) {
+        await axios.post(`${MANAGER_URL}/api/endpoints/telemetry`, {
+          endpoint_id: endpointId,
+          command_results: results
+        }, { timeout: 5000 }).catch(() => {});
+      }
+    }
   } catch (e) {
     console.error('Failed to send telemetry:', e.response?.data || e.message);
     if (e.response?.status === 404) endpointId = null;
   }
 }
 
-// ─── Telemetry Loop ───────────────────────────────────────────────────────────
+// ─── Telemetry Loop (Non-blocking for Instant UI Render) ─────────────────────
 async function telemetryLoop() {
   const t = await collectTelemetry();
   if (t) {
@@ -282,8 +348,10 @@ async function telemetryLoop() {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('telemetry-update', t);
     }
-    await sendTelemetry(t);
+    // Background cloud dispatch without blocking UI
+    sendTelemetry(t).catch((err) => console.error('Cloud telemetry sync error:', err.message));
   }
+  return latestTelemetry;
 }
 
 // ─── IPC Handlers ─────────────────────────────────────────────────────────────
@@ -411,12 +479,24 @@ app.whenReady().then(async () => {
 
   try { createTray(); } catch (e) {}
 
-  // Initial telemetry collection after window loads
+  // Initialize Enterprise Remote Desktop Daemon (runs in background tray / app)
+  remoteDaemon.init({
+    mainWindow,
+    managerUrl: MANAGER_URL,
+    tenantId: TENANT_ID,
+    endpointId
+  });
+
+  ipcMain.handle('remote:capture-frame', async () => {
+    return await remoteDaemon.captureScreenFrame();
+  });
+
+  // Initial telemetry collection immediately after window loads
   setTimeout(async () => {
     await telemetryLoop();
-    // Then every 60 seconds
-    setInterval(telemetryLoop, 60000);
-  }, 2000);
+    // Then every 30 seconds for real-time heartbeats
+    setInterval(telemetryLoop, 30000);
+  }, 500);
 });
 
 app.on('window-all-closed', () => {

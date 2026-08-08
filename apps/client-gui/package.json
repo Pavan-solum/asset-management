@@ -19,7 +19,9 @@
   "devDependencies": {
     "7zip-bin": "^5.2.0",
     "electron": "28.3.3",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "pngjs": "^7.0.0",
+    "sharp": "^0.35.3"
   },
   "build": {
     "appId": "com.assetmanager.security",
@@ -32,6 +34,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "remote-daemon.js",
       "renderer/**",
       "assets/**",
       "node_modules/**",

@@ -4,15 +4,20 @@ import { Button, Paper, Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogCon
 import SecurityIcon from '@mui/icons-material/Security';
 import SyncIcon from '@mui/icons-material/Sync';
 import BlockIcon from '@mui/icons-material/Block';
+import TvIcon from '@mui/icons-material/Tv';
 import { apiFetch } from '../../../services/api/client';
 
-export function ActionsBar({ endpointId, isOffline }: { endpointId: string, isOffline: boolean }) {
+export function ActionsBar({ endpointId, isOffline, onRemoteControl }: { endpointId: string, isOffline: boolean, onRemoteControl?: () => void }) {
   const [toastMsg, setToastMsg] = useState('');
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [isolateOpen, setIsolateOpen] = useState(false);
   const [isolated, setIsolated] = useState(false);
 
   const handleAction = async (action: string) => {
+    if (action === 'remote' && onRemoteControl) {
+      onRemoteControl();
+      return;
+    }
     if (action === 'isolate') {
       setIsolateOpen(true);
       return;
@@ -66,6 +71,7 @@ export function ActionsBar({ endpointId, isOffline }: { endpointId: string, isOf
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3, display: 'flex', gap: 2, alignItems: 'center', bgcolor: 'background.default' }}>
+      <ActionButton action="remote" label="Take Remote Control" icon={TvIcon} color="info" variant="contained" />
       <ActionButton action="force-scan" label="Force Scan" icon={SecurityIcon} />
       <ActionButton action="isolate" label={isolated ? "Isolated" : "Isolate Device"} icon={BlockIcon} color="error" variant={isolated ? "contained" : "outlined"} />
       <ActionButton action="sync" label="Sync Now" icon={SyncIcon} />
