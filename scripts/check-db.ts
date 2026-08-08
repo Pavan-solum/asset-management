@@ -11,14 +11,13 @@ for (const line of envStr.split('\n')) {
 }
 
 async function run() {
-  const sql = neon(process.env.DATABASE_URL);
-  const DEMO_TENANT_ID = '11111111-1111-1111-1111-111111111111';
+  const sql = neon(process.env.DATABASE_URL!);
   const rows = await sql`
-      SELECT *
+      SELECT id, tenant_id, hostname, ip_address, last_seen_at, status
       FROM endpoints
-      WHERE tenant_id = ${DEMO_TENANT_ID}
       ORDER BY last_seen_at DESC
   `;
-  console.log(rows);
+  console.log('All Endpoints in Database:');
+  console.log(JSON.stringify(rows, null, 2));
 }
 run();
