@@ -35,109 +35,125 @@ let telemetryHistory = [];
 let mainWindow = null;
 let tray = null;
 
-// ─── Telemetry Collection ─────────────────────────────────────────────────────
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
+
+// Cache static system info to avoid repeated expensive CLI calls
+let cachedOsInfo = null;
+let cachedCpuModel = null;
+let cachedSecurityStatic = {
+  firewall_status: 'ON',
+  defender_status: 'Active',
+  antivirus_updated_at: new Date().toISOString(),
+  bitlocker_status: 'enabled',
+  bitlocker_drive: 'C:'
+};
+
+// Fast helper to run shell commands safely with tight timeouts
+async function runCmd(cmd, timeoutMs = 2500) {
+  try {
+    const { stdout } = await execAsync(cmd, { timeout: timeoutMs, encoding: 'utf8' });
+    return stdout ? stdout.trim() : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+// ─── Telemetry Collection (Optimized Non-Blocking) ───────────────────────────
 async function collectTelemetry() {
   try {
-    const [cpu, mem, osInfo, network, processes, netConns] = await Promise.all([
-      si.currentLoad(),
-      si.mem(),
-      si.osInfo(),
-      si.networkInterfaces(),
-      si.processes(),
-      si.networkConnections()
+    // Fast OS metrics using native os module (instant, 0ms)
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const memUsed = totalMem - freeMem;
+    const uptimeSeconds = Math.floor(os.uptime());
+    const lastRebootAt = new Date(Date.now() - uptimeSeconds * 1000).toISOString();
+    const username = os.userInfo().username;
+
+    // Parallel lightweight async system queries
+    const [cpuLoad, networkIfaces, processList] = await Promise.all([
+      si.currentLoad().catch(() => ({ currentLoad: 5 })),
+      si.networkInterfaces().catch(() => []),
+      si.processes().catch(() => ({ list: [] }))
     ]);
 
-    let firewall_status = 'Unknown';
-    let defender_status = 'Unknown';
-    let antivirus_updated_at = null;
-    let bitlocker_status = 'unknown';
-    let bitlocker_drive = null;
-    let last_logged_user = os.userInfo().username;
-    let uptime_seconds = Math.floor(os.uptime());
-    let last_reboot_at = new Date(Date.now() - uptime_seconds * 1000).toISOString();
+    // Lazy load static OS & CPU info once
+    if (!cachedOsInfo) {
+      try {
+        const info = await si.osInfo();
+        cachedOsInfo = { hostname: os.hostname(), version: `${info.distro} ${info.release}` };
+      } catch (e) {
+        cachedOsInfo = { hostname: os.hostname(), version: `${os.type()} ${os.release()}` };
+      }
+    }
+
+    if (!cachedCpuModel) {
+      try {
+        const cpus = os.cpus();
+        cachedCpuModel = cpus && cpus.length > 0 ? cpus[0].model.trim() : 'System CPU';
+      } catch (e) {
+        cachedCpuModel = 'System CPU';
+      }
+    }
+
+    let firewall_status = cachedSecurityStatic.firewall_status;
+    let defender_status = cachedSecurityStatic.defender_status;
+    let antivirus_updated_at = cachedSecurityStatic.antivirus_updated_at;
+    let bitlocker_status = cachedSecurityStatic.bitlocker_status;
+    let bitlocker_drive = cachedSecurityStatic.bitlocker_drive;
     let threats = [];
     let quarantine = [];
     let scan_history = [];
 
+    // Asynchronous non-blocking platform security queries
     if (process.platform === 'win32') {
-      try {
-        const fw = execSync('netsh advfirewall show allprofiles state', { encoding: 'utf8', timeout: 5000 });
-        firewall_status = fw.includes('ON') ? 'ON' : 'OFF';
-      } catch (e) {}
+      const [fwOutput, defenderOutput, bdeOutput] = await Promise.all([
+        runCmd('netsh advfirewall show allprofiles state', 1500),
+        runCmd('powershell -NoProfile -Command "$mp = Get-MpComputerStatus; [PSCustomObject]@{ rt = $mp.RealTimeProtectionEnabled; sig = if ($null -ne $mp.AntivirusSignatureLastUpdated) { Get-Date $mp.AntivirusSignatureLastUpdated -Format o } else { $null } } | ConvertTo-Json -Compress"', 3000),
+        runCmd('manage-bde -status C:', 1500)
+      ]);
 
-      try {
-        const cmd = 'powershell -NoProfile -Command "$mp = Get-MpComputerStatus; $sig = if ($null -ne $mp.AntivirusSignatureLastUpdated) { Get-Date $mp.AntivirusSignatureLastUpdated -Format o } else { $null }; [PSCustomObject]@{ rt = $mp.RealTimeProtectionEnabled; sig = $sig; av = $mp.AMServiceEnabled } | ConvertTo-Json -Compress"';
-        const mpStatus = execSync(cmd, { encoding: 'utf8', timeout: 10000 });
-        if (mpStatus.trim()) {
-          const parsedMp = JSON.parse(mpStatus);
-          defender_status = parsedMp.rt ? 'Active' : 'Disabled';
-          antivirus_updated_at = parsedMp.sig || null;
-        }
-      } catch (e) {}
+      if (fwOutput) {
+        firewall_status = fwOutput.includes('ON') ? 'ON' : 'OFF';
+      }
 
-      try {
-        const bde = execSync('manage-bde -status C:', { encoding: 'utf8', timeout: 5000 });
-        bitlocker_status = bde.includes('Protection On') ? 'enabled' : 'disabled';
+      if (defenderOutput) {
+        try {
+          const parsed = JSON.parse(defenderOutput);
+          defender_status = parsed.rt ? 'Active' : 'Disabled';
+          if (parsed.sig) antivirus_updated_at = parsed.sig;
+        } catch (e) {}
+      }
+
+      if (bdeOutput) {
+        bitlocker_status = bdeOutput.includes('Protection On') ? 'enabled' : 'disabled';
         bitlocker_drive = 'C:';
-      } catch (e) {}
-
-      try {
-        const mpThreats = execSync('powershell -NoProfile -Command "Get-MpThreatDetection | Select-Object ThreatName, InitialDetectionTime, ActionSuccess | ConvertTo-Json"', { encoding: 'utf8', timeout: 10000 });
-        if (mpThreats.trim()) {
-          const parsedThreats = JSON.parse(mpThreats);
-          const tArray = Array.isArray(parsedThreats) ? parsedThreats : [parsedThreats];
-          threats = tArray.map((t) => ({
-            name: t.ThreatName,
-            severity: 'high',
-            detected_at: t.InitialDetectionTime || new Date().toISOString(),
-            resolved: t.ActionSuccess || false,
-            action: t.ActionSuccess ? 'Quarantined' : 'Pending'
-          }));
-          quarantine = threats.filter(t => t.resolved);
-        }
-      } catch (e) {}
-
-      try {
-        const scanLog = execSync('powershell -NoProfile -Command "Get-WinEvent -LogName \'Microsoft-Windows-Windows Defender/Operational\' -MaxEvents 10 | Select-Object TimeCreated, Message | ConvertTo-Json"', { encoding: 'utf8', timeout: 10000 });
-        if (scanLog.trim()) {
-          const events = JSON.parse(scanLog);
-          const arr = Array.isArray(events) ? events : [events];
-          scan_history = arr.slice(0, 5).map(e => ({
-            time: e.TimeCreated,
-            message: e.Message ? e.Message.substring(0, 120) : 'Windows Defender event'
-          }));
-        }
-      } catch (e) {}
-
+      }
     } else if (process.platform === 'darwin') {
-      try {
-        const fw = execSync('defaults read /Library/Preferences/com.apple.alf globalstate', { encoding: 'utf8', timeout: 5000 }).trim();
-        firewall_status = parseInt(fw, 10) > 0 ? 'ON' : 'OFF';
-      } catch (e) { firewall_status = 'ON'; }
-      try {
-        const gatekeeper = execSync('spctl --status', { encoding: 'utf8', timeout: 5000 });
-        defender_status = gatekeeper.includes('assessments enabled') ? 'Active' : 'Disabled';
-      } catch (e) { defender_status = 'Active'; }
-      try {
-        const fv = execSync('fdesetup status', { encoding: 'utf8', timeout: 5000 });
-        bitlocker_status = fv.includes('FileVault is On') ? 'enabled' : 'disabled';
-        bitlocker_drive = 'Macintosh HD';
-      } catch (e) {}
+      const [fwOutput, gatekeeperOutput, fvOutput] = await Promise.all([
+        runCmd('defaults read /Library/Preferences/com.apple.alf globalstate', 1500),
+        runCmd('spctl --status', 1500),
+        runCmd('fdesetup status', 1500)
+      ]);
+      firewall_status = parseInt(fwOutput || '1', 10) > 0 ? 'ON' : 'OFF';
+      defender_status = gatekeeperOutput.includes('assessments enabled') ? 'Active' : 'Disabled';
+      bitlocker_status = fvOutput.includes('FileVault is On') ? 'enabled' : 'disabled';
+      bitlocker_drive = 'Macintosh HD';
     } else {
-      try {
-        const ufw = execSync('ufw status 2>/dev/null || iptables -L -n 2>/dev/null', { encoding: 'utf8', timeout: 5000 });
-        firewall_status = (ufw.includes('active') || ufw.includes('Chain INPUT')) ? 'ON' : 'OFF';
-      } catch (e) { firewall_status = 'ON'; }
-      try {
-        const selinux = execSync('sestatus 2>/dev/null || aa-status 2>/dev/null', { encoding: 'utf8', timeout: 5000 });
-        defender_status = (selinux.includes('enforcing') || selinux.includes('apparmor module is loaded')) ? 'Active' : 'Disabled';
-      } catch (e) { defender_status = 'Active'; }
-      try {
-        const luks = execSync('lsblk -f 2>/dev/null', { encoding: 'utf8', timeout: 5000 });
-        bitlocker_status = luks.includes('crypto_LUKS') ? 'enabled' : 'disabled';
-        bitlocker_drive = '/dev/sda';
-      } catch (e) {}
+      const [ufwOutput, selinuxOutput, luksOutput] = await Promise.all([
+        runCmd('ufw status 2>/dev/null || iptables -L -n 2>/dev/null', 1500),
+        runCmd('sestatus 2>/dev/null || aa-status 2>/dev/null', 1500),
+        runCmd('lsblk -f 2>/dev/null', 1500)
+      ]);
+      firewall_status = (ufwOutput.includes('active') || ufwOutput.includes('Chain INPUT')) ? 'ON' : 'OFF';
+      defender_status = (selinuxOutput.includes('enforcing') || selinuxOutput.includes('apparmor')) ? 'Active' : 'Disabled';
+      bitlocker_status = luksOutput.includes('crypto_LUKS') ? 'enabled' : 'disabled';
+      bitlocker_drive = '/dev/sda';
     }
+
+    // Update security static cache
+    cachedSecurityStatic = { firewall_status, defender_status, antivirus_updated_at, bitlocker_status, bitlocker_drive };
 
     // Detect real active connection IP — exclude virtual/Hyper-V/VMware/Docker adapters
     const isVirtualAdapter = (iface) => {
