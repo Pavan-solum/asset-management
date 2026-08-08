@@ -87,7 +87,7 @@ async function collectTelemetry() {
     const username = os.userInfo().username;
 
     // Parallel lightweight async system queries
-    const [cpuLoad, networkIfaces, processList] = await Promise.all([
+    const [cpuLoad, network, processList] = await Promise.all([
       si.currentLoad().catch(() => ({ currentLoad: 5 })),
       si.networkInterfaces().catch(() => []),
       si.processes().catch(() => ({ list: [] }))
@@ -222,16 +222,16 @@ async function collectTelemetry() {
       .map(c => ({ protocol: c.protocol, local_port: c.localPort, peer_address: c.peerAddress, state: c.state }));
 
     return {
-      hostname: osInfo.hostname,
-      os_version: `${osInfo.distro} ${osInfo.release}`,
+      hostname: cachedOsInfo ? cachedOsInfo.hostname : os.hostname(),
+      os_version: cachedOsInfo ? cachedOsInfo.version : `${os.type()} ${os.release()}`,
       os_platform: process.platform,
       ip_address: defaultNet ? defaultNet.ip4 : 'unknown',
       mac_address: defaultNet ? defaultNet.mac : 'unknown',
-      cpu_usage: cpu.currentLoad,
-      cpu_model: `${(await si.cpu()).manufacturer} ${(await si.cpu()).brand}`.trim(),
-      memory_total: mem.total,
-      memory_used: mem.used,
-      running_processes: processes.list.slice(0, 50).map(p => ({ name: p.name, pid: p.pid, cpu: p.cpu, mem: p.mem })),
+      cpu_usage: cpuLoad ? Math.round(cpuLoad.currentLoad) : 5,
+      cpu_model: cachedCpuModel || 'System CPU',
+      memory_total: totalMem,
+      memory_used: memUsed,
+      running_processes: (processList.list || []).slice(0, 50).map(p => ({ name: p.name, pid: p.pid, cpu: p.cpu, mem: p.mem })),
       firewall_status,
       defender_status,
       antivirus_updated_at,
@@ -272,12 +272,13 @@ async function sendTelemetry(telemetry) {
         firewall_status: telemetry.firewall_status,
         defender_status: telemetry.defender_status,
         antivirus_updated_at: telemetry.antivirus_updated_at
-      }, { timeout: 5000 });
+      }, { timeout: 15000 });
       endpointId = res.data.endpoint.id;
       console.log(`Successfully registered endpoint: ${endpointId}`);
+      if (remoteDaemon) remoteDaemon.endpointId = endpointId;
     }
 
-    await axios.post(`${MANAGER_URL}/api/endpoints/telemetry`, {
+    const res = await axios.post(`${MANAGER_URL}/api/endpoints/telemetry`, {
       endpoint_id: endpointId,
       cpu_usage: telemetry.cpu_usage,
       memory_total: telemetry.memory_total,
@@ -294,8 +295,43 @@ async function sendTelemetry(telemetry) {
       bitlocker_status: telemetry.bitlocker_status,
       bitlocker_drive: telemetry.bitlocker_drive,
       threats: telemetry.threats
-    }, { timeout: 5000 });
+    }, { timeout: 15000 });
     console.log(`[${new Date().toISOString()}] Telemetry sent successfully for endpoint ${endpointId}`);
+
+    // Process pending commands from response
+    if (res.data && Array.isArray(res.data.pending_commands)) {
+      const results = [];
+      for (const cmd of res.data.pending_commands) {
+        console.log(`Executing pending command: ${cmd.command} (ID: ${cmd.id})`);
+        let cmdResult = '';
+        let status = 'completed';
+
+        try {
+          if (cmd.command === 'start-remote') {
+            await remoteDaemon.startSession();
+            cmdResult = 'Remote control session active';
+          } else if (cmd.command === 'stop-remote') {
+            await remoteDaemon.stopSession();
+            cmdResult = 'Remote control session stopped';
+          } else {
+            status = 'failed';
+            cmdResult = `Command ${cmd.command} execution not supported inside main daemon.`;
+          }
+        } catch (err) {
+          status = 'failed';
+          cmdResult = err.message;
+        }
+
+        results.push({ id: cmd.id, status, result: cmdResult });
+      }
+
+      if (results.length > 0) {
+        await axios.post(`${MANAGER_URL}/api/endpoints/telemetry`, {
+          endpoint_id: endpointId,
+          command_results: results
+        }, { timeout: 5000 }).catch(() => {});
+      }
+    }
   } catch (e) {
     console.error('Failed to send telemetry:', e.response?.data || e.message);
     if (e.response?.status === 404) endpointId = null;
@@ -455,12 +491,12 @@ app.whenReady().then(async () => {
     return await remoteDaemon.captureScreenFrame();
   });
 
-  // Initial telemetry collection after window loads
+  // Initial telemetry collection immediately after window loads
   setTimeout(async () => {
     await telemetryLoop();
-    // Then every 60 seconds
-    setInterval(telemetryLoop, 60000);
-  }, 2000);
+    // Then every 30 seconds for real-time heartbeats
+    setInterval(telemetryLoop, 30000);
+  }, 500);
 });
 
 app.on('window-all-closed', () => {
