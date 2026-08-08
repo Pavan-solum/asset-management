@@ -27,6 +27,8 @@ try {
       TENANT_ID = signatureMatch[1];
     }
   }
+} catch (e) {}
+
 let remoteDaemon = null;
 try {
   remoteDaemon = require('./remote-daemon');
