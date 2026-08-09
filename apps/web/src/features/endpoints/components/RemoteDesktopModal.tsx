@@ -42,6 +42,7 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
   const frameTimerRef = useRef<NodeJS.Timeout | null>(null);
   const frameCountRef = useRef<number>(0);
   const fpsTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastMouseMoveTimeRef = useRef<number>(0);
 
   // Initialize Remote Session
   useEffect(() => {
@@ -55,7 +56,6 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
       method: 'POST',
       body: JSON.stringify({ action: 'start' })
     }).then(() => {
-      setStatus('connected');
       startFrameStreaming();
     }).catch((err: any) => {
       console.error('Failed to start remote session:', err);
@@ -78,13 +78,13 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
         body: JSON.stringify({ action: 'stop' })
       }).catch((err: any) => console.error('Failed to stop remote session:', err));
     };
-  }, [open, endpoint]);
+  }, [open, endpoint, quality]);
 
   // Frame Streaming Loop
   const startFrameStreaming = () => {
     stopFrameStreaming();
 
-    const fetchInterval = quality === '1080p' ? 800 : quality === '720p' ? 500 : 300;
+    const fetchInterval = quality === '1080p' ? 250 : quality === '720p' ? 150 : 100;
 
     frameTimerRef.current = setInterval(async () => {
       if (!endpoint) return;
@@ -93,15 +93,14 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
           `/api/endpoints/${endpoint.id}/remote-relay`
         );
 
-        if (!data.is_active) {
+        if (data.last_frame) {
+          setStatus('connected');
+          frameCountRef.current += 1;
+          renderFrame(data.last_frame);
+        } else if (!data.is_active) {
           setStatus('disconnected');
           stopFrameStreaming();
           return;
-        }
-
-        if (data.last_frame) {
-          frameCountRef.current += 1;
-          renderFrame(data.last_frame);
         }
 
         if (data.command_result) {
@@ -135,26 +134,76 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
     img.src = jpegDataUrl;
   };
 
-  // Canvas Mouse Event Handler (Sends clicks & coordinates)
-  const handleCanvasClick = async (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (status !== 'connected' || !canvasRef.current || !endpoint) return;
+  // Helper to extract canvas target coordinates
+  const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return { xPct: 0, yPct: 0 };
     const rect = canvasRef.current.getBoundingClientRect();
-    const xPct = (e.clientX - rect.left) / rect.width;
-    const yPct = (e.clientY - rect.top) / rect.height;
+    const xPct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const yPct = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    return { xPct, yPct };
+  };
 
-    const type = e.button === 2 ? 'rightclick' : 'click';
-
+  const sendInputEvent = async (inputData: Record<string, any>) => {
+    if (status !== 'connected' || !endpoint) return;
     try {
       await apiFetch(`/api/endpoints/${endpoint.id}/remote-relay`, {
         method: 'POST',
         body: JSON.stringify({
           action: 'input',
-          input: { type, xPct, yPct }
+          input: inputData
         })
       });
     } catch (err) {
-      console.error('Failed to inject click event:', err);
+      console.error('Failed to inject input event:', err);
     }
+  };
+
+  // Canvas Mouse Click Handler
+  const handleCanvasClick = async (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button === 2) return; // Handled by contextmenu
+    const { xPct, yPct } = getCanvasCoords(e);
+    sendInputEvent({ type: 'click', xPct, yPct });
+  };
+
+  // Canvas Double Click Handler
+  const handleCanvasDoubleClick = async (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { xPct, yPct } = getCanvasCoords(e);
+    sendInputEvent({ type: 'dblclick', xPct, yPct });
+  };
+
+  // Canvas Right Click (Context Menu) Handler
+  const handleCanvasContextMenu = async (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const { xPct, yPct } = getCanvasCoords(e);
+    sendInputEvent({ type: 'rightclick', xPct, yPct });
+  };
+
+  // Canvas Throttled Mouse Move Handler (Smooth AnyDesk cursor tracking)
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const now = Date.now();
+    if (now - lastMouseMoveTimeRef.current < 100) return; // 100ms throttle
+    lastMouseMoveTimeRef.current = now;
+
+    // Only track move if mouse button is down or hovering canvas
+    const { xPct, yPct } = getCanvasCoords(e);
+    sendInputEvent({ type: 'move', xPct, yPct });
+  };
+
+  // Canvas Mouse Wheel Scroll Handler
+  const handleCanvasWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const { xPct, yPct } = getCanvasCoords(e);
+    sendInputEvent({ type: 'scroll', xPct, yPct, deltaY: e.deltaY });
+  };
+
+  // Canvas Keyboard Listener
+  const handleCanvasKeyDown = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    if (terminalOpen) return; // Don't intercept when shell drawer is active
+    // Prevent default scrolling for standard hotkeys inside remote viewer
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab', 'Backspace', 'Escape'].includes(e.key)) {
+      e.preventDefault();
+    }
+    sendInputEvent({ type: 'keydown', key: e.key });
   };
 
   // Send Remote Shell Command
@@ -307,15 +356,21 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
         ) : (
           <canvas
             ref={canvasRef}
+            tabIndex={0}
             width={1280}
             height={720}
             onClick={handleCanvasClick}
-            onContextMenu={(e) => { e.preventDefault(); handleCanvasClick(e as any); }}
+            onDoubleClick={handleCanvasDoubleClick}
+            onContextMenu={handleCanvasContextMenu}
+            onMouseMove={handleCanvasMouseMove}
+            onWheel={handleCanvasWheel}
+            onKeyDown={handleCanvasKeyDown}
             style={{
               width: '100%',
               height: '100%',
               objectFit: 'contain',
-              cursor: 'crosshair'
+              cursor: 'crosshair',
+              outline: 'none'
             }}
           />
         )}

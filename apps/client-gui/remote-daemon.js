@@ -15,6 +15,7 @@ class RemoteDaemon {
     this.tenantId = null;
     this.endpointId = null;
     this.overlayWindow = null;
+    this.lastFrameHash = null;
   }
 
   init({ mainWindow, managerUrl, tenantId, endpointId }) {
@@ -74,14 +75,7 @@ class RemoteDaemon {
 
         if (this.activeSession) {
           if (Array.isArray(input_queue) && input_queue.length > 0) {
-            for (const input of input_queue) {
-              if (input.type === 'command') {
-                const cmdRes = await this.executeRemoteCmd(input.command);
-                await axios.post(url, { commandResult: cmdRes.output || cmdRes.error }, { headers, timeout: 5000 });
-              } else {
-                await this.injectInput(input);
-              }
-            }
+            await this.processInputQueue(input_queue, url, headers, axios);
           }
 
           const frame = await this.captureScreenFrame();
@@ -93,25 +87,78 @@ class RemoteDaemon {
         console.error('[RemoteDaemon] Relay poll warning:', err.message);
       }
 
-      const nextDelay = this.activeSession ? 500 : 3000;
+      const nextDelay = this.activeSession ? 150 : 3000;
       setTimeout(poll, nextDelay);
     };
 
     poll();
   }
 
+  // Coalesce queued inputs and execute in batched execution script to eliminate CPU overhead
+  async processInputQueue(inputQueue, url, headers, axios) {
+    const commands = [];
+    const nonCommandInputs = [];
+
+    for (const input of inputQueue) {
+      if (input.type === 'command') {
+        commands.push(input);
+      } else {
+        nonCommandInputs.push(input);
+      }
+    }
+
+    // Execute any remote shell commands
+    for (const cmdInput of commands) {
+      const cmdRes = await this.executeRemoteCmd(cmdInput.command);
+      await axios.post(url, { commandResult: cmdRes.output || cmdRes.error }, { headers, timeout: 5000 }).catch(() => {});
+    }
+
+    if (nonCommandInputs.length === 0) return;
+
+    // Coalesce mouse moves: keep only the latest move event, but preserve all clicks/keys
+    const optimizedInputs = [];
+    let lastMove = null;
+
+    for (const input of nonCommandInputs) {
+      if (input.type === 'move') {
+        lastMove = input;
+      } else {
+        if (lastMove) {
+          optimizedInputs.push(lastMove);
+          lastMove = null;
+        }
+        optimizedInputs.push(input);
+      }
+    }
+    if (lastMove) optimizedInputs.push(lastMove);
+
+    // Execute optimized inputs in batch
+    for (const input of optimizedInputs) {
+      await this.injectInput(input);
+    }
+  }
+
   async captureScreenFrame() {
     try {
+      const dim = this.getThumbnailDimensions();
       const sources = await desktopCapturer.getSources({
         types: ['screen'],
-        thumbnailSize: this.getThumbnailDimensions()
+        thumbnailSize: dim
       });
 
       if (sources && sources.length > 0) {
         const primarySource = sources[0];
-        // Convert screen image to JPEG data URL for low-latency transmission
-        const jpegDataUrl = primarySource.thumbnail.toDataURL({ imageFormat: 'jpeg', quality: 70 });
-        return jpegDataUrl;
+        // JPEG quality set to 50 for ultra-low latency frame streaming and light CPU payload
+        const jpegBuffer = primarySource.thumbnail.toJPEG(50);
+        if (jpegBuffer && jpegBuffer.length > 0) {
+          const base64Str = jpegBuffer.toString('base64');
+          // Deduplicate identical frames to save bandwidth and backend CPU cycles
+          if (base64Str === this.lastFrameHash) {
+            return null;
+          }
+          this.lastFrameHash = base64Str;
+          return `data:image/jpeg;base64,${base64Str}`;
+        }
       }
       return null;
     } catch (e) {
@@ -132,6 +179,7 @@ class RemoteDaemon {
   async startSession(params = {}) {
     if (params.quality) this.quality = params.quality;
     this.activeSession = true;
+    this.lastFrameHash = null;
     console.log(`[RemoteDaemon] Remote session started. Quality: ${this.quality}`);
 
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
@@ -143,6 +191,7 @@ class RemoteDaemon {
 
   async stopSession() {
     this.activeSession = false;
+    this.lastFrameHash = null;
     if (this.sessionInterval) {
       clearInterval(this.sessionInterval);
       this.sessionInterval = null;
@@ -159,40 +208,69 @@ class RemoteDaemon {
   async injectInput(input) {
     if (!this.activeSession) return { success: false, reason: 'No active session' };
 
-    const { type, xPct, yPct, button, key } = input;
+    const { type, xPct, yPct, button, key, deltaY } = input;
 
     try {
-      if (type === 'click' || type === 'move' || type === 'rightclick' || type === 'dblclick') {
-        if (process.platform === 'win32') {
-          // Calculate screen coordinates using PowerShell Windows API mouse simulator
-          const psScript = `
-            $w = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width
-            $h = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height
-            $posX = [int]($w * ${xPct})
-            $posY = [int]($h * ${yPct})
-            Add-Type -TypeDefinition @"
-            using System;
-            using System.Runtime.InteropServices;
-            public class Mouse {
-              [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
-              [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
-            }
+      if (process.platform === 'win32') {
+        let psCode = `
+          Add-Type -AssemblyName System.Windows.Forms;
+          Add-Type -AssemblyName System.Drawing;
+        `;
+
+        if (type === 'click' || type === 'move' || type === 'rightclick' || type === 'dblclick' || type === 'scroll') {
+          psCode += `
+            $w = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width;
+            $h = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height;
+            $posX = [int]($w * ${xPct || 0});
+            $posY = [int]($h * ${yPct || 0});
+            [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point($posX, $posY);
+          `;
+
+          if (type === 'click' || type === 'rightclick' || type === 'dblclick' || type === 'scroll') {
+            psCode += `
+              if (-not ([System.Management.Automation.PSTypeName]'WinApiMouse').Type) {
+                Add-Type -TypeDefinition @"
+                using System;
+                using System.Runtime.InteropServices;
+                public class WinApiMouse {
+                  [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
+                }
 "@
-            [Mouse]::SetCursorPos($posX, $posY)
-            ${type === 'click' ? '[Mouse]::mouse_event(0x02, 0, 0, 0, 0); [Mouse]::mouse_event(0x04, 0, 0, 0, 0);' : ''}
-            ${type === 'rightclick' ? '[Mouse]::mouse_event(0x08, 0, 0, 0, 0); [Mouse]::mouse_event(0x10, 0, 0, 0, 0);' : ''}
-            ${type === 'dblclick' ? '[Mouse]::mouse_event(0x02, 0, 0, 0, 0); [Mouse]::mouse_event(0x04, 0, 0, 0, 0); [Mouse]::mouse_event(0x02, 0, 0, 0, 0); [Mouse]::mouse_event(0x04, 0, 0, 0, 0);' : ''}
-          `;
-          execAsync(`powershell -NoProfile -Command "${psScript.replace(/\n/g, ' ')}"`, { timeout: 1500 }).catch(() => {});
+              }
+            `;
+            if (type === 'click') {
+              psCode += `[WinApiMouse]::mouse_event(0x02, 0, 0, 0, 0); [WinApiMouse]::mouse_event(0x04, 0, 0, 0, 0);`;
+            } else if (type === 'rightclick') {
+              psCode += `[WinApiMouse]::mouse_event(0x08, 0, 0, 0, 0); [WinApiMouse]::mouse_event(0x10, 0, 0, 0, 0);`;
+            } else if (type === 'dblclick') {
+              psCode += `[WinApiMouse]::mouse_event(0x02, 0, 0, 0, 0); [WinApiMouse]::mouse_event(0x04, 0, 0, 0, 0); [WinApiMouse]::mouse_event(0x02, 0, 0, 0, 0); [WinApiMouse]::mouse_event(0x04, 0, 0, 0, 0);`;
+            } else if (type === 'scroll') {
+              const scrollAmt = (deltaY || 0) < 0 ? 120 : -120;
+              psCode += `[WinApiMouse]::mouse_event(0x0800, 0, 0, ${scrollAmt}, 0);`;
+            }
+          }
+        } else if (type === 'keydown' && key) {
+          // Translate key names for SendKeys
+          let sendKeyStr = key;
+          if (key.length === 1) {
+            sendKeyStr = key;
+          } else {
+            const keyMap = {
+              'Enter': '{ENTER}', 'Backspace': '{BACKSPACE}', 'Tab': '{TAB}',
+              'Escape': '{ESC}', 'Delete': '{DELETE}', 'ArrowUp': '{UP}',
+              'ArrowDown': '{DOWN}', 'ArrowLeft': '{LEFT}', 'ArrowRight': '{RIGHT}',
+              'Home': '{HOME}', 'End': '{END}', 'PageUp': '{PGUP}', 'PageDown': '{PGDN}',
+              ' ': ' '
+            };
+            sendKeyStr = keyMap[key] || '';
+          }
+          if (sendKeyStr) {
+            psCode += `[System.Windows.Forms.SendKeys]::SendWait('${sendKeyStr.replace(/'/g, "''")}');`;
+          }
         }
-      } else if (type === 'keydown' && key) {
-        if (process.platform === 'win32') {
-          const psKey = `
-            $wshell = New-Object -ComObject wscript.shell;
-            $wshell.SendKeys('${key.replace(/'/g, "''")}');
-          `;
-          execAsync(`powershell -NoProfile -Command "${psKey.replace(/\n/g, ' ')}"`, { timeout: 1000 }).catch(() => {});
-        }
+
+        const singleLinePs = psCode.replace(/\s+/g, ' ').trim();
+        await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${singleLinePs}"`, { timeout: 1500 });
       }
       return { success: true };
     } catch (e) {
