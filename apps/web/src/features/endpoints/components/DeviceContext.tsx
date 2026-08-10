@@ -92,6 +92,13 @@ export function DeviceContext({ endpointId }: { endpointId: string }) {
             )}
           </Box>
         </Grid>
+
+        <Grid item xs={12} sm={6} md={4}>
+          <Typography variant="subtitle2" color="text.secondary">Serial Number</Typography>
+          <Typography variant="body1" mb={1} fontFamily="monospace" fontSize="0.85rem">
+            {data?.serial_number || '—'}
+          </Typography>
+        </Grid>
       </Grid>
     </Paper>
   );

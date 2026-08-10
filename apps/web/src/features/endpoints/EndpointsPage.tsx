@@ -156,8 +156,16 @@ function EndpointRow({ endpoint, onRefresh }: { endpoint: Endpoint; onRefresh: (
         </TableCell>
         <TableCell>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ComputerIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-            <Typography variant="body2" noWrap>{endpoint.os_version || '\u2014'}</Typography>
+            {endpoint.assigned_employee_name ? (
+              <>
+                <Avatar sx={{ width: 22, height: 22, fontSize: '0.65rem', bgcolor: 'primary.main' }}>
+                  {endpoint.assigned_employee_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                </Avatar>
+                <Typography variant="body2" fontWeight={600} noWrap>{endpoint.assigned_employee_name}</Typography>
+              </>
+            ) : (
+              <Typography variant="body2" color="text.disabled" fontStyle="italic">Unassigned</Typography>
+            )}
           </Box>
         </TableCell>
         <TableCell>
@@ -251,8 +259,10 @@ function EndpointRow({ endpoint, onRefresh }: { endpoint: Endpoint; onRefresh: (
                     </Box>
                     {[
                       { label: 'Hostname', value: endpoint.hostname },
+                      { label: 'OS', value: endpoint.os_version || '\u2014' },
                       { label: 'IP Address', value: endpoint.ip_address },
                       { label: 'MAC Address', value: endpoint.mac_address || '\u2014' },
+                      { label: 'Serial Number', value: endpoint.serial_number || '\u2014' },
                       { label: 'CPU', value: endpoint.cpu_model || '\u2014' },
                       { label: 'RAM', value: endpoint.ram_total_gb ? `${endpoint.ram_total_gb} GB` : '\u2014' },
                       { label: 'Storage', value: endpoint.storage_total_gb ? `${endpoint.storage_total_gb} GB` : '\u2014' },
@@ -262,7 +272,7 @@ function EndpointRow({ endpoint, onRefresh }: { endpoint: Endpoint; onRefresh: (
                           <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing={0.5}>{label}</Typography>
                           <Typography variant="body2" fontWeight={500} textAlign="right">{value}</Typography>
                         </Box>
-                        {i < 5 && <Divider />}
+                        {i < 7 && <Divider />}
                       </Box>
                     ))}
                   </Paper>
@@ -495,7 +505,7 @@ export function EndpointsPage() {
           <TableHead>
             <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.04) }}>
               <TableCell sx={{ width: 48 }} />
-              {['Device', 'OS', 'Security Score', 'Protection Status', 'Last Seen'].map(h => (
+              {['Device', 'Assigned To', 'Security Score', 'Protection Status', 'Last Seen'].map(h => (
                 <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: 0.7 }}>{h}</TableCell>
               ))}
             </TableRow>

@@ -45,7 +45,6 @@ try {
 }
 
 let endpointId = null;
-let latestTelemetry = null;
 let telemetryHistory = [];
 let mainWindow = null;
 let tray = null;
@@ -57,6 +56,7 @@ const execAsync = util.promisify(exec);
 // Cache static system info to avoid repeated expensive CLI calls
 let cachedOsInfo = null;
 let cachedCpuModel = null;
+let cachedSerialNumber = null;
 let cachedSecurityStatic = {
   firewall_status: 'ON',
   defender_status: 'Active',
@@ -64,6 +64,71 @@ let cachedSecurityStatic = {
   bitlocker_status: 'enabled',
   bitlocker_drive: 'C:'
 };
+
+function getRealLocalNetworkInfo() {
+  try {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      const lower = name.toLowerCase();
+      if (lower.includes('loopback') || lower.includes('vethernet') || lower.includes('docker') || lower.includes('vbox') || lower.includes('vmware') || lower.includes('wsl')) continue;
+      for (const net of interfaces[name]) {
+        if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('127.') && !net.address.startsWith('169.254.')) {
+          return { ip: net.address, mac: net.mac };
+        }
+      }
+    }
+    for (const name of Object.keys(interfaces)) {
+      for (const net of interfaces[name]) {
+        if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('127.')) {
+          return { ip: net.address, mac: net.mac };
+        }
+      }
+    }
+  } catch (e) {}
+  return { ip: '127.0.0.1', mac: '00:00:00:00:00:00' };
+}
+
+function getFastNativeTelemetry() {
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const uptimeSeconds = Math.floor(os.uptime());
+  const cpus = os.cpus();
+  const cpuModel = cpus && cpus.length > 0 ? cpus[0].model.trim() : 'System CPU';
+  let username = 'User';
+  try { username = os.userInfo().username; } catch (e) {}
+  const lastRebootAt = new Date(Date.now() - uptimeSeconds * 1000).toISOString();
+  const netInfo = getRealLocalNetworkInfo();
+
+  return {
+    hostname: os.hostname(),
+    os_version: `${os.type()} ${os.release()}`,
+    os_platform: process.platform,
+    ip_address: netInfo.ip,
+    mac_address: netInfo.mac,
+    cpu_usage: 5,
+    cpu_model: cpuModel,
+    memory_total: totalMem,
+    memory_used: totalMem - freeMem,
+    running_processes: [],
+    firewall_status: cachedSecurityStatic.firewall_status,
+    defender_status: cachedSecurityStatic.defender_status,
+    antivirus_updated_at: cachedSecurityStatic.antivirus_updated_at,
+    active_ports: [],
+    last_logged_user: username,
+    uptime_seconds: uptimeSeconds,
+    last_reboot_at: lastRebootAt,
+    serial_number: cachedSerialNumber || null,
+    agent_version: '2.0.0',
+    bitlocker_status: cachedSecurityStatic.bitlocker_status,
+    bitlocker_drive: cachedSecurityStatic.bitlocker_drive,
+    threats: [],
+    quarantine: [],
+    scan_history: [],
+    collected_at: new Date().toISOString()
+  };
+}
+
+let latestTelemetry = getFastNativeTelemetry();
 
 // Fast helper to run shell commands safely with tight timeouts
 async function runCmd(cmd, timeoutMs = 2500) {
@@ -87,10 +152,11 @@ async function collectTelemetry() {
     const username = os.userInfo().username;
 
     // Parallel lightweight async system queries
-    const [cpuLoad, network, processList] = await Promise.all([
+    const [cpuLoad, network, processList, netConns] = await Promise.all([
       si.currentLoad().catch(() => ({ currentLoad: 5 })),
       si.networkInterfaces().catch(() => []),
-      si.processes().catch(() => ({ list: [] }))
+      si.processes().catch(() => ({ list: [] })),
+      si.networkConnections().catch(() => [])
     ]);
 
     // Lazy load static OS & CPU info once
@@ -109,6 +175,24 @@ async function collectTelemetry() {
         cachedCpuModel = cpus && cpus.length > 0 ? cpus[0].model.trim() : 'System CPU';
       } catch (e) {
         cachedCpuModel = 'System CPU';
+      }
+    }
+
+    // Lazy load serial number once — cross-platform
+    if (!cachedSerialNumber) {
+      try {
+        if (process.platform === 'win32') {
+          const raw = await runCmd('powershell -NoProfile -Command "(Get-WmiObject Win32_BIOS).SerialNumber"', 3000);
+          cachedSerialNumber = raw && raw !== 'To Be Filled By O.E.M.' && raw !== 'Default string' ? raw : null;
+        } else if (process.platform === 'darwin') {
+          const raw = await runCmd("system_profiler SPHardwareDataType | awk '/Serial Number/{print $NF}'", 3000);
+          cachedSerialNumber = raw || null;
+        } else {
+          const raw = await runCmd('cat /sys/class/dmi/id/product_serial 2>/dev/null || dmidecode -s system-serial-number 2>/dev/null', 3000);
+          cachedSerialNumber = raw && raw !== 'Not Specified' ? raw : null;
+        }
+      } catch (e) {
+        cachedSerialNumber = null;
       }
     }
 
@@ -216,7 +300,8 @@ async function collectTelemetry() {
       defaultNet = allIfaces.find(n => n.ip4 && !n.ip4.startsWith('127.') && !n.ip4.startsWith('169.254.')) || allIfaces[0];
     }
 
-    const active_ports = (netConns || [])
+    const netConnsArr = Array.isArray(netConns) ? netConns : [];
+    const active_ports = netConnsArr
       .filter(c => c.state === 'LISTEN' || c.state === 'ESTABLISHED')
       .slice(0, 50)
       .map(c => ({ protocol: c.protocol, local_port: c.localPort, peer_address: c.peerAddress, state: c.state }));
@@ -236,9 +321,10 @@ async function collectTelemetry() {
       defender_status,
       antivirus_updated_at,
       active_ports,
-      last_logged_user,
-      uptime_seconds,
-      last_reboot_at,
+      last_logged_user: username,
+      uptime_seconds: uptimeSeconds,
+      last_reboot_at: lastRebootAt,
+      serial_number: cachedSerialNumber || null,
       agent_version: '2.0.0',
       bitlocker_status,
       bitlocker_drive,
@@ -269,6 +355,7 @@ async function sendTelemetry(telemetry) {
         cpu_model: telemetry.cpu_model,
         ram_total_gb,
         storage_total_gb,
+        serial_number: telemetry.serial_number || null,
         firewall_status: telemetry.firewall_status,
         defender_status: telemetry.defender_status,
         antivirus_updated_at: telemetry.antivirus_updated_at
@@ -364,7 +451,8 @@ ipcMain.handle('get-manager-url', () => MANAGER_URL);
 ipcMain.handle('run-scan', async () => {
   try {
     if (process.platform === 'win32') {
-      execSync('powershell -NoProfile -Command "Start-MpScan -ScanType QuickScan"', { timeout: 30000 });
+      // Use execAsync (non-blocking) to avoid freezing the main process event loop
+      await execAsync('powershell -NoProfile -Command "Start-MpScan -ScanType QuickScan"', { timeout: 30000 });
       return { success: true, message: 'Quick scan initiated successfully.' };
     }
     return { success: true, message: 'Scan requested (platform scan initiated).' };
@@ -376,7 +464,8 @@ ipcMain.handle('run-scan', async () => {
 ipcMain.handle('run-full-scan', async () => {
   try {
     if (process.platform === 'win32') {
-      execSync('powershell -NoProfile -Command "Start-MpScan -ScanType FullScan"', { timeout: 60000 });
+      // Use execAsync (non-blocking) to avoid freezing the main process event loop
+      await execAsync('powershell -NoProfile -Command "Start-MpScan -ScanType FullScan"', { timeout: 60000 });
       return { success: true, message: 'Full scan initiated. This may take a while.' };
     }
     return { success: true, message: 'Full scan requested.' };
@@ -388,7 +477,8 @@ ipcMain.handle('run-full-scan', async () => {
 ipcMain.handle('run-liveupdate', async () => {
   try {
     if (process.platform === 'win32') {
-      execSync('powershell -NoProfile -Command "Update-MpSignature"', { timeout: 60000 });
+      // Use execAsync (non-blocking) to keep the window responsive during update
+      await execAsync('powershell -NoProfile -Command "Update-MpSignature"', { timeout: 90000 });
       // Refresh telemetry after update
       setTimeout(telemetryLoop, 3000);
       return { success: true, message: 'Virus definitions updated successfully.' };
