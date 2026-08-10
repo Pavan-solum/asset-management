@@ -66,7 +66,7 @@ function escHtml(str) {
 function fmtBytes(bytes) {
   if (!bytes) return '—';
   const gb = bytes / (1024 ** 3);
-  return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 ** 2)).toFixed(0)} MB`;
+  return gb >= 1 ? `${Math.round(gb)}.0 GB` : `${(bytes / (1024 ** 2)).toFixed(0)} MB`;
 }
 
 function fmtUptime(secs) {
@@ -825,7 +825,7 @@ function openOptions(component) {
       <div class="modal-section-title" style="margin-top:14px;">Active Network Connections</div>
       <div style="background:#f4f6f9; padding:8px 12px; border-radius:4px; font-size:11px; margin-top:4px;">
         <div><strong>Active Monitored Connections:</strong> ${t.active_ports ? t.active_ports.length : 50}</div>
-        <div><strong>Active Connection IP:</strong> ${escHtml(t.ip_address || '192.168.1.100')}</div>
+        <div><strong>Active Connection IP:</strong> ${escHtml(t.ip_address || '—')}</div>
       </div>
     `;
   } else if (component === 'encryption') {

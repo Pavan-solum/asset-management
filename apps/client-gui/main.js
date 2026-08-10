@@ -49,6 +49,59 @@ let telemetryHistory = [];
 let mainWindow = null;
 let tray = null;
 
+function getConfigPath() {
+  try {
+    let dir;
+    if (app && typeof app.isReady === 'function' && app.isReady()) {
+      dir = app.getPath('userData');
+    } else {
+      dir = path.join(os.homedir(), '.assetmanager-client');
+    }
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    return path.join(dir, 'agent_config.json');
+  } catch (e) {
+    try {
+      const fallbackDir = path.join(os.homedir(), '.assetmanager-client');
+      if (!fs.existsSync(fallbackDir)) fs.mkdirSync(fallbackDir, { recursive: true });
+      return path.join(fallbackDir, 'agent_config.json');
+    } catch (err) {
+      return null;
+    }
+  }
+}
+
+function loadSavedEndpointId() {
+  try {
+    const file = getConfigPath();
+    if (file && fs.existsSync(file)) {
+      const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (data && data.endpointId) {
+        endpointId = data.endpointId;
+        console.log(`[Main] Loaded persisted Endpoint ID: ${endpointId}`);
+      }
+    }
+  } catch (e) {
+    console.error('[Main] Error reading config:', e.message);
+  }
+}
+
+function saveEndpointId(id) {
+  endpointId = id;
+  if (remoteDaemon) remoteDaemon.endpointId = id;
+  try {
+    const file = getConfigPath();
+    if (file) {
+      if (id) {
+        fs.writeFileSync(file, JSON.stringify({ endpointId: id, registeredAt: new Date().toISOString() }, null, 2));
+      } else if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
+      }
+    }
+  } catch (e) {
+    console.error('[Main] Error saving config:', e.message);
+  }
+}
+
 const { exec } = require('child_process');
 const util = require('util');
 const execAsync = util.promisify(exec);
@@ -99,9 +152,17 @@ function getFastNativeTelemetry() {
   const lastRebootAt = new Date(Date.now() - uptimeSeconds * 1000).toISOString();
   const netInfo = getRealLocalNetworkInfo();
 
+  let osVersion = `${os.type()} ${os.release()}`;
+  if (typeof os.version === 'function') {
+    try {
+      const v = os.version();
+      if (v) osVersion = v;
+    } catch (e) {}
+  }
+
   return {
     hostname: os.hostname(),
-    os_version: `${os.type()} ${os.release()}`,
+    os_version: osVersion,
     os_platform: process.platform,
     ip_address: netInfo.ip,
     mac_address: netInfo.mac,
@@ -360,10 +421,13 @@ async function sendTelemetry(telemetry) {
         defender_status: telemetry.defender_status,
         antivirus_updated_at: telemetry.antivirus_updated_at
       }, { timeout: 15000 });
-      endpointId = res.data.endpoint.id;
-      console.log(`Successfully registered endpoint: ${endpointId}`);
-      if (remoteDaemon) remoteDaemon.endpointId = endpointId;
+      if (res.data && res.data.endpoint && res.data.endpoint.id) {
+        saveEndpointId(res.data.endpoint.id);
+        console.log(`Successfully registered endpoint: ${endpointId}`);
+      }
     }
+
+    if (!endpointId) return;
 
     const res = await axios.post(`${MANAGER_URL}/api/endpoints/telemetry`, {
       endpoint_id: endpointId,
@@ -421,7 +485,9 @@ async function sendTelemetry(telemetry) {
     }
   } catch (e) {
     console.error('Failed to send telemetry:', e.response?.data || e.message);
-    if (e.response?.status === 404) endpointId = null;
+    if (e.response?.status === 404) {
+      saveEndpointId(null);
+    }
   }
 }
 
@@ -559,6 +625,7 @@ function enableAutoLaunch() {
 
 // ─── App Lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
+  loadSavedEndpointId();
   enableAutoLaunch();
   createWindow();
 

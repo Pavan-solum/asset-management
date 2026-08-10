@@ -184,9 +184,14 @@ async function collectTelemetry() {
     // Priority 4: any non-loopback fallback
     if (!defaultNet) defaultNet = allIfaces.find(n => n.ip4 && !n.ip4.startsWith('127.') && !n.ip4.startsWith('169.254.')) || allIfaces[0];
 
+    let osVersion = `${osInfo.distro} ${osInfo.release}`;
+    if (process.platform === 'win32' && typeof require('os').version === 'function') {
+      try { const v = require('os').version(); if (v) osVersion = v; } catch (e) {}
+    }
+
     return {
       hostname: osInfo.hostname,
-      os_version: `${osInfo.distro} ${osInfo.release}`,
+      os_version: osVersion,
       ip_address: defaultNet ? defaultNet.ip4 : 'unknown',
       mac_address: defaultNet ? defaultNet.mac : 'unknown',
       cpu_usage: cpu.currentLoad,

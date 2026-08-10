@@ -283,7 +283,7 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
               Enterprise Remote Desktop — {endpoint?.hostname || 'Remote Host'}
             </Typography>
             <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-              IP: {endpoint?.ip_address || '192.168.1.100'} | OS: {endpoint?.os_version || 'Windows 11'}
+              IP: {endpoint?.ip_address || '—'} | OS: {endpoint?.os_version || '—'}
             </Typography>
           </Box>
 
