@@ -245,6 +245,12 @@ export interface Endpoint {
   antivirus_updated_at: string | null;
   active_ports: ActivePort[] | null;
   assigned_employee_name: string | null;
+  last_logged_user?: string | null;
+  uptime_seconds?: number | null;
+  last_reboot_at?: string | null;
+  agent_version?: string | null;
+  bitlocker_status?: string | null;
+  bitlocker_drive?: string | null;
 }
 
 export type ThreatSeverity = 'critical' | 'high' | 'medium' | 'low';

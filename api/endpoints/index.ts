@@ -20,7 +20,8 @@ export default async function handler(req: Request) {
           e.id, e.hostname, e.serial_number, e.os_version, e.ip_address, e.mac_address,
           e.status, e.last_seen_at, e.cpu_model, e.ram_total_gb, e.storage_total_gb,
           e.windows_updates, e.firewall_status, e.defender_status,
-          e.antivirus_updated_at, e.active_ports,
+          e.antivirus_updated_at, e.active_ports, e.last_logged_user, e.uptime_seconds,
+          e.last_reboot_at, e.agent_version, e.bitlocker_status, e.bitlocker_drive,
           CASE
             WHEN emp.id IS NOT NULL
             THEN emp.first_name || ' ' || emp.last_name
@@ -48,7 +49,9 @@ export default async function handler(req: Request) {
           id, hostname, NULL AS serial_number, os_version, ip_address, mac_address,
           status, last_seen_at, cpu_model, ram_total_gb, storage_total_gb,
           windows_updates, firewall_status, defender_status,
-          antivirus_updated_at, active_ports, NULL AS assigned_employee_name
+          antivirus_updated_at, active_ports, last_logged_user, uptime_seconds,
+          last_reboot_at, agent_version, bitlocker_status, bitlocker_drive,
+          NULL AS assigned_employee_name
         FROM endpoints
         WHERE tenant_id = ${auth.tenantId!}
         ORDER BY last_seen_at DESC

@@ -277,7 +277,7 @@ function EndpointRow({ endpoint, onRefresh }: { endpoint: Endpoint; onRefresh: (
                     ))}
                   </Paper>
                 </Grid>
-                <Grid item xs={12} md={7}><DeviceContext endpointId={endpoint.id} /></Grid>
+                <Grid item xs={12} md={7}><DeviceContext endpointId={endpoint.id} endpoint={endpoint} /></Grid>
               </Grid>
 
               {/* Network Connections */}

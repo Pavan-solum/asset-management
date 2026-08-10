@@ -152,8 +152,8 @@ class RemoteDaemon {
 
       if (sources && sources.length > 0) {
         const primarySource = sources[0];
-        // JPEG quality set to 50 for ultra-low latency frame streaming and light CPU payload
-        const jpegBuffer = primarySource.thumbnail.toJPEG(50);
+        // High clarity JPEG quality set to 85 for crisp text and sharp UI rendering
+        const jpegBuffer = primarySource.thumbnail.toJPEG(85);
         if (jpegBuffer && jpegBuffer.length > 0) {
           const base64Str = jpegBuffer.toString('base64');
           // Deduplicate identical frames to save bandwidth unless forced

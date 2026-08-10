@@ -122,7 +122,7 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
     }
   };
 
-  // Render received frame image buffer to canvas
+  // Render received frame image buffer to canvas with high clarity smoothing
   const renderFrame = (jpegDataUrl: string) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -131,6 +131,8 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
 
     const img = new Image();
     img.onload = () => {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
     img.src = jpegDataUrl;
@@ -356,25 +358,37 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
             <Typography variant="body2" color="text.secondary">Connecting to background agent on {endpoint?.hostname}…</Typography>
           </Box>
         ) : (
-          <canvas
-            ref={canvasRef}
-            tabIndex={0}
-            width={1280}
-            height={720}
-            onClick={handleCanvasClick}
-            onDoubleClick={handleCanvasDoubleClick}
-            onContextMenu={handleCanvasContextMenu}
-            onMouseMove={handleCanvasMouseMove}
-            onWheel={handleCanvasWheel}
-            onKeyDown={handleCanvasKeyDown}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              cursor: 'crosshair',
-              outline: 'none'
-            }}
-          />
+          <>
+            <Box sx={{
+              position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+              zIndex: 10, bgcolor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 2, px: 2, py: 0.6,
+              display: 'flex', alignItems: 'center', gap: 1.5, pointerEvents: 'none'
+            }}>
+              <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '11px' }}>
+                💡 <b>Self-Screen Reflection Tip:</b> Remote Control streams the host primary monitor. Open from a second monitor or separate device for clean control without screen recursion.
+              </Typography>
+            </Box>
+            <canvas
+              ref={canvasRef}
+              tabIndex={0}
+              width={quality === '1080p' ? 1920 : quality === '480p' ? 854 : 1280}
+              height={quality === '1080p' ? 1080 : quality === '480p' ? 480 : 720}
+              onClick={handleCanvasClick}
+              onDoubleClick={handleCanvasDoubleClick}
+              onContextMenu={handleCanvasContextMenu}
+              onMouseMove={handleCanvasMouseMove}
+              onWheel={handleCanvasWheel}
+              onKeyDown={handleCanvasKeyDown}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                cursor: 'crosshair',
+                outline: 'none'
+              }}
+            />
+          </>
         )}
 
         {/* ── Remote Shell Drawer ─────────────────────────────────────────────── */}
