@@ -518,52 +518,52 @@ export function EndpointsPage() {
               <StatCard icon={<WifiOffIcon />} label="Offline" value={offline} color={theme.palette.text.secondary} sublabel="No heartbeat > 5m" />
             </Grid>
           </Grid>
+
+          {/* Endpoint Table */}
+          <TableContainer component={Paper} variant="outlined">
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.04) }}>
+                  <TableCell sx={{ width: 48 }} />
+                  {['Device', 'Assigned To', 'Security Score', 'Protection Status', 'Last Seen'].map(h => (
+                    <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: 0.7 }}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {error ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'error.main' }}>
+                      <GppBadIcon sx={{ fontSize: 36, mb: 1, display: 'block', mx: 'auto', opacity: 0.5 }} />
+                      {error}
+                    </TableCell>
+                  </TableRow>
+                ) : loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                      <Typography color="text.secondary">Loading endpoints\u2026</Typography>
+                      <LinearProgress sx={{ mt: 2, maxWidth: 300, mx: 'auto' }} />
+                    </TableCell>
+                  </TableRow>
+                ) : endpoints.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                      <ShieldIcon sx={{ fontSize: 48, color: 'text.disabled', display: 'block', mx: 'auto', mb: 1.5 }} />
+                      <Typography variant="h6" color="text.secondary" gutterBottom>No Endpoints Registered</Typography>
+                      <Typography variant="body2" color="text.disabled" mb={2}>Deploy the security agent on your Windows, macOS, or Linux devices to start monitoring.</Typography>
+                      <Button variant="contained" startIcon={<DownloadIcon />} onClick={(e) => setDownloadAnchor(e.currentTarget)}>Deploy Agent ▾</Button>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  endpoints.map((endpoint: Endpoint) => (
+                    <EndpointRow key={endpoint.id} endpoint={endpoint} onRefresh={fetchEndpoints} />
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </>
       )}
-
-      {/* Endpoint Table */}
-      <TableContainer component={Paper} variant="outlined">
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.04) }}>
-              <TableCell sx={{ width: 48 }} />
-              {['Device', 'Assigned To', 'Security Score', 'Protection Status', 'Last Seen'].map(h => (
-                <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: 0.7 }}>{h}</TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {error ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'error.main' }}>
-                  <GppBadIcon sx={{ fontSize: 36, mb: 1, display: 'block', mx: 'auto', opacity: 0.5 }} />
-                  {error}
-                </TableCell>
-              </TableRow>
-            ) : loading ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                  <Typography color="text.secondary">Loading endpoints\u2026</Typography>
-                  <LinearProgress sx={{ mt: 2, maxWidth: 300, mx: 'auto' }} />
-                </TableCell>
-              </TableRow>
-            ) : endpoints.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                  <ShieldIcon sx={{ fontSize: 48, color: 'text.disabled', display: 'block', mx: 'auto', mb: 1.5 }} />
-                  <Typography variant="h6" color="text.secondary" gutterBottom>No Endpoints Registered</Typography>
-                  <Typography variant="body2" color="text.disabled" mb={2}>Deploy the security agent on your Windows, macOS, or Linux devices to start monitoring.</Typography>
-                  <Button variant="contained" startIcon={<DownloadIcon />} onClick={(e) => setDownloadAnchor(e.currentTarget)}>Deploy Agent ▾</Button>
-                </TableCell>
-              </TableRow>
-            ) : (
-              endpoints.map((endpoint: Endpoint) => (
-                <EndpointRow key={endpoint.id} endpoint={endpoint} onRefresh={fetchEndpoints} />
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
     </Box>
   );
 }
