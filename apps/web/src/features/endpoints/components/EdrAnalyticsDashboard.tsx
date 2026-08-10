@@ -142,7 +142,7 @@ export function EdrAnalyticsDashboard({ endpoints, onSelectEndpoint, onRefresh }
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="h6" fontWeight={800} sx={{ color: '#f8fafc', letterSpacing: '-0.3px' }}>
-            [Elastic Defend] Endpoint Detection and Response
+            Endpoint Detection and Response
           </Typography>
           <Chip
             label={`${endpoints.length} Active Devices`}
@@ -225,7 +225,11 @@ export function EdrAnalyticsDashboard({ endpoints, onSelectEndpoint, onRefresh }
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#64748b' }} stroke="#334155" />
                   <YAxis tick={{ fontSize: 9, fill: '#64748b' }} stroke="#334155" />
-                  <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: 6, color: '#f8fafc', fontSize: '11px' }} />
+                  <RechartsTooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#3b82f6', borderRadius: 6, color: '#ffffff', fontSize: '12px' }}
+                    itemStyle={{ color: '#ffffff' }}
+                    labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                  />
                   <Area type="monotone" dataKey="alerts" stroke="#14b8a6" fill="#14b8a6" fillOpacity={0.2} strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -275,7 +279,11 @@ export function EdrAnalyticsDashboard({ endpoints, onSelectEndpoint, onRefresh }
                       <Cell key={`cell-sev-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: 6, color: '#f8fafc', fontSize: '11px' }} />
+                  <RechartsTooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#3b82f6', borderRadius: 6, color: '#ffffff', fontSize: '12px' }}
+                    itemStyle={{ color: '#ffffff' }}
+                    labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </Box>
@@ -302,8 +310,12 @@ export function EdrAnalyticsDashboard({ endpoints, onSelectEndpoint, onRefresh }
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart layout="vertical" data={analytics.mitreData} margin={{ top: 0, right: 20, left: 80, bottom: 0 }}>
                     <XAxis type="number" tick={{ fontSize: 9, fill: '#64748b' }} stroke="#334155" />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#94a3b8' }} stroke="#334155" width={110} />
-                    <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: 6, color: '#f8fafc', fontSize: '11px' }} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#cbd5e1' }} stroke="#334155" width={125} />
+                    <RechartsTooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#3b82f6', borderRadius: 6, color: '#ffffff', fontSize: '12px' }}
+                    itemStyle={{ color: '#ffffff' }}
+                    labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                  />
                     <Bar dataKey="count" fill="#14b8a6" radius={[0, 4, 4, 0]} barSize={12} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -331,7 +343,11 @@ export function EdrAnalyticsDashboard({ endpoints, onSelectEndpoint, onRefresh }
                       <Cell key={`cell-os-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: 6, color: '#f8fafc', fontSize: '11px' }} />
+                  <RechartsTooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#3b82f6', borderRadius: 6, color: '#ffffff', fontSize: '12px' }}
+                    itemStyle={{ color: '#ffffff' }}
+                    labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </Box>
