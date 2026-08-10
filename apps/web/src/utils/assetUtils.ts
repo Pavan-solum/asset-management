@@ -113,7 +113,7 @@ export function createEmptyAssetForm() {
     department: '',
     assignedTo: '',
     assignedAssetId: '',
-    vendorId: 'vendor-dell',
+    vendorId: '',
     activationKey: '',
     notes: '',
     imageUrl: '' as string | undefined,

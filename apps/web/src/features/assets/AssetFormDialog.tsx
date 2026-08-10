@@ -35,7 +35,7 @@ const defaultForm = {
   currentValue: 1299,
   repairCost: 0,
   location: 'HQ',
-  vendorId: 'vendor-dell',
+  vendorId: '',
   warrantyExpiresAt: '',
   notes: '',
 };
@@ -168,6 +168,7 @@ export function AssetFormDialog({ open, onClose }: Props) {
               value={form.vendorId}
               onChange={(e) => handleChange('vendorId', e.target.value)}
             >
+              <MenuItem value="">None</MenuItem>
               {vendors.map((v) => (
                 <MenuItem key={v.id} value={v.id}>
                   {v.name}
