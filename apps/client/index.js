@@ -293,6 +293,20 @@ async function registerEndpoint(telemetry) {
     const ram_total_gb = Math.round(telemetry.memory_total / (1024 * 1024 * 1024));
     const storage_total_gb = Math.round(diskInfo.reduce((acc, disk) => acc + (disk.size || 0), 0) / (1024 * 1024 * 1024));
 
+    // Collect device serial number (cross-platform, one-time)
+    let serial_number = null;
+    try {
+      if (process.platform === 'win32') {
+        const raw = execSync('powershell -NoProfile -Command "(Get-WmiObject Win32_BIOS).SerialNumber"', { encoding: 'utf8', timeout: 5000 }).trim();
+        if (raw && raw !== 'To Be Filled By O.E.M.' && raw !== 'Default string') serial_number = raw;
+      } else if (process.platform === 'darwin') {
+        serial_number = execSync("system_profiler SPHardwareDataType | awk '/Serial Number/{print $NF}'", { encoding: 'utf8', timeout: 5000 }).trim() || null;
+      } else {
+        const raw = execSync('cat /sys/class/dmi/id/product_serial 2>/dev/null', { encoding: 'utf8', timeout: 5000 }).trim();
+        if (raw && raw !== 'Not Specified') serial_number = raw;
+      }
+    } catch (e) { /* serial number not available on this device */ }
+
     const response = await axios.post(`${MANAGER_URL}/api/endpoints/register`, {
       tenant_id: TENANT_ID,
       hostname: telemetry.hostname,
@@ -302,6 +316,7 @@ async function registerEndpoint(telemetry) {
       cpu_model: `${cpuInfo.manufacturer} ${cpuInfo.brand}`.trim(),
       ram_total_gb,
       storage_total_gb,
+      serial_number,
       windows_updates,
       installed_apps,
       firewall_status: telemetry.firewall_status,

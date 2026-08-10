@@ -68,9 +68,11 @@ class RemoteDaemon {
         if (is_active && !this.activeSession) {
           console.log('[RemoteDaemon] Web relay active. Initiating remote session.');
           this.activeSession = true;
+          this.lastFrameHash = null;
         } else if (!is_active && this.activeSession) {
           console.log('[RemoteDaemon] Web relay inactive. Terminating remote session.');
           this.activeSession = false;
+          this.lastFrameHash = null;
         }
 
         if (this.activeSession) {
@@ -78,7 +80,9 @@ class RemoteDaemon {
             await this.processInputQueue(input_queue, url, headers, axios);
           }
 
-          const frame = await this.captureScreenFrame();
+          this.pollCount = (this.pollCount || 0) + 1;
+          const forceFrame = this.pollCount % 5 === 0;
+          const frame = await this.captureScreenFrame(forceFrame);
           if (frame) {
             await axios.post(url, { frame }, { headers, timeout: 5000 });
           }
@@ -138,7 +142,7 @@ class RemoteDaemon {
     }
   }
 
-  async captureScreenFrame() {
+  async captureScreenFrame(force = false) {
     try {
       const dim = this.getThumbnailDimensions();
       const sources = await desktopCapturer.getSources({
@@ -152,8 +156,8 @@ class RemoteDaemon {
         const jpegBuffer = primarySource.thumbnail.toJPEG(50);
         if (jpegBuffer && jpegBuffer.length > 0) {
           const base64Str = jpegBuffer.toString('base64');
-          // Deduplicate identical frames to save bandwidth and backend CPU cycles
-          if (base64Str === this.lastFrameHash) {
+          // Deduplicate identical frames to save bandwidth unless forced
+          if (!force && base64Str === this.lastFrameHash) {
             return null;
           }
           this.lastFrameHash = base64Str;

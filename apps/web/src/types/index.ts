@@ -230,6 +230,7 @@ export interface ActivePort {
 export interface Endpoint {
   id: string;
   hostname: string;
+  serial_number: string | null;
   os_version: string;
   ip_address: string;
   mac_address: string;
@@ -243,6 +244,7 @@ export interface Endpoint {
   defender_status: string | null;
   antivirus_updated_at: string | null;
   active_ports: ActivePort[] | null;
+  assigned_employee_name: string | null;
 }
 
 export type ThreatSeverity = 'critical' | 'high' | 'medium' | 'low';
@@ -273,6 +275,7 @@ export interface DeviceContextData {
   agent_version: string | null;
   bitlocker_status: string | null;
   bitlocker_drive: string | null;
+  serial_number: string | null;
 }
 
 export const PERMISSIONS = {

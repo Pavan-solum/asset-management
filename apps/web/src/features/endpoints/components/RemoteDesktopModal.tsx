@@ -93,11 +93,13 @@ export function RemoteDesktopModal({ open, endpoint, onClose }: RemoteDesktopMod
           `/api/endpoints/${endpoint.id}/remote-relay`
         );
 
-        if (data.last_frame) {
+        if (data.is_active) {
           setStatus('connected');
-          frameCountRef.current += 1;
-          renderFrame(data.last_frame);
-        } else if (!data.is_active) {
+          if (data.last_frame) {
+            frameCountRef.current += 1;
+            renderFrame(data.last_frame);
+          }
+        } else {
           setStatus('disconnected');
           stopFrameStreaming();
           return;

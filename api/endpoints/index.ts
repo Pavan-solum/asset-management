@@ -13,14 +13,47 @@ export default async function handler(req: Request) {
 
   try {
     const sql = await getTenantSql(auth.tenantId!);
-    const endpoints = await sql`
-      SELECT id, hostname, os_version, ip_address, mac_address, status, last_seen_at,
-             cpu_model, ram_total_gb, storage_total_gb, windows_updates,
-             firewall_status, defender_status, antivirus_updated_at, active_ports
-      FROM endpoints
-      WHERE tenant_id = ${auth.tenantId!}
-      ORDER BY last_seen_at DESC
-    `;
+    let endpoints;
+    try {
+      endpoints = await sql`
+        SELECT
+          e.id, e.hostname, e.serial_number, e.os_version, e.ip_address, e.mac_address,
+          e.status, e.last_seen_at, e.cpu_model, e.ram_total_gb, e.storage_total_gb,
+          e.windows_updates, e.firewall_status, e.defender_status,
+          e.antivirus_updated_at, e.active_ports,
+          CASE
+            WHEN emp.id IS NOT NULL
+            THEN emp.first_name || ' ' || emp.last_name
+            ELSE NULL
+          END AS assigned_employee_name
+        FROM endpoints e
+        LEFT JOIN assets a
+          ON a.serial_number = e.serial_number
+          AND a.serial_number IS NOT NULL
+          AND e.serial_number IS NOT NULL
+          AND a.tenant_id = ${auth.tenantId!}
+        LEFT JOIN asset_assignments aa
+          ON aa.asset_id = a.id
+          AND aa.returned_at IS NULL
+        LEFT JOIN employees emp
+          ON emp.id = aa.employee_id
+          AND emp.tenant_id = ${auth.tenantId!}
+        WHERE e.tenant_id = ${auth.tenantId!}
+        ORDER BY e.last_seen_at DESC
+      `;
+    } catch (queryErr) {
+      // Fallback query if serial_number column or JOIN fails
+      endpoints = await sql`
+        SELECT
+          id, hostname, NULL AS serial_number, os_version, ip_address, mac_address,
+          status, last_seen_at, cpu_model, ram_total_gb, storage_total_gb,
+          windows_updates, firewall_status, defender_status,
+          antivirus_updated_at, active_ports, NULL AS assigned_employee_name
+        FROM endpoints
+        WHERE tenant_id = ${auth.tenantId!}
+        ORDER BY last_seen_at DESC
+      `;
+    }
 
     return json({ endpoints });
   } catch (e) {
