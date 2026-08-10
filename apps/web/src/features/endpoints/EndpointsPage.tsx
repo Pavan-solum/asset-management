@@ -34,6 +34,7 @@ import { InstalledApps } from './components/InstalledApps';
 import { DeviceContext } from './components/DeviceContext';
 import { ActionsBar } from './components/ActionsBar';
 import { RemoteDesktopModal } from './components/RemoteDesktopModal';
+import { EdrAnalyticsDashboard } from './components/EdrAnalyticsDashboard';
 import type { Endpoint, ActivePort } from '../../types';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -420,10 +421,12 @@ export function EndpointsPage() {
   const critical = enriched.filter(e => e.score < 50).length;
   const offline = enriched.filter(e => e.isOffline).length;
 
+  const [viewTab, setViewTab] = useState<'edr' | 'inventory'>('edr');
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
             <ShieldIcon sx={{ fontSize: 30, color: 'primary.main' }} />
@@ -480,24 +483,43 @@ export function EndpointsPage() {
         </Stack>
       </Box>
 
-      {/* Summary Cards */}
-      <Grid container spacing={2} mb={3}>
-        <Grid item xs={6} sm={2.4}>
-          <StatCard icon={<WifiIcon />} label="Online" value={online} color={theme.palette.info.main} sublabel="Heartbeat active" />
-        </Grid>
-        <Grid item xs={6} sm={2.4}>
-          <StatCard icon={<GppGoodIcon />} label="Protected" value={protected_} color={theme.palette.success.main} sublabel="All controls active" />
-        </Grid>
-        <Grid item xs={6} sm={2.4}>
-          <StatCard icon={<GppMaybeIcon />} label="At Risk" value={atRisk} color={theme.palette.warning.main} sublabel="Needs attention" />
-        </Grid>
-        <Grid item xs={6} sm={2.4}>
-          <StatCard icon={<GppBadIcon />} label="Critical" value={critical} color={theme.palette.error.main} sublabel="Action required" />
-        </Grid>
-        <Grid item xs={6} sm={2.4}>
-          <StatCard icon={<WifiOffIcon />} label="Offline" value={offline} color={theme.palette.text.secondary} sublabel="No heartbeat > 5m" />
-        </Grid>
-      </Grid>
+      {/* Mode Switcher Tabs */}
+      <Tabs value={viewTab} onChange={(_, val) => setViewTab(val)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+        <Tab label="🛡️ EDR Analytics & Command Center" value="edr" sx={{ fontWeight: 700, fontSize: '0.85rem' }} />
+        <Tab label={`🖥️ Registered Devices Inventory (${endpoints.length})`} value="inventory" sx={{ fontWeight: 700, fontSize: '0.85rem' }} />
+      </Tabs>
+
+      {/* EDR Analytics View */}
+      {viewTab === 'edr' && (
+        <EdrAnalyticsDashboard
+          endpoints={endpoints}
+          onRefresh={fetchEndpoints}
+          onSelectEndpoint={() => setViewTab('inventory')}
+        />
+      )}
+
+      {/* Devices Inventory View (Summary Cards + Endpoint Table) */}
+      {viewTab === 'inventory' && (
+        <>
+          <Grid container spacing={2} mb={3}>
+            <Grid item xs={6} sm={2.4}>
+              <StatCard icon={<WifiIcon />} label="Online" value={online} color={theme.palette.info.main} sublabel="Heartbeat active" />
+            </Grid>
+            <Grid item xs={6} sm={2.4}>
+              <StatCard icon={<GppGoodIcon />} label="Protected" value={protected_} color={theme.palette.success.main} sublabel="All controls active" />
+            </Grid>
+            <Grid item xs={6} sm={2.4}>
+              <StatCard icon={<GppMaybeIcon />} label="At Risk" value={atRisk} color={theme.palette.warning.main} sublabel="Needs attention" />
+            </Grid>
+            <Grid item xs={6} sm={2.4}>
+              <StatCard icon={<GppBadIcon />} label="Critical" value={critical} color={theme.palette.error.main} sublabel="Action required" />
+            </Grid>
+            <Grid item xs={6} sm={2.4}>
+              <StatCard icon={<WifiOffIcon />} label="Offline" value={offline} color={theme.palette.text.secondary} sublabel="No heartbeat > 5m" />
+            </Grid>
+          </Grid>
+        </>
+      )}
 
       {/* Endpoint Table */}
       <TableContainer component={Paper} variant="outlined">
