@@ -205,6 +205,8 @@ export function mapUser(row: DbUser) {
     role: row.role as any,
     createdAt: row.created_at,
   };
+}
+
 export function mapEmployee(row: DbEmployee) {
   const joiningEmail = (row.joining_email ?? row.email ?? '').trim();
   const officialEmail = row.official_email?.trim() || undefined;
