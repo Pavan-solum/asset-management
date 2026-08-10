@@ -1,17 +1,19 @@
-import { useState } from 'react';
-import { Box, Card, Typography, List, ListItem, ListItemText, IconButton, Button, keyframes } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Box, Card, Typography, List, ListItem, ListItemText, IconButton, Button, Alert, keyframes } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import BatteryFullIcon from '@mui/icons-material/BatteryFull';
 import WifiIcon from '@mui/icons-material/Wifi';
 import SignalCellular4BarIcon from '@mui/icons-material/SignalCellular4Bar';
+import GetAppIcon from '@mui/icons-material/GetApp';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/storeHooks';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusChip } from '../../components/StatusChip';
 import { EmptyState } from '../../components/EmptyState';
 import { QrScannerDialog } from '../../components/QrScannerDialog';
+import { subscribeInstallPrompt, promptPwaInstall, type BeforeInstallPromptEvent } from '../../utils/pwa';
 
 const pulse = keyframes`
   0% { box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.4); }
@@ -23,23 +25,27 @@ export function MobilePage() {
   const navigate = useNavigate();
   const assets = useAppSelector((s) => s.assets.items);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    return subscribeInstallPrompt(setInstallPrompt);
+  }, []);
 
   const handleScanSuccess = (decodedText: string) => {
     setScannerOpen(false);
+    const raw = decodedText.trim();
     let assetId = '';
-    if (decodedText.includes('/lookup/')) {
-      assetId = decodedText.split('/lookup/')[1];
-    } else if (decodedText.startsWith('ASSET:')) {
-      const parts = decodedText.split(':');
-      if (parts.length >= 3) {
-        assetId = parts[2];
-      }
+    if (raw.includes('/lookup/')) {
+      assetId = raw.split('/lookup/')[1]?.split('?')[0]?.split('#')[0]?.replace(/\/$/, '') || '';
+    } else if (raw.startsWith('ASSET:')) {
+      const parts = raw.split(':');
+      assetId = parts[2] || parts[1] || '';
     } else {
-      assetId = decodedText;
+      assetId = raw;
     }
-    
+
     if (assetId) {
-      navigate(`/assets/${assetId}`);
+      navigate(`/lookup/${encodeURIComponent(assetId)}`);
     }
   };
 
@@ -47,10 +53,25 @@ export function MobilePage() {
     <Box>
       <PageHeader
         title="Mobile & Field"
-        subtitle="On-the-go asset management and barcode scanning"
+        subtitle="On-the-go asset management and PWA barcode scanner"
       />
 
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+      {installPrompt && (
+        <Alert
+          severity="info"
+          icon={<GetAppIcon />}
+          action={
+            <Button color="inherit" size="small" variant="outlined" onClick={promptPwaInstall}>
+              Install App
+            </Button>
+          }
+          sx={{ mt: 2, mb: 1, borderRadius: 2 }}
+        >
+          <strong>Install Assetly Mobile App</strong> — Add to your home screen for quick offline QR scanning.
+        </Alert>
+      )}
+
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
         <Box
           sx={{
             width: 375, // iPhone width

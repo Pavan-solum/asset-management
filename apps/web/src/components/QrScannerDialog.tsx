@@ -43,6 +43,9 @@ export function QrScannerDialog({ open, onClose, onScanSuccess }: QrScannerDialo
         
         scannerRef.current.render(
           (decodedText: string) => {
+            if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+              try { navigator.vibrate([100, 50, 100]); } catch (e) {}
+            }
             if (scannerRef.current) {
               scannerRef.current.clear().catch(console.error);
             }

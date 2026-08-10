@@ -13,8 +13,18 @@ import { apiFetch } from '../../services/api/client';
 import type { Asset } from '../../types';
 
 export function AssetLookupPage() {
-  const { id } = useParams<{ id: string }>();
-  const reduxAsset = useAppSelector((s) => s.assets.items.find((a) => a.id === id));
+  const { id: rawParam } = useParams<{ id: string }>();
+  const idStr = rawParam ? decodeURIComponent(rawParam).trim() : '';
+
+  let parsedId = idStr;
+  if (idStr.includes('/lookup/')) {
+    parsedId = idStr.split('/lookup/')[1]?.split('?')[0]?.split('#')[0]?.replace(/\/$/, '') || idStr;
+  } else if (idStr.startsWith('ASSET:')) {
+    const parts = idStr.split(':');
+    parsedId = parts[2] || parts[1] || idStr;
+  }
+
+  const reduxAsset = useAppSelector((s) => s.assets.items.find((a) => a.id === parsedId || a.assetTag === parsedId));
   const employees = useAppSelector((s) => s.employees.items);
   const vendors = useAppSelector((s) => s.vendors.items);
   const tenant = useAppSelector((s) => s.auth.tenant);
@@ -23,7 +33,7 @@ export function AssetLookupPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!id || !isApiEnabled()) {
+    if (!parsedId || !isApiEnabled()) {
       setLoading(false);
       return;
     }
@@ -31,7 +41,7 @@ export function AssetLookupPage() {
     let cancelled = false;
     (async () => {
       try {
-        const asset = await apiFetch<Asset>(`/api/assets/${id}`);
+        const asset = await apiFetch<Asset>(`/api/assets/${encodeURIComponent(parsedId)}`);
         if (!cancelled) setRemoteAsset(asset);
       } catch {
         if (!cancelled) setNotFound(true);
@@ -43,7 +53,7 @@ export function AssetLookupPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [parsedId]);
 
   const asset = isApiEnabled() ? remoteAsset : reduxAsset;
 

@@ -1,6 +1,6 @@
-import { getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
+import { getSql, getTenantSql, json, error, corsPreflight, parseBody } from '../_lib/db';
 import { mapAsset, type DbAsset } from '../_lib/mappers';
-import { requireAuth, insertAuditLog } from '../_lib/auth';
+import { verifyAuthToken, requireAuth, insertAuditLog } from '../_lib/auth';
 
 export const config = { runtime: 'edge' };
 
@@ -13,26 +13,51 @@ export default async function handler(req: Request) {
 
   const url = new URL(req.url);
   const parts = url.pathname.split('/').filter(Boolean);
-  const id = parts[parts.length - 1];
+  const rawId = parts[parts.length - 1];
 
-  if (!id || id === 'assets') return error('Asset id required', 400);
+  if (!rawId || rawId === 'assets') return error('Asset id required', 400);
+
+  const id = decodeURIComponent(rawId).trim();
+
+  // Allow public/unauthenticated GET requests for QR code lookup
+  if (req.method === 'GET') {
+    const auth = await verifyAuthToken(req);
+    const sql = auth?.tenantId ? await getTenantSql(auth.tenantId) : getSql();
+
+    let rows: DbAsset[] = [];
+    if (isUuid(id)) {
+      if (auth?.tenantId) {
+        rows = (await sql`
+          SELECT * FROM assets WHERE (id = ${id} OR asset_tag = ${id}) AND tenant_id = ${auth.tenantId}
+        `) as DbAsset[];
+      } else {
+        rows = (await sql`
+          SELECT * FROM assets WHERE id = ${id} OR asset_tag = ${id}
+        `) as DbAsset[];
+      }
+    } else {
+      if (auth?.tenantId) {
+        rows = (await sql`
+          SELECT * FROM assets WHERE asset_tag = ${id} AND tenant_id = ${auth.tenantId}
+        `) as DbAsset[];
+      } else {
+        rows = (await sql`
+          SELECT * FROM assets WHERE asset_tag = ${id}
+        `) as DbAsset[];
+      }
+    }
+
+    if (rows.length === 0) return error('Asset not found', 404);
+    return json(mapAsset(rows[0]));
+  }
 
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   if (!auth.tenantId && auth.role !== 'platform_admin') return error('Tenant ID is required', 400);
-  if (auth instanceof Response) return auth;
 
   const sql = await getTenantSql(auth.tenantId!);
 
   try {
-    if (req.method === 'GET') {
-      const rows = await sql`
-        SELECT * FROM assets WHERE id = ${id} AND tenant_id = ${auth.tenantId!}
-      ` as DbAsset[];
-      if (rows.length === 0) return error('Asset not found', 404);
-      return json(mapAsset(rows[0]));
-    }
-
     if (req.method !== 'PATCH' && req.method !== 'DELETE') return error('Method not allowed', 405);
 
     if (req.method === 'PATCH') {
