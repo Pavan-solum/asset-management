@@ -25,6 +25,7 @@ import {
   TextField,
   Tooltip,
   Typography,
+  Autocomplete,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -41,6 +42,7 @@ import { fetchAssetRequests, reviewAssetRequest } from '../../services/api/reque
 import { fetchTickets, updateTicket as updateTicketApi } from '../../services/api/tickets';
 import { replaceAllRequests, updateRequest } from '../../store/requestsSlice';
 import { replaceAllTickets, updateTicket } from '../../store/ticketsSlice';
+import { reloadFromApi } from '../../components/DataBootstrap';
 import {
   CATEGORY_LABELS,
   REQUEST_STATUS_COLORS,
@@ -79,9 +81,11 @@ export function RequestsPage() {
   const dispatch = useAppDispatch();
   const requests = useAppSelector((s) => s.requests.items);
   const tickets  = useAppSelector((s) => s.tickets.items);
+  const assets   = useAppSelector((s) => s.assets.items);
   const { can } = usePermissions();
 
   const [activeTab, setActiveTab] = useState(0);
+  const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -128,6 +132,10 @@ export function RequestsPage() {
     void loadTickets();
   }, [loadRequests, loadTickets]);
 
+  const availableAssets = useMemo(() => {
+    return assets.filter((a) => a.status === 'in_stock');
+  }, [assets]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return requests.filter((req) => {
@@ -158,15 +166,24 @@ export function RequestsPage() {
     setReviewTarget(null);
     setReviewAction(null);
     setReviewNotes('');
+    setSelectedAsset(null);
   };
 
   const handleReviewSubmit = async () => {
     if (!reviewTarget || !reviewAction) return;
+    if (reviewAction === 'fulfilled' && !selectedAsset) return;
+    
     setSubmitting(true);
     setError(null);
     try {
-      const updated = await reviewAssetRequest(reviewTarget.id, reviewAction, reviewNotes || undefined);
+      const updated = await reviewAssetRequest(
+        reviewTarget.id,
+        reviewAction,
+        reviewNotes || undefined,
+        selectedAsset?.id
+      );
       dispatch(updateRequest(updated));
+      await reloadFromApi(dispatch);
       closeReview();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to update request');
@@ -370,6 +387,25 @@ export function RequestsPage() {
                   {CATEGORY_LABELS[reviewTarget.category]}
                 </Typography>
                 <Typography variant="body2">{reviewTarget.description}</Typography>
+                
+                {reviewAction === 'fulfilled' && (
+                  <Autocomplete
+                    options={availableAssets}
+                    getOptionLabel={(option) => `${option.name} (${option.assetTag}) — ${option.category}`}
+                    value={selectedAsset}
+                    onChange={(_, newValue) => setSelectedAsset(newValue)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Select Asset (searchable by Tag or Name)"
+                        required
+                        placeholder="Search asset tag or name..."
+                      />
+                    )}
+                    fullWidth
+                  />
+                )}
+
                 <TextField
                   label="Notes for employee (optional)"
                   value={reviewNotes}
@@ -387,6 +423,7 @@ export function RequestsPage() {
               variant="contained"
               color={reviewAction === 'rejected' ? 'error' : 'primary'}
               loading={submitting}
+              disabled={reviewAction === 'fulfilled' && !selectedAsset}
               onClick={handleReviewSubmit}
             >
               Confirm
