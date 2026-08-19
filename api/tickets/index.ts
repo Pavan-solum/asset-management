@@ -83,8 +83,9 @@ export default async function handler(req: Request) {
         // Resolve employee id
         let employeeId = auth.employeeId;
         if (!employeeId) {
-          employeeId = await resolveEmployeeIdByLoginEmail(sql, auth.tenantId!, auth.email);
-          if (!employeeId) return error('Employee record not found', 403);
+          const resolved = await resolveEmployeeIdByLoginEmail(sql, auth.tenantId!, auth.email);
+          if (!resolved) return error('Employee record not found', 403);
+          employeeId = resolved;
         }
         const rows = await sql`
           SELECT t.*,
@@ -112,8 +113,9 @@ export default async function handler(req: Request) {
 
       let employeeId = auth.employeeId;
       if (!employeeId) {
-        employeeId = await resolveEmployeeIdByLoginEmail(sql, auth.tenantId!, auth.email);
-        if (!employeeId) return error('Employee record not found', 403);
+        const resolved = await resolveEmployeeIdByLoginEmail(sql, auth.tenantId!, auth.email);
+        if (!resolved) return error('Employee record not found', 403);
+        employeeId = resolved;
       }
 
       const body = await parseBody<Record<string, unknown>>(req);

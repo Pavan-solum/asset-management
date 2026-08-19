@@ -296,10 +296,27 @@ export default async function handler(req: Request) {
       return handleMockMode(userMessage, auth, employeeId, currentPath, hrPolicies, leavePolicies);
     }
 
+    interface GeminiPart {
+      text?: string;
+      functionCall?: {
+        name: string;
+        args: any;
+      };
+      functionResponse?: {
+        name: string;
+        response: any;
+      };
+    }
+
+    interface GeminiContent {
+      role: 'user' | 'model';
+      parts: GeminiPart[];
+    }
+
     // Construct history for Gemini API
     // Gemini API history expects format: { role: 'user'|'model', parts: [{ text: string }] }
-    const contents = history.map((h: any) => ({
-      role: h.role === 'ai' ? 'model' : 'user',
+    const contents: GeminiContent[] = history.map((h: any) => ({
+      role: (h.role === 'ai' ? 'model' : 'user') as 'model' | 'user',
       parts: [{ text: h.text }]
     }));
     contents.push({ role: 'user', parts: [{ text: userMessage }] });
