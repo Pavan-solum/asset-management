@@ -28,6 +28,7 @@ import { useLocation } from 'react-router-dom';
 import { useAuthUser, useAppSelector } from '../hooks/storeHooks';
 import { apiFetch } from '../services/api/client';
 import { isApiEnabled } from '../services/api/config';
+import { ingestChatKnowledge } from '../services/api/knowledge';
 import { mockHrAnswer } from '../utils/hrPolicyChat';
 import {
   REQUEST_STATUS_COLORS,
@@ -146,6 +147,15 @@ export function ChatbotWidget() {
     })),
   };
 
+  useEffect(() => {
+    if (!open || !isApiEnabled()) return;
+    void ingestChatKnowledge(portalHrPayload).catch(() => {
+      /* ingest is optional; chat still works with keyword search */
+    });
+    // Re-index when the widget opens or policy documents change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, companyPolicies, leavePolicies]);
+
   const handleSend = async (textToSend: string) => {
     if (!textToSend.trim()) return;
 
@@ -189,7 +199,7 @@ export function ChatbotWidget() {
         ...prev,
         {
           role: 'ai',
-          text: responseText,
+          text: responseText || 'No answer came back. Try again, or open HR Policies.',
           timestamp: new Date().toISOString(),
         },
       ]);

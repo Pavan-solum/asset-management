@@ -14,6 +14,8 @@ import {
   type HrPolicyDoc,
   type LeaveTypeDoc,
 } from '../_lib/hr-policy-chat';
+import { formatRagContext, searchKnowledge, type KnowledgeHit } from '../_lib/rag';
+import { answerFromPolicyPassages, pickRelevantPassages } from '../_lib/policy-extract';
 
 export const config = { runtime: 'edge' };
 
@@ -22,9 +24,65 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 const GEMINI_FALLBACK_MODELS = [
   GEMINI_MODEL,
   'gemini-2.5-flash-lite',
+  'gemini-2.0-flash-lite',
+  'gemini-2.0-flash',
   'gemini-2.5-flash',
   'gemini-flash-latest',
 ].filter((m, i, arr) => arr.indexOf(m) === i);
+
+function isRetryableGeminiStatus(status: number, errText: string): boolean {
+  return (
+    status === 429 ||
+    status === 404 ||
+    status === 503 ||
+    /RESOURCE_EXHAUSTED|quota|UNAVAILABLE|high demand|try again later/i.test(errText)
+  );
+}
+
+function policyFallbackText(
+  userMessage: string,
+  hrPolicies: HrPolicyDoc[] | undefined,
+  leavePolicies: LeaveTypeDoc[] | undefined,
+  ragHits: KnowledgeHit[],
+  reason: 'busy' | 'quota' | 'empty',
+): string {
+  const note =
+    reason === 'busy'
+      ? '_Note: Gemini is busy right now, so this answer used your indexed company policies instead._'
+      : reason === 'quota'
+        ? '_Note: Gemini free-tier quota was exceeded, so this answer used portal policy search instead._'
+        : '';
+
+  if (ragHits.length > 0 || (hrPolicies && hrPolicies.length > 0)) {
+    const corpus = [
+      ...ragHits.map((h) => h.content),
+      ...(hrPolicies || []).filter((p) => !p.status || p.status === 'active').map((p) => p.content),
+    ];
+    const passages = pickRelevantPassages(corpus, userMessage, 2);
+    const title = ragHits[0]?.sourceTitle || hrPolicies?.[0]?.title || 'HR policy';
+    const precise = answerFromPolicyPassages(userMessage, title, passages);
+    if (precise) return note ? `${precise}\n\n${note}` : precise;
+  }
+
+  const hrAnswer = mockHrAnswer(userMessage, hrPolicies, leavePolicies);
+  if (hrAnswer) return note ? `${hrAnswer}\n\n${note}` : hrAnswer;
+
+  const keyword = searchHrPolicies(hrPolicies, userMessage, 2);
+  if (keyword.policies.length > 0) {
+    const body = keyword.policies
+      .map((p) => `**${p.title}** (v${p.version})\n${p.excerpt}`)
+      .join('\n\n');
+    return `${body}${note ? `\n\n${note}` : ''}`;
+  }
+
+  if (reason === 'busy') {
+    return 'Gemini is experiencing high demand right now. Please try again in a minute, or open [HR Policies](/hr/policies) to read the document directly.';
+  }
+  if (reason === 'quota') {
+    return 'Gemini free-tier quota is exhausted right now. Wait a minute and try again, or ask an HR policy question — I can still answer from documents in [HR Policies](/hr/policies) without AI.';
+  }
+  return 'I could not find a matching policy for that. Browse [HR Policies](/hr/policies) or rephrase the question.';
+}
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -143,6 +201,7 @@ async function executeTool(
   tenantId: string,
   hrPolicies: HrPolicyDoc[] | undefined,
   leavePolicies: LeaveTypeDoc[] | undefined,
+  ragHits: KnowledgeHit[] = [],
 ) {
   try {
     if (name === 'list_my_requests') {
@@ -164,6 +223,25 @@ async function executeTool(
     if (name === 'search_assets') {
       if (!canSearchAssets(role)) return { error: 'Unauthorized' };
       return await searchAssets(tenantId, args);
+    }
+    if (name === 'search_knowledge') {
+      if (ragHits.length > 0) {
+        return {
+          chunks: ragHits.map((h) => ({
+            title: h.sourceTitle,
+            sourceType: h.sourceType,
+            excerpt: h.content,
+          })),
+        };
+      }
+      const hits = await searchKnowledge(tenantId, args?.query || '', 5);
+      return {
+        chunks: hits.map((h) => ({
+          title: h.sourceTitle,
+          sourceType: h.sourceType,
+          excerpt: h.content,
+        })),
+      };
     }
     if (name === 'search_hr_policies') {
       return searchHrPolicies(hrPolicies, args?.query || '', 3);
@@ -191,6 +269,10 @@ export default async function handler(req: Request) {
 
   const employeeId = await resolveEmployeeId(auth);
   const apiKey = process.env.GEMINI_API_KEY;
+  let userMessage = '';
+  let hrPolicies: HrPolicyDoc[] | undefined;
+  let leavePolicies: LeaveTypeDoc[] | undefined;
+  let ragHits: KnowledgeHit[] = [];
 
   try {
     const body = await parseBody<{
@@ -200,11 +282,11 @@ export default async function handler(req: Request) {
       hrPolicies?: HrPolicyDoc[];
       leavePolicies?: LeaveTypeDoc[];
     }>(req);
-    const userMessage = body.message;
+    userMessage = body.message;
     const history = body.history || [];
     const currentPath = body.currentPath || '/';
-    const hrPolicies = body.hrPolicies;
-    const leavePolicies = body.leavePolicies;
+    hrPolicies = body.hrPolicies;
+    leavePolicies = body.leavePolicies;
     const isHrContext = currentPath.startsWith('/hr');
 
     if (!userMessage) return error('message is required', 400);
@@ -222,13 +304,22 @@ export default async function handler(req: Request) {
     }));
     contents.push({ role: 'user', parts: [{ text: userMessage }] });
 
+    try {
+      ragHits = await searchKnowledge(auth.tenantId!, userMessage, 5);
+    } catch {
+      ragHits = [];
+    }
+
+    const ragContext = formatRagContext(ragHits);
+
     const hrPolicyInstructions = `
 HR POLICY & LEAVE Q&A (use free-tier tools — do not invent rules):
-- For questions about company policy, leave, WFH, expenses, conduct, safety, or harassment, you MUST call search_hr_policies and/or get_hr_policy / list_leave_types.
-- Answer ONLY from tool results (documents published in the HR portal). If tools return nothing relevant, say you don't know and point to /hr/policies.
-- Always cite policy title and version. Mention employees can open [HR Policies](/hr/policies).
+- Prefer RETRIEVED COMPANY KNOWLEDGE and search_knowledge for policy / leave / WFH questions.
+- You may also call search_hr_policies, get_hr_policy, or list_leave_types.
+- Answer ONLY from retrieved chunks or tool results. If nothing relevant, say you don't know and point to /hr/policies.
+- Always cite policy title. Mention employees can open [HR Policies](/hr/policies).
 - Chatting is NOT policy acknowledgement. Do not approve leave requests; guide users to /hr/leaves to apply.
-- Keep answers concise to stay within free-tier token limits.`;
+- Keep answers concise to stay within free-tier token limits.${ragContext}`;
 
     const systemInstructionText = auth.role === 'employee'
       ? `You are Assetly AI, a virtual assistant for employee self-service.
@@ -313,8 +404,22 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
             }
           },
           {
+            name: 'search_knowledge',
+            description: 'Semantic RAG search over indexed company HR and leave policies. Use for policy, leave, WFH, conduct, or similar questions.',
+            parameters: {
+              type: 'OBJECT',
+              properties: {
+                query: {
+                  type: 'STRING',
+                  description: 'The employee question or key phrases to search.',
+                },
+              },
+              required: ['query'],
+            },
+          },
+          {
             name: 'search_hr_policies',
-            description: 'Search active company HR policies published in the portal (leave, WFH, conduct, expenses, safety, etc.). Use for any HR policy or leave-rules question.',
+            description: 'Keyword fallback search of HR policies from the portal payload. Use if search_knowledge returns nothing.',
             parameters: {
               type: 'OBJECT',
               properties: {
@@ -371,34 +476,29 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
     };
 
     for (let loop = 0; loop < maxLoops; loop++) {
-      const payload = {
+      const payload: Record<string, unknown> = {
         contents: currentContents,
         systemInstruction,
-        tools
       };
+      // When RAG already retrieved policy chunks, skip tools so Gemini writes an answer
+      // instead of calling a function and returning empty text.
+      if (ragHits.length === 0) {
+        payload.tools = tools;
+      }
 
       let { res, errText } = await callGemini(activeModel, payload);
 
-      // Free-tier quota / unavailable model → try next model, then portal search
-      while (!res.ok && (res.status === 429 || res.status === 404) && modelIndex < GEMINI_FALLBACK_MODELS.length - 1) {
+      while (!res.ok && isRetryableGeminiStatus(res.status, errText) && modelIndex < GEMINI_FALLBACK_MODELS.length - 1) {
         modelIndex += 1;
         activeModel = GEMINI_FALLBACK_MODELS[modelIndex];
         ({ res, errText } = await callGemini(activeModel, payload));
       }
 
       if (!res.ok) {
-        if (res.status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(errText)) {
-          const hrAnswer = mockHrAnswer(userMessage, hrPolicies, leavePolicies);
-          if (hrAnswer) {
-            return json({
-              text:
-                `${hrAnswer}\n\n_Note: Gemini free-tier quota was exceeded, so this answer used portal policy search instead._`,
-            });
-          }
+        if (isRetryableGeminiStatus(res.status, errText)) {
+          const busy = res.status === 503 || /UNAVAILABLE|high demand/i.test(errText);
           return json({
-            text:
-              'Gemini free-tier quota is exhausted right now. Wait a minute and try again, or ask an HR policy question — I can still answer from documents in [HR Policies](/hr/policies) without AI.\n\n' +
-              'Tip: set `GEMINI_MODEL=gemini-2.5-flash-lite` in `.env` (often has more free quota than `gemini-2.0-flash`).',
+            text: policyFallbackText(userMessage, hrPolicies, leavePolicies, ragHits, busy ? 'busy' : 'quota'),
           });
         }
         throw new Error(`Gemini API error: ${errText}`);
@@ -414,7 +514,10 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
         break;
       }
 
-      currentContents.push(modelContent);
+      currentContents.push({
+        ...modelContent,
+        role: 'model',
+      });
 
       const partWithFunctionCall = modelContent.parts?.find((p: any) => p.functionCall);
       if (partWithFunctionCall && partWithFunctionCall.functionCall) {
@@ -427,32 +530,40 @@ For requests: {"type": "requests", "items": [{"id": "...", "category": "...", "r
           auth.tenantId!,
           hrPolicies,
           leavePolicies,
+          ragHits,
         );
 
         currentContents.push({
-          role: 'function',
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          role: 'user',
           parts: [{
             functionResponse: {
               name,
-              response: toolResult
-            }
-          }] as any,
+              response: toolResult && typeof toolResult === 'object' ? toolResult : { result: toolResult },
+            },
+          }],
         });
       } else {
-        const textPart = modelContent.parts?.find((p: any) => p.text);
-        finalResponseText = textPart?.text || '';
+        const textParts = (modelContent.parts || [])
+          .map((p: { text?: string }) => p.text)
+          .filter(Boolean) as string[];
+        finalResponseText = textParts.join('\n').trim();
         break;
       }
+    }
+
+    if (!finalResponseText.trim()) {
+      return json({
+        text: policyFallbackText(userMessage, hrPolicies, leavePolicies, ragHits, 'empty'),
+      });
     }
 
     return json({ text: finalResponseText });
   } catch (err: any) {
     const msg = String(err?.message || 'Unknown error');
-    if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg)) {
+    if (/429|503|RESOURCE_EXHAUSTED|quota|UNAVAILABLE|high demand/i.test(msg)) {
+      const busy = /503|UNAVAILABLE|high demand/i.test(msg);
       return json({
-        text:
-          'Gemini free-tier quota is exhausted. Please wait ~30 seconds and try again, or ask about leave / WFH / company policies — I can answer from portal documents without AI.',
+        text: policyFallbackText(userMessage, hrPolicies, leavePolicies, ragHits, busy ? 'busy' : 'quota'),
       });
     }
     return json({ text: `AI integration error: ${msg}` });
