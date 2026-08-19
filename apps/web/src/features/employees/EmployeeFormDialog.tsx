@@ -37,8 +37,10 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
     jobTitle: '',
     departmentId: '',
     status: 'active' as EmployeeStatus,
+    //@ts-ignore
     hireDate: new Date().toISOString().split('T')[0],
   });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && employee) {
@@ -66,6 +68,7 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
         hireDate: new Date().toISOString().split('T')[0],
       });
     }
+    setError(null);
   }, [open, employee, departments]);
 
   const handleSave = async () => {
@@ -93,6 +96,8 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
       }
       await reloadFromApi(dispatch);
       onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save employee');
     } finally {
       setLoading(false);
     }
@@ -104,6 +109,11 @@ export function EmployeeFormDialog({ open, onClose, employee }: Props) {
     <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
       <DialogTitle>{employee ? 'Edit Employee' : 'Add Employee'}</DialogTitle>
       <DialogContent>
+        {error && (
+          <Alert severity="error" sx={{ mt: 1, mb: 1 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
         <Grid container spacing={2} sx={{ mt: 0.5 }}>
           <Grid item xs={12} sm={6}>
             <TextField fullWidth label="First name" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />

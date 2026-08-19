@@ -10,12 +10,14 @@ import {
   MenuItem,
   Select,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tabs,
   TextField,
   Typography,
   Button,
@@ -26,6 +28,8 @@ import {
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
+import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
+import DevicesOtherIcon from '@mui/icons-material/DevicesOther';
 import { useAppDispatch, useAppSelector, useAuthUser } from '../../hooks/storeHooks';
 import { isApiEnabled } from '../../services/api/config';
 import { createAssetRequest, fetchAssetRequests } from '../../services/api/requests';
@@ -41,6 +45,7 @@ import {
 import { REQUEST_CATEGORIES, type AssetRequestType } from '../../types';
 import { LoadingButton } from '../../components/Loader';
 import { ApiError } from '../../services/api/client';
+import { EmployeeTicketsTab } from './EmployeeTicketsTab';
 
 const REQUEST_TYPES: AssetRequestType[] = ['new', 'replacement', 'accessory'];
 
@@ -52,6 +57,7 @@ export function DeviceRequestPage() {
   const employees = useAppSelector((s) => s.employees.items);
   const assets = useAppSelector((s) => s.assets.items);
 
+  const [activeTab, setActiveTab] = useState(0);
   const [requestType, setRequestType] = useState<AssetRequestType>('new');
   const [category, setCategory] = useState(REQUEST_CATEGORIES[0]);
   const [description, setDescription] = useState('');
@@ -175,13 +181,23 @@ export function DeviceRequestPage() {
   return (
     <Box>
       <Typography variant="h4" fontWeight={700} gutterBottom>
-        Request a Device or Accessory
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Submit a request for new equipment, a replacement, or accessories. IT will review and follow up.
+        My Portal
       </Typography>
 
-      <Card sx={{ mb: 3 }}>
+      <Tabs
+        value={activeTab}
+        onChange={(_, v) => setActiveTab(v as number)}
+        sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab icon={<DevicesOtherIcon />} iconPosition="start" label="Device Requests" />
+        <Tab icon={<ConfirmationNumberIcon />} iconPosition="start" label="Support Tickets" />
+      </Tabs>
+
+      {activeTab === 1 ? (
+        <EmployeeTicketsTab />
+      ) : (
+        <>
+        <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Your details
@@ -453,6 +469,8 @@ export function DeviceRequestPage() {
           </LoadingButton>
         </DialogActions>
       </Dialog>
+        </> /* close tab 0 fragment */
+      )} {/* end activeTab === 0 */}
     </Box>
   );
 }

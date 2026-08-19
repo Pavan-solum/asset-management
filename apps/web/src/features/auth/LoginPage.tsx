@@ -21,11 +21,13 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import SecurityIcon from '@mui/icons-material/Security';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { clearError, setSession, setLoginError, setPendingSession } from '../../store/authSlice';
-import { APP_NAME, APP_TAGLINE, COMPANY_NAME } from '../../constants/brand';
+import { APP_NAME, COMPANY_NAME } from '../../constants/brand';
 import { ThemeModeToggle } from '../../components/ThemeModeToggle';
 import { LoadingButton } from '../../components/Loader';
 import { isApiEnabled } from '../../services/api/config';
@@ -41,9 +43,31 @@ const DEMO_LOGIN = {
 } as const;
 
 const features = [
-  { icon: <Inventory2Icon fontSize="small" />, text: 'Track assets, warranties & assignments' },
-  { icon: <SecurityIcon fontSize="small" />, text: 'Role-based access for your team' },
-  { icon: <AnalyticsIcon fontSize="small" />, text: 'Dashboard insights & audit trail' },
+  {
+    icon: <Inventory2Icon fontSize="small" />,
+    text: 'Full asset lifecycle — from procurement to retirement',
+    sub: 'Track hardware, software licences & accessories in one place',
+  },
+  {
+    icon: <QrCodeScannerIcon fontSize="small" />,
+    text: 'Instant QR scanning & employee self-service',
+    sub: 'Assign, transfer or audit assets with a phone camera',
+  },
+  {
+    icon: <SecurityIcon fontSize="small" />,
+    text: 'Granular role-based access control',
+    sub: 'Super admin, IT manager, employee & read-only roles out of the box',
+  },
+  {
+    icon: <NotificationsActiveIcon fontSize="small" />,
+    text: 'Warranty & maintenance alerts',
+    sub: 'Never miss an expiry — proactive notifications keep you ahead',
+  },
+  {
+    icon: <AnalyticsIcon fontSize="small" />,
+    text: 'Real-time dashboard & tamper-proof audit trail',
+    sub: 'Full visibility into asset health, costs & every change ever made',
+  },
 ];
 
 export function LoginPage() {
@@ -57,12 +81,28 @@ export function LoginPage() {
     import.meta.env.VITE_DEMO_AUTH === 'true',
   );
   const [apiWarning, setApiWarning] = useState<string | null>(null);
+  const [activeFeature, setActiveFeature] = useState(0);
+  const [featureVisible, setFeatureVisible] = useState(true);
+  const [featurePaused, setFeaturePaused] = useState(false);
   const demoAutoStarted = useRef(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isWide = useMediaQuery(theme.breakpoints.up('md'));
+
+  // Auto-slide feature carousel
+  useEffect(() => {
+    if (featurePaused) return;
+    const timer = setInterval(() => {
+      setFeatureVisible(false);
+      setTimeout(() => {
+        setActiveFeature((prev) => (prev + 1) % features.length);
+        setFeatureVisible(true);
+      }, 350);
+    }, 3200);
+    return () => clearInterval(timer);
+  }, [featurePaused]);
   const error = useAppSelector((s) => s.auth.error);
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
   const requirePasswordSetup = useAppSelector((s) => s.auth.requirePasswordSetup);
@@ -232,9 +272,10 @@ export function LoginPage() {
         position: 'relative',
       }}
     >
-      <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}>
+      <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2 }}>
         <ThemeModeToggle />
       </Box>
+
       {isWide && (
         <Box
           sx={{
@@ -242,54 +283,225 @@ export function LoginPage() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            px: 6,
-            py: 4,
-            background: 'linear-gradient(145deg, #0D47A1 0%, #1565C0 45%, #00897B 100%)',
+            px: { md: 6, lg: 8 },
+            py: 6,
+            background: 'linear-gradient(160deg, #0a1628 0%, #0d2d6e 35%, #0f4c75 65%, #0a3d4a 100%)',
             color: 'white',
+            position: 'relative',
+            overflow: 'hidden',
           }}
         >
-          <Box
-            sx={{
-              width: 56,
-              height: 56,
-              borderRadius: 2.5,
-              bgcolor: alpha('#fff', 0.15),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mb: 3,
-            }}
-          >
-            <DevicesIcon sx={{ fontSize: 32 }} />
+          {/* ── Animated background orbs ── */}
+          <Box sx={{
+            position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden',
+            '@keyframes float1': {
+              '0%,100%': { transform: 'translate(0,0) scale(1)' },
+              '50%': { transform: 'translate(30px,-40px) scale(1.08)' },
+            },
+            '@keyframes float2': {
+              '0%,100%': { transform: 'translate(0,0) scale(1)' },
+              '50%': { transform: 'translate(-20px,30px) scale(1.05)' },
+            },
+            '@keyframes float3': {
+              '0%,100%': { transform: 'translate(0,0) scale(1)' },
+              '50%': { transform: 'translate(15px,20px) scale(1.1)' },
+            },
+          }}>
+            <Box sx={{
+              position: 'absolute', width: 420, height: 420,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(99,179,237,0.18) 0%, transparent 70%)',
+              top: '-120px', left: '-80px',
+              animation: 'float1 9s ease-in-out infinite',
+            }} />
+            <Box sx={{
+              position: 'absolute', width: 320, height: 320,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(72,187,120,0.14) 0%, transparent 70%)',
+              bottom: '-60px', right: '-40px',
+              animation: 'float2 11s ease-in-out infinite',
+            }} />
+            <Box sx={{
+              position: 'absolute', width: 200, height: 200,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(159,122,234,0.15) 0%, transparent 70%)',
+              top: '40%', right: '15%',
+              animation: 'float3 7s ease-in-out infinite',
+            }} />
+            {/* Subtle grid overlay */}
+            <Box sx={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `linear-gradient(${alpha('#fff', 0.025)} 1px, transparent 1px),
+                                linear-gradient(90deg, ${alpha('#fff', 0.025)} 1px, transparent 1px)`,
+              backgroundSize: '48px 48px',
+            }} />
           </Box>
-          <Typography variant="h3" fontWeight={700} gutterBottom sx={{ letterSpacing: '-0.02em' }}>
-            {APP_NAME}
-          </Typography>
-          <Typography variant="h6" sx={{ opacity: 0.9, fontWeight: 400, mb: 4, maxWidth: 420 }}>
-            {APP_TAGLINE} for modern IT teams
-          </Typography>
-          <Stack spacing={2}>
-            {features.map((f) => (
-              <Box key={f.text} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 2,
-                    bgcolor: alpha('#fff', 0.12),
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {f.icon}
-                </Box>
-                <Typography variant="body1" sx={{ opacity: 0.95 }}>
-                  {f.text}
-                </Typography>
+
+          {/* ── Logo badge ── */}
+          <Box sx={{ position: 'relative', zIndex: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4 }}>
+              <Box sx={{
+                width: 44, height: 44, borderRadius: 2,
+                background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 0 0 1px rgba(255,255,255,0.12), 0 4px 16px rgba(59,130,246,0.4)',
+              }}>
+                <DevicesIcon sx={{ fontSize: 24 }} />
               </Box>
-            ))}
-          </Stack>
+              <Typography variant="h6" fontWeight={700} sx={{ letterSpacing: '-0.01em' }}>
+                {APP_NAME}
+              </Typography>
+            </Box>
+
+            {/* ── Hero headline ── */}
+            <Typography
+              variant="h3"
+              fontWeight={800}
+              sx={{
+                letterSpacing: '-0.03em',
+                lineHeight: 1.15,
+                mb: 2,
+                fontSize: { md: '2rem', lg: '2.4rem' },
+                background: 'linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.75) 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Every asset.<br />One source of truth.
+            </Typography>
+
+            <Typography
+              variant="body1"
+              sx={{ color: alpha('#fff', 0.6), lineHeight: 1.7, mb: 5, maxWidth: 380 }}
+            >
+              From procurement to retirement — track, assign and audit every device,
+              licence and accessory across your entire organisation.
+            </Typography>
+
+            {/* ── Glassmorphism feature card ── */}
+            <Box
+              onMouseEnter={() => setFeaturePaused(true)}
+              onMouseLeave={() => setFeaturePaused(false)}
+              sx={{
+                background: `linear-gradient(135deg, ${alpha('#fff', 0.07)} 0%, ${alpha('#fff', 0.03)} 100%)`,
+                backdropFilter: 'blur(12px)',
+                border: `1px solid ${alpha('#fff', 0.1)}`,
+                borderRadius: 3,
+                p: 3,
+                mb: 3,
+                position: 'relative',
+                overflow: 'hidden',
+                cursor: 'default',
+                transition: 'border-color 0.3s',
+                '&:hover': { borderColor: alpha('#fff', 0.2) },
+              }}
+            >
+              {/* Shimmer top edge */}
+              <Box sx={{
+                position: 'absolute', top: 0, left: '10%', right: '10%', height: '1px',
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+              }} />
+
+              {/* Slide content */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 2.5,
+                  minHeight: 72,
+                  opacity: featureVisible ? 1 : 0,
+                  transform: featureVisible ? 'translateY(0) scale(1)' : 'translateY(10px) scale(0.98)',
+                  transition: 'opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1)',
+                }}
+              >
+                {/* Large icon */}
+                <Box sx={{
+                  width: 52, height: 52, borderRadius: 2.5, flexShrink: 0,
+                  background: 'linear-gradient(135deg, rgba(99,179,237,0.25) 0%, rgba(72,187,120,0.15) 100%)',
+                  border: `1px solid ${alpha('#fff', 0.15)}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  '& svg': { fontSize: 26, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' },
+                }}>
+                  {features[activeFeature].icon}
+                </Box>
+
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.3,
+                      color: '#fff', mb: 0.5,
+                    }}
+                  >
+                    {features[activeFeature].text}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: alpha('#fff', 0.55), lineHeight: 1.5 }}
+                  >
+                    {features[activeFeature].sub}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Progress bar + dots row */}
+              <Box sx={{ mt: 2.5 }}>
+                {/* Thin animated progress bar */}
+                <Box sx={{
+                  height: 2, borderRadius: 99,
+                  bgcolor: alpha('#fff', 0.1), mb: 1.5, overflow: 'hidden',
+                }}>
+                  <Box
+                    key={`${activeFeature}-${featurePaused}`}
+                    sx={{
+                      height: '100%', borderRadius: 99,
+                      background: 'linear-gradient(90deg, #60a5fa, #34d399)',
+                      width: featurePaused ? '100%' : '0%',
+                      ...(featurePaused
+                        ? { transition: 'none' }
+                        : {
+                            animation: 'progressFill 3.2s linear forwards',
+                            '@keyframes progressFill': {
+                              from: { width: '0%' },
+                              to: { width: '100%' },
+                            },
+                          }),
+                    }}
+                  />
+                </Box>
+
+                {/* Step dots */}
+                <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
+                  {features.map((_, i) => (
+                    <Box
+                      key={i}
+                      onClick={() => {
+                        setFeatureVisible(false);
+                        setTimeout(() => { setActiveFeature(i); setFeatureVisible(true); }, 400);
+                      }}
+                      sx={{
+                        height: 5,
+                        width: i === activeFeature ? 24 : 6,
+                        borderRadius: 99,
+                        bgcolor: i === activeFeature
+                          ? 'rgba(96,165,250,0.9)'
+                          : alpha('#fff', 0.22),
+                        transition: 'all 0.4s cubic-bezier(0.4,0,0.2,1)',
+                        cursor: 'pointer',
+                        '&:hover': { bgcolor: alpha('#fff', 0.5) },
+                      }}
+                    />
+                  ))}
+                  <Typography
+                    variant="caption"
+                    sx={{ ml: 'auto', color: alpha('#fff', 0.35), fontSize: '0.7rem' }}
+                  >
+                    {activeFeature + 1} / {features.length}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+          </Box>
         </Box>
       )}
 
@@ -460,7 +672,6 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   margin="normal"
-                  required
                   autoComplete="current-password"
                   disabled={loading || demoLoading}
                   InputProps={{

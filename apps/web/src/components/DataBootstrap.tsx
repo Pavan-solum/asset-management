@@ -57,7 +57,7 @@ export function DataBootstrap() {
   useEffect(() => {
     if (!isApiEnabled() || !isAuthenticated || syncedRef.current) return;
 
-    if (isEmployee || role === 'platform_admin') {
+    if (role === 'platform_admin') {
       dispatch(setBootstrapReady(true));
       syncedRef.current = true;
       return;
@@ -80,7 +80,7 @@ export function DataBootstrap() {
 
         hydrateFromSync(dispatch, data);
 
-        if (role === 'tenant_admin' || role === 'it_admin') {
+        if (role === 'tenant_admin' || role === 'it_admin' || role === 'employee') {
           try {
             const requests = await fetchAssetRequests();
             if (!cancelled) dispatch(replaceAllRequests(requests));

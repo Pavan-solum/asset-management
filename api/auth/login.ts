@@ -16,7 +16,48 @@ export default async function handler(req: Request) {
     const password = String(body.password ?? '');
 
     if (!email) return error('Email is required', 400);
-    if (!password) return error('Email and password are required', 400);
+
+    let optionalFirstTime = false;
+    try {
+      const sql = getSql();
+      const rows = await sql`SELECT password_hash FROM user_passwords WHERE email = ${email}` as { password_hash: string }[];
+      if (rows.length > 0 && rows[0].password_hash === 'optional-on-first-login') {
+        optionalFirstTime = true;
+      } else if (rows.length === 0) {
+        const employees = await sql`
+          SELECT id, tenant_id, email, first_name, last_name 
+          FROM employees 
+          WHERE lower(COALESCE(official_email, joining_email, email)) = ${email}
+             OR lower(email) = ${email}
+          LIMIT 1
+        ` as { id: string; tenant_id: string; email: string; first_name: string; last_name: string }[];
+
+        if (employees.length > 0) {
+          const emp = employees[0];
+          const userId = crypto.randomUUID();
+          
+          await sql`
+            INSERT INTO users (id, tenant_id, email, first_name, last_name, role)
+            VALUES (${userId}, ${emp.tenant_id}, ${emp.email}, ${emp.first_name}, ${emp.last_name || ''}, 'employee')
+            ON CONFLICT (email) DO NOTHING
+          `;
+          
+          await sql`
+            INSERT INTO user_passwords (email, password_hash, must_change_password)
+            VALUES (${emp.email}, 'optional-on-first-login', true)
+            ON CONFLICT (email) DO NOTHING
+          `;
+          
+          optionalFirstTime = true;
+        }
+      }
+    } catch {
+      // Ignore
+    }
+
+    if (!password && !optionalFirstTime) {
+      return error('Email and password are required', 400);
+    }
 
     let userRecord: any = null;
     const SYSTEM_TENANT = {
