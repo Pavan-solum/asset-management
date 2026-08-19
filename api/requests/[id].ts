@@ -25,9 +25,10 @@ export default async function handler(req: Request) {
 
   try {
     if (req.method === 'PATCH') {
-      const body = await parseBody<{ status?: string; reviewNotes?: string }>(req);
+      const body = await parseBody<{ status?: string; reviewNotes?: string; assetId?: string }>(req);
       const status = String(body.status ?? '').trim();
       const reviewNotes = body.reviewNotes ? String(body.reviewNotes).trim() : null;
+      const assetId = body.assetId ? String(body.assetId).trim() : null;
 
       if (!['approved', 'rejected', 'fulfilled'].includes(status)) {
         return error('status must be approved, rejected, or fulfilled', 400);
@@ -57,6 +58,42 @@ export default async function handler(req: Request) {
       }
 
       const reviewer = `${auth.firstName} ${auth.lastName}`;
+
+      // If fulfilling and an asset was selected, perform the assignment
+      if (status === 'fulfilled' && assetId) {
+        // 1. Terminate old assignments for this asset
+        await sql`
+          UPDATE asset_assignments SET returned_at = NOW()
+          WHERE asset_id = ${assetId} AND tenant_id = ${auth.tenantId!} AND returned_at IS NULL
+        `;
+
+        // 2. Insert new assignment
+        await sql`
+          INSERT INTO asset_assignments (tenant_id, asset_id, employee_id, assigned_by, notes)
+          VALUES (
+            ${auth.tenantId!}, ${assetId}, ${current.employee_id}, ${reviewer},
+            'Assigned via Device Request fulfillment'
+          )
+        `;
+
+        // 3. Update asset assigned_employee_id and status to deployed
+        await sql`
+          UPDATE assets SET
+            status = 'deployed',
+            assigned_employee_id = ${current.employee_id},
+            updated_at = NOW()
+          WHERE id = ${assetId} AND tenant_id = ${auth.tenantId!}
+        `;
+
+        // 4. Ownership history log
+        await sql`
+          INSERT INTO ownership_history (tenant_id, asset_id, event_type, description, performed_by)
+          VALUES (
+            ${auth.tenantId!}, ${assetId}, 'ASSIGNED', 'Asset assigned via Device Request fulfillment', ${reviewer}
+          )
+        `;
+      }
+
       const rows = (await sql`
         UPDATE asset_requests
         SET
@@ -84,7 +121,7 @@ export default async function handler(req: Request) {
           entityType: 'asset_request',
           entityId: id,
           entityLabel: `${current.request_type} — ${current.category}`,
-          details: `Status changed to ${status}${reviewNotes ? `: ${reviewNotes}` : ''}`,
+          details: `Status changed to ${status}${reviewNotes ? `: ${reviewNotes}` : ''}${assetId ? ` (Asset Assigned: ${assetId})` : ''}`,
         });
       } catch {
         /* non-blocking */

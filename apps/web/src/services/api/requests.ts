@@ -23,9 +23,10 @@ export async function reviewAssetRequest(
   id: string,
   status: AssetRequestStatus,
   reviewNotes?: string,
+  assetId?: string,
 ): Promise<AssetRequest> {
   return apiFetch<AssetRequest>(`/api/requests/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ status, reviewNotes }),
+    body: JSON.stringify({ status, reviewNotes, assetId }),
   });
 }
