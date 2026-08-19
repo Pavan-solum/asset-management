@@ -23,6 +23,8 @@ import { useAppDispatch, useAppSelector } from '../../../hooks/storeHooks';
 import { addCompanyPolicy, archiveCompanyPolicy, acknowledgePolicy, CompanyPolicy, PolicyCategory } from '../../../store/hrSlice';
 import { PageHeader } from '../../../components/PageHeader';
 import { extractPolicyTextFromFile } from '../../../utils/policyFileExtract';
+import { isApiEnabled } from '../../../services/api/config';
+import { ingestChatKnowledge } from '../../../services/api/knowledge';
 
 const CATEGORY_META: Record<PolicyCategory, { label: string; color: string; icon: React.ReactNode }> = {
   general: { label: 'General', color: '#667eea', icon: <PolicyIcon /> },
@@ -70,6 +72,7 @@ export function HRPoliciesPage() {
   const dispatch = useAppDispatch();
   const employees = useAppSelector(s => s.employees.items);
   const companyPolicies = useAppSelector(s => s.hr.companyPolicies);
+  const leavePolicies = useAppSelector(s => s.hr.policies);
   const currentUser = useAppSelector(s => s.auth.user);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,6 +140,40 @@ export function HRPoliciesPage() {
       return;
     }
     dispatch(addCompanyPolicy(policyForm));
+    if (isApiEnabled()) {
+      const nextPolicies = [
+        {
+          id: `pending-${Date.now()}`,
+          title: policyForm.title,
+          category: policyForm.category,
+          version: policyForm.version,
+          effectiveDate: policyForm.effectiveDate,
+          content: policyForm.content,
+          status: 'active' as const,
+        },
+        ...companyPolicies
+          .filter((p) => p.status === 'active')
+          .map((p) => ({
+            id: p.id,
+            title: p.title,
+            category: p.category,
+            version: p.version,
+            effectiveDate: p.effectiveDate,
+            content: p.content,
+            status: p.status,
+          })),
+      ];
+      void ingestChatKnowledge({
+        hrPolicies: nextPolicies,
+        leavePolicies: leavePolicies.map((p) => ({
+          id: p.id,
+          name: p.name,
+          code: p.code,
+          maxDays: p.maxDays,
+          description: p.description,
+        })),
+      }).catch(() => {});
+    }
     setAddDialogOpen(false);
     resetAddDialog();
   };

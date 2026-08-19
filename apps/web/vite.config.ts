@@ -11,15 +11,11 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     resolve: {
-      // Workspaces can nest a second React copy; force a single instance.
+      // npm workspaces hoists react to repo root — do not alias to apps/web/node_modules
       dedupe: ['react', 'react-dom'],
-      alias: {
-        react: path.resolve(__dirname, 'node_modules/react'),
-        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
-      },
     },
     optimizeDeps: {
-      include: ['react', 'react-dom', 'react/jsx-runtime'],
+      include: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
     },
     server: {
       port: 5173,

@@ -35,6 +35,7 @@ import {
 import { PageHeader } from '../../../components/PageHeader';
 import { startLoading, stopLoading } from '../../../store/uiSlice';
 import { isApiEnabled } from '../../../services/api/config';
+import { ingestChatKnowledge } from '../../../services/api/knowledge';
 
 export function LeavesPage() {
   const dispatch = useAppDispatch();
@@ -42,6 +43,7 @@ export function LeavesPage() {
 
   const requests = useAppSelector(s => s.hr.leaveRequests);
   const policies = useAppSelector(s => s.hr.policies);
+  const companyPolicies = useAppSelector(s => s.hr.companyPolicies);
   const employees = useAppSelector(s => s.employees.items);
   const currentUser = useAppSelector(s => s.auth.user);
 
@@ -134,6 +136,31 @@ export function LeavesPage() {
       dispatch(updatePolicy({ ...editingPolicy, name, code, maxDays, description }));
     } else {
       dispatch(addPolicy({ name, code, maxDays, description }));
+    }
+    if (isApiEnabled()) {
+      const nextLeave = editingPolicy
+        ? policies.map((p) => (p.id === editingPolicy.id ? { ...p, name, code, maxDays, description } : p))
+        : [...policies, { id: `pol-${Date.now()}`, name, code, maxDays, description }];
+      void ingestChatKnowledge({
+        hrPolicies: companyPolicies
+          .filter((p) => p.status === 'active')
+          .map((p) => ({
+            id: p.id,
+            title: p.title,
+            category: p.category,
+            version: p.version,
+            effectiveDate: p.effectiveDate,
+            content: p.content,
+            status: p.status,
+          })),
+        leavePolicies: nextLeave.map((p) => ({
+          id: p.id,
+          name: p.name,
+          code: p.code,
+          maxDays: p.maxDays,
+          description: p.description,
+        })),
+      }).catch(() => {});
     }
     setPolicyDialogOpen(false);
     setEditingPolicy(null);

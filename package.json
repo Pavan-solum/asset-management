@@ -17,7 +17,8 @@
     "lint": "npm run lint --prefix apps/web",
     "preview": "npm run preview --prefix apps/web",
     "docker:up": "docker compose -f docker/docker-compose.demo.yml up -d",
-    "docker:down": "docker compose -f docker/docker-compose.demo.yml down"
+    "docker:down": "docker compose -f docker/docker-compose.demo.yml down",
+    "migrate:rag": "tsx scripts/migrate-013.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",

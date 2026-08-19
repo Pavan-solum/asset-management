@@ -7,8 +7,10 @@ import sync from '../api/sync';
 import search from '../api/search';
 import upload from '../api/upload';
 import chat from '../api/chat';
+import chatIngest from '../api/chat/ingest';
 import authLogin from '../api/auth/login';
 import authChangePassword from '../api/auth/change-password';
+import authDemoStatus from '../api/auth/demo-status';
 import assetsIndex from '../api/assets/index';
 import assetsImport from '../api/assets/import';
 import assetsAssign from '../api/assets/assign';
@@ -41,6 +43,8 @@ import billingCheckout from '../api/billing/checkout';
 import billingPortal from '../api/billing/portal';
 import billingWebhooks from '../api/billing/webhooks';
 import billingWebhooksRazorpay from '../api/billing/webhooks-razorpay';
+import hrLeave from '../api/hr/leave';
+import hrLeaveById from '../api/hr/leave/[id]';
 
 type ApiHandler = (req: Request) => Promise<Response>;
 
@@ -77,8 +81,10 @@ function resolveHandler(pathname: string): ApiHandler | null {
   if (pathname === '/api/search') return search;
   if (pathname === '/api/upload') return upload;
   if (pathname === '/api/chat') return chat;
+  if (pathname === '/api/chat/ingest') return chatIngest;
   if (pathname === '/api/auth/login') return authLogin;
   if (pathname === '/api/auth/change-password') return authChangePassword;
+  if (pathname === '/api/auth/demo-status') return authDemoStatus;
   if (pathname === '/api/assets/import') return assetsImport;
   if (pathname === '/api/assets/assign') return assetsAssign;
   if (pathname === '/api/assets/return') return assetsReturn;
@@ -87,6 +93,8 @@ function resolveHandler(pathname: string): ApiHandler | null {
   if (pathname === '/api/departments') return departmentsIndex;
   if (pathname === '/api/vendors') return vendorsIndex;
   if (pathname === '/api/requests') return requestsIndex;
+  if (pathname === '/api/hr/leave') return hrLeave;
+  if (/^\/api\/hr\/leave\/[^/]+$/.test(pathname)) return hrLeaveById;
   if (pathname === '/api/endpoints') return endpointsIndex;
   if (pathname === '/api/endpoints/register') return endpointsRegister;
   if (pathname === '/api/endpoints/telemetry') return endpointsTelemetry;
