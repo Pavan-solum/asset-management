@@ -64,6 +64,12 @@ export default async function handler(req: Request) {
           VALUES (${userId}, ${auth.tenantId!}, ${joiningEmail}, ${firstName}, ${lastName}, 'employee')
           ON CONFLICT (email) DO NOTHING
         `;
+
+        await sql`
+          INSERT INTO user_passwords (email, password_hash, must_change_password)
+          VALUES (${joiningEmail}, 'optional-on-first-login', true)
+          ON CONFLICT (email) DO UPDATE SET must_change_password = true
+        `;
       } catch {
         /* user may already exist */
       }

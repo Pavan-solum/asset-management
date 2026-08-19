@@ -14,12 +14,14 @@ import {
   FormControl,
   InputLabel,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
@@ -27,30 +29,59 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import EditIcon from '@mui/icons-material/Edit';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { usePermissions } from '../../hooks/storeHooks';
-import AssignmentIcon from '@mui/icons-material/Assignment';
 import { PageHeader } from '../../components/PageHeader';
 import { SearchField } from '../../components/SearchField';
 import { EmptyState } from '../../components/EmptyState';
 import { fetchAssetRequests, reviewAssetRequest } from '../../services/api/requests';
+import { fetchTickets, updateTicket as updateTicketApi } from '../../services/api/tickets';
 import { replaceAllRequests, updateRequest } from '../../store/requestsSlice';
+import { replaceAllTickets, updateTicket } from '../../store/ticketsSlice';
 import {
   CATEGORY_LABELS,
   REQUEST_STATUS_COLORS,
   REQUEST_STATUS_LABELS,
   REQUEST_TYPE_LABELS,
 } from '../../data/demoData';
-import type { AssetRequest, AssetRequestStatus } from '../../types';
+import type { AssetRequest, AssetRequestStatus, SupportTicket, TicketStatus } from '../../types';
 import { LoadingButton } from '../../components/Loader';
 import { ApiError } from '../../services/api/client';
 
 type StatusFilter = 'all' | AssetRequestStatus;
 
+const TICKET_STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
+  { value: 'open',        label: 'Open'        },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'resolved',    label: 'Resolved'    },
+  { value: 'closed',      label: 'Closed'      },
+];
+
+const TICKET_STATUS_CHIP: Record<TicketStatus, { label: string; color: 'default' | 'info' | 'success' | 'warning' | 'error' }> = {
+  open:        { label: 'Open',        color: 'info'    },
+  in_progress: { label: 'In Progress', color: 'warning' },
+  resolved:    { label: 'Resolved',    color: 'success' },
+  closed:      { label: 'Closed',      color: 'default' },
+};
+
+const PRIORITY_COLOR: Record<string, string> = {
+  low: '#22c55e', medium: '#f59e0b', high: '#ef4444', critical: '#7c3aed',
+};
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  hardware: '🖥️', software: '💻', access: '🔐', network: '📡', other: '🔧',
+};
+
 export function RequestsPage() {
   const dispatch = useAppDispatch();
   const requests = useAppSelector((s) => s.requests.items);
+  const tickets  = useAppSelector((s) => s.tickets.items);
   const { can } = usePermissions();
+
+  const [activeTab, setActiveTab] = useState(0);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -60,6 +91,12 @@ export function RequestsPage() {
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewAction, setReviewAction] = useState<'approved' | 'rejected' | 'fulfilled' | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Ticket review state
+  const [ticketTarget, setTicketTarget] = useState<SupportTicket | null>(null);
+  const [ticketStatus, setTicketStatus] = useState<TicketStatus>('open');
+  const [ticketNotes, setTicketNotes] = useState('');
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
 
   const loadRequests = useCallback(async () => {
     setLoading(true);
@@ -74,9 +111,22 @@ export function RequestsPage() {
     }
   }, [dispatch]);
 
+  const loadTickets = useCallback(async () => {
+    setTicketsLoading(true);
+    try {
+      const data = await fetchTickets();
+      dispatch(replaceAllTickets(data));
+    } catch {
+      /* silently skip if table not migrated yet */
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, [dispatch]);
+
   useEffect(() => {
     void loadRequests();
-  }, [loadRequests]);
+    void loadTickets();
+  }, [loadRequests, loadTickets]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -125,6 +175,29 @@ export function RequestsPage() {
     }
   };
 
+  const openTicketReview = (t: SupportTicket) => {
+    setTicketTarget(t);
+    setTicketStatus(t.status);
+    setTicketNotes(t.resolutionNotes ?? '');
+  };
+
+  const handleTicketSubmit = async () => {
+    if (!ticketTarget) return;
+    setTicketSubmitting(true);
+    try {
+      const updated = await updateTicketApi(ticketTarget.id, {
+        status: ticketStatus,
+        resolutionNotes: ticketNotes || undefined,
+      });
+      dispatch(updateTicket(updated));
+      setTicketTarget(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to update ticket');
+    } finally {
+      setTicketSubmitting(false);
+    }
+  };
+
   if (!can('request:review')) {
     return (
       <Box>
@@ -137,8 +210,8 @@ export function RequestsPage() {
   return (
     <Box>
       <PageHeader
-        title="Device Requests"
-        subtitle={`${filtered.length} request${filtered.length === 1 ? '' : 's'} · employee equipment requests`}
+        title="Requests & Tickets"
+        subtitle="Manage employee device requests and IT support tickets"
         breadcrumbs={[{ label: 'Dashboard', to: '/' }, { label: 'Requests' }]}
       />
 
@@ -148,7 +221,18 @@ export function RequestsPage() {
         </Alert>
       )}
 
-      <Card sx={{ mb: 2, p: 2 }}>
+      <Tabs
+        value={activeTab}
+        onChange={(_, v) => setActiveTab(v as number)}
+        sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab icon={<AssignmentIcon />} iconPosition="start" label={`Device Requests (${requests.length})`} />
+        <Tab icon={<ConfirmationNumberIcon />} iconPosition="start" label={`Support Tickets (${tickets.length})`} />
+      </Tabs>
+
+      {activeTab === 0 && (
+        <>
+        <Card sx={{ mb: 2, p: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <SearchField
             placeholder="Search employee, department, description…"
@@ -272,43 +356,162 @@ export function RequestsPage() {
         )}
       </Card>
 
-      <Dialog open={Boolean(reviewTarget)} onClose={closeReview} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {reviewAction === 'approved' && 'Approve request'}
-          {reviewAction === 'rejected' && 'Reject request'}
-          {reviewAction === 'fulfilled' && 'Mark request fulfilled'}
-        </DialogTitle>
-        <DialogContent>
-          {reviewTarget && (
-            <Stack spacing={2} sx={{ pt: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                {reviewTarget.employeeName} · {REQUEST_TYPE_LABELS[reviewTarget.requestType]} ·{' '}
-                {CATEGORY_LABELS[reviewTarget.category]}
-              </Typography>
-              <Typography variant="body2">{reviewTarget.description}</Typography>
-              <TextField
-                label="Notes for employee (optional)"
-                value={reviewNotes}
-                onChange={(e) => setReviewNotes(e.target.value)}
-                multiline
-                minRows={3}
-                fullWidth
+        <Dialog open={Boolean(reviewTarget)} onClose={closeReview} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            {reviewAction === 'approved' && 'Approve request'}
+            {reviewAction === 'rejected' && 'Reject request'}
+            {reviewAction === 'fulfilled' && 'Mark request fulfilled'}
+          </DialogTitle>
+          <DialogContent>
+            {reviewTarget && (
+              <Stack spacing={2} sx={{ pt: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {reviewTarget.employeeName} · {REQUEST_TYPE_LABELS[reviewTarget.requestType]} ·{' '}
+                  {CATEGORY_LABELS[reviewTarget.category]}
+                </Typography>
+                <Typography variant="body2">{reviewTarget.description}</Typography>
+                <TextField
+                  label="Notes for employee (optional)"
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  multiline
+                  minRows={3}
+                  fullWidth
+                />
+              </Stack>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeReview}>Cancel</Button>
+            <LoadingButton
+              variant="contained"
+              color={reviewAction === 'rejected' ? 'error' : 'primary'}
+              loading={submitting}
+              onClick={handleReviewSubmit}
+            >
+              Confirm
+            </LoadingButton>
+          </DialogActions>
+        </Dialog>
+        </> /* close tab 0 fragment */
+      )} {/* end Tab 0 */}
+
+      {/* ── Tab 1: Support Tickets ── */}
+      {activeTab === 1 && (
+        <>
+          <Card>
+            {ticketsLoading && tickets.length === 0 ? (
+              <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>Loading tickets…</Box>
+            ) : tickets.length === 0 ? (
+              <EmptyState
+                icon={<ConfirmationNumberIcon />}
+                title="No tickets yet"
+                description="Employee support tickets will appear here."
               />
-            </Stack>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeReview}>Cancel</Button>
-          <LoadingButton
-            variant="contained"
-            color={reviewAction === 'rejected' ? 'error' : 'primary'}
-            loading={submitting}
-            onClick={handleReviewSubmit}
-          >
-            Confirm
-          </LoadingButton>
-        </DialogActions>
-      </Dialog>
+            ) : (
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Employee</TableCell>
+                      <TableCell>Title</TableCell>
+                      <TableCell>Category</TableCell>
+                      <TableCell>Priority</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Raised</TableCell>
+                      <TableCell align="right">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {tickets.map((t) => {
+                      const st = TICKET_STATUS_CHIP[t.status];
+                      return (
+                        <TableRow key={t.id} hover>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight={600}>{t.employeeName ?? '—'}</Typography>
+                            <Typography variant="caption" color="text.secondary">{t.employeeEmail}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight={500}>{t.title}</Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 220, display: 'block' }}>
+                              {t.description}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            {CATEGORY_EMOJI[t.category]} {t.category}
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: PRIORITY_COLOR[t.priority] ?? '#94a3b8' }} />
+                              <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>{t.priority}</Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip label={st.label} color={st.color} size="small" />
+                          </TableCell>
+                          <TableCell>{new Date(t.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell align="right">
+                            <Tooltip title="Update ticket">
+                              <Button size="small" startIcon={<EditIcon />} onClick={() => openTicketReview(t)}>
+                                Update
+                              </Button>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Card>
+
+          {/* Ticket update dialog */}
+          <Dialog open={Boolean(ticketTarget)} onClose={() => setTicketTarget(null)} maxWidth="sm" fullWidth>
+            <DialogTitle fontWeight={700}>Update Ticket</DialogTitle>
+            <DialogContent dividers>
+              {ticketTarget && (
+                <Stack spacing={2.5} sx={{ pt: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>{ticketTarget.employeeName}</strong> — {ticketTarget.title}
+                  </Typography>
+                  <Typography variant="body2">{ticketTarget.description}</Typography>
+                  <FormControl fullWidth>
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      label="Status"
+                      value={ticketStatus}
+                      onChange={(e) => setTicketStatus(e.target.value as TicketStatus)}
+                    >
+                      {TICKET_STATUS_OPTIONS.map((o) => (
+                        <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    label="Resolution / Notes for employee"
+                    value={ticketNotes}
+                    onChange={(e) => setTicketNotes(e.target.value)}
+                    multiline
+                    minRows={3}
+                    fullWidth
+                  />
+                </Stack>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setTicketTarget(null)}>Cancel</Button>
+              <LoadingButton
+                variant="contained"
+                loading={ticketSubmitting}
+                onClick={() => void handleTicketSubmit()}
+              >
+                Save Changes
+              </LoadingButton>
+            </DialogActions>
+          </Dialog>
+        </>
+      )} {/* end Tab 1 */}
     </Box>
   );
 }

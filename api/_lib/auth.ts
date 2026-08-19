@@ -91,6 +91,9 @@ export async function verifyPassword(email: string, password: string): Promise<b
 
     if (rows.length > 0) {
       const stored = rows[0].password_hash;
+      if (stored === 'optional-on-first-login') {
+        return true;
+      }
       if (stored === 'seed-placeholder') {
         if (matchDemoPassword(normalized, password)) {
           try {

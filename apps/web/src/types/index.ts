@@ -199,6 +199,29 @@ export interface AssetRequest {
   departmentName?: string;
 }
 
+export type TicketCategory = 'hardware' | 'software' | 'access' | 'network' | 'other';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
+export type TicketStatus   = 'open' | 'in_progress' | 'resolved' | 'closed';
+
+export interface SupportTicket {
+  id:               string;
+  tenantId:         string;
+  employeeId:       string;
+  title:            string;
+  description:      string;
+  category:         TicketCategory;
+  priority:         TicketPriority;
+  status:           TicketStatus;
+  assignedTo?:      string;
+  resolutionNotes?: string;
+  createdAt:        string;
+  updatedAt:        string;
+  // joined
+  employeeName?:    string;
+  employeeEmail?:   string;
+  departmentName?:  string;
+}
+
 export interface AuditLog {
   id: string;
   tenantId: string;
