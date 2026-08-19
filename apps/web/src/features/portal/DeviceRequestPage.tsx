@@ -31,6 +31,7 @@ import SendIcon from '@mui/icons-material/Send';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import DevicesOtherIcon from '@mui/icons-material/DevicesOther';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAppDispatch, useAppSelector, useAuthUser } from '../../hooks/storeHooks';
 import { isApiEnabled } from '../../services/api/config';
 import { createAssetRequest, fetchAssetRequests } from '../../services/api/requests';
@@ -59,6 +60,7 @@ export function DeviceRequestPage() {
   const assets = useAppSelector((s) => s.assets.items);
 
   const [activeTab, setActiveTab] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [requestType, setRequestType] = useState<AssetRequestType>('new');
   const [category, setCategory] = useState(REQUEST_CATEGORIES[0]);
   const [description, setDescription] = useState('');
@@ -181,9 +183,23 @@ export function DeviceRequestPage() {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        My Portal
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h4" fontWeight={700}>
+          My Portal
+        </Typography>
+        <LoadingButton
+          variant="outlined"
+          size="small"
+          onClick={async () => {
+            setRefreshTrigger((prev) => prev + 1);
+            await loadRequests();
+          }}
+          loading={fetching}
+          startIcon={<RefreshIcon />}
+        >
+          Refresh
+        </LoadingButton>
+      </Box>
 
       <Tabs
         value={activeTab}
@@ -195,7 +211,7 @@ export function DeviceRequestPage() {
       </Tabs>
 
       {activeTab === 1 ? (
-        <EmployeeTicketsTab />
+        <EmployeeTicketsTab refreshTrigger={refreshTrigger} />
       ) : (
         <>
         <Card sx={{ mb: 3 }}>

@@ -64,7 +64,11 @@ const PRIORITY_COLOR: Record<string, string> = {
   critical: '#7c3aed',
 };
 
-export function EmployeeTicketsTab() {
+interface EmployeeTicketsTabProps {
+  refreshTrigger?: number;
+}
+
+export function EmployeeTicketsTab({ refreshTrigger }: EmployeeTicketsTabProps) {
   const dispatch = useAppDispatch();
   const theme = useTheme();
   const tickets = useAppSelector((s) => s.tickets.items);
@@ -91,7 +95,7 @@ export function EmployeeTicketsTab() {
     }
   }, [dispatch]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [load, refreshTrigger]);
 
   const resetForm = () => {
     setTitle('');

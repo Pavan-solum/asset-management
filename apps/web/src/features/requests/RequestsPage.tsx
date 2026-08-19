@@ -33,6 +33,7 @@ import DoneAllIcon from '@mui/icons-material/DoneAll';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import EditIcon from '@mui/icons-material/Edit';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAppDispatch, useAppSelector } from '../../hooks/storeHooks';
 import { usePermissions } from '../../hooks/storeHooks';
 import { PageHeader } from '../../components/PageHeader';
@@ -230,6 +231,20 @@ export function RequestsPage() {
         title="Requests & Tickets"
         subtitle="Manage employee device requests and IT support tickets"
         breadcrumbs={[{ label: 'Dashboard', to: '/' }, { label: 'Requests' }]}
+        actions={
+          <LoadingButton
+            variant="outlined"
+            size="small"
+            onClick={async () => {
+              await loadRequests();
+              await loadTickets();
+            }}
+            loading={loading || ticketsLoading}
+            startIcon={<RefreshIcon />}
+          >
+            Refresh
+          </LoadingButton>
+        }
       />
 
       {error && (
