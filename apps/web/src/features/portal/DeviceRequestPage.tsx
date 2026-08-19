@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tooltip,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
@@ -419,12 +420,23 @@ export function DeviceRequestPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>{req.neededBy ?? '—'}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={REQUEST_STATUS_LABELS[req.status]}
-                        size="small"
-                        color={REQUEST_STATUS_COLORS[req.status]}
-                      />
+                     <TableCell>
+                      {req.reviewNotes ? (
+                        <Tooltip title={`IT Note: ${req.reviewNotes}`} arrow placement="top">
+                          <Chip
+                            label={REQUEST_STATUS_LABELS[req.status]}
+                            size="small"
+                            color={REQUEST_STATUS_COLORS[req.status]}
+                            sx={{ cursor: 'help' }}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Chip
+                          label={REQUEST_STATUS_LABELS[req.status]}
+                          size="small"
+                          color={REQUEST_STATUS_COLORS[req.status]}
+                        />
+                      )}
                     </TableCell>
                     <TableCell>{new Date(req.createdAt).toLocaleDateString()}</TableCell>
                   </TableRow>
