@@ -103,16 +103,18 @@ export default async function handler(req: Request) {
         return error('requestType, category, and description are required', 400);
       }
 
-      if (!['new', 'replacement', 'accessory'].includes(requestType)) {
+      if (!['new', 'replacement', 'accessory', 'return'].includes(requestType)) {
         return error('Invalid requestType', 400);
       }
+
+      const assetIds = Array.isArray(body.assetIds) ? body.assetIds : null;
 
       const sql = await getTenantSql(auth.tenantId!);
       const rows = (await sql`
         INSERT INTO asset_requests (
-          tenant_id, employee_id, request_type, category, description, needed_by
+          tenant_id, employee_id, request_type, category, description, needed_by, asset_ids
         ) VALUES (
-          ${auth.tenantId!}, ${employeeId}, ${requestType}, ${category}, ${description}, ${neededBy}
+          ${auth.tenantId!}, ${employeeId}, ${requestType}, ${category}, ${description}, ${neededBy}, ${assetIds}
         )
         RETURNING *
       `) as DbAssetRequest[];

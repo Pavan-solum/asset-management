@@ -143,6 +143,7 @@ export interface DbAssetRequest {
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
+  asset_ids?: string[] | null;
   employee_first_name?: string | null;
   employee_last_name?: string | null;
   employee_email?: string | null;
@@ -295,6 +296,7 @@ export function mapAssetRequest(row: DbAssetRequest) {
     reviewedBy: row.reviewed_by ?? undefined,
     reviewedAt: row.reviewed_at ?? undefined,
     createdAt: row.created_at,
+    assetIds: row.asset_ids ?? undefined,
     employeeName:
       row.employee_first_name && row.employee_last_name
         ? `${row.employee_first_name} ${row.employee_last_name}`

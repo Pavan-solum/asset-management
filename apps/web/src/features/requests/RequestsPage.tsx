@@ -171,7 +171,7 @@ export function RequestsPage() {
 
   const handleReviewSubmit = async () => {
     if (!reviewTarget || !reviewAction) return;
-    if (reviewAction === 'fulfilled' && !selectedAsset) return;
+    if (reviewAction === 'fulfilled' && reviewTarget.requestType !== 'return' && !selectedAsset) return;
     
     setSubmitting(true);
     setError(null);
@@ -388,7 +388,7 @@ export function RequestsPage() {
                 </Typography>
                 <Typography variant="body2">{reviewTarget.description}</Typography>
                 
-                {reviewAction === 'fulfilled' && (
+                {reviewAction === 'fulfilled' && reviewTarget.requestType !== 'return' && (
                   <Autocomplete
                     options={availableAssets}
                     getOptionLabel={(option) => `${option.name} (${option.assetTag}) — ${option.category}`}
@@ -423,7 +423,7 @@ export function RequestsPage() {
               variant="contained"
               color={reviewAction === 'rejected' ? 'error' : 'primary'}
               loading={submitting}
-              disabled={reviewAction === 'fulfilled' && !selectedAsset}
+              disabled={reviewAction === 'fulfilled' && reviewTarget?.requestType !== 'return' && !selectedAsset}
               onClick={handleReviewSubmit}
             >
               Confirm

@@ -94,6 +94,37 @@ export default async function handler(req: Request) {
         `;
       }
 
+      // If fulfilling and it is a return request, process the returns
+      if (status === 'fulfilled' && current.request_type === 'return' && Array.isArray(current.asset_ids)) {
+        for (const returnAssetId of current.asset_ids) {
+          // 1. Terminate assignments
+          await sql`
+            UPDATE asset_assignments SET
+              returned_at = NOW(),
+              return_condition = 'Returned via Device Request fulfillment'
+            WHERE asset_id = ${returnAssetId} AND tenant_id = ${auth.tenantId!} AND returned_at IS NULL
+          `;
+
+          // 2. Update asset status to 'in_stock' and unassign
+          await sql`
+            UPDATE assets SET
+              status = 'in_stock',
+              assigned_employee_id = NULL,
+              updated_at = NOW()
+            WHERE id = ${returnAssetId} AND tenant_id = ${auth.tenantId!}
+          `;
+
+          // 3. Ownership history log
+          await sql`
+            INSERT INTO ownership_history (tenant_id, asset_id, event_type, description, performed_by)
+            VALUES (
+              ${auth.tenantId!}, ${returnAssetId}, 'RETURNED',
+              'Returned via Device Request fulfillment', ${reviewer}
+            )
+          `;
+        }
+      }
+
       const rows = (await sql`
         UPDATE asset_requests
         SET
